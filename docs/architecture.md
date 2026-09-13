@@ -174,6 +174,15 @@ tokens, the age private key) never enter Git — they live in a local
 machine runs the CLI. See
 [ADR-0012](decisions/0012-platform-config-and-credentials.md).
 
+### Transactional email
+
+Apps declare transactional email needs (signup confirmation, password
+reset, notifications) via a managed provider — **Brevo** in v1, with the
+manifest designed to add more providers later without a breaking change.
+The provider API key is handled as a secret (SOPS+age), never written in
+the manifest. See
+[ADR-0015](decisions/0015-transactional-email-brevo.md).
+
 ### Terraform state
 
 State is kept as a local file, encrypted with SOPS+age, and committed to

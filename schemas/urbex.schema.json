@@ -63,6 +63,25 @@
         "metrics": { "type": "boolean", "default": true },
         "logs": { "type": "boolean", "default": true }
       }
+    },
+    "email": {
+      "type": "object",
+      "description": "Transactional email configuration. The provider API key is never set here — it is managed as a secret (see docs/decisions/0011-secrets-sops-age.md).",
+      "additionalProperties": false,
+      "required": ["provider", "fromAddress"],
+      "properties": {
+        "provider": {
+          "enum": ["brevo"],
+          "description": "Managed transactional email provider. Only 'brevo' is supported in v1; more providers will be added over time (see docs/decisions/0015-transactional-email-brevo.md)."
+        },
+        "fromAddress": {
+          "type": "string",
+          "format": "email"
+        },
+        "fromName": {
+          "type": "string"
+        }
+      }
     }
   },
   "$defs": {

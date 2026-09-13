@@ -22,6 +22,8 @@
 - **Cloud providers** beyond Proxmox: Azure, GCP, AWS.
 - **Git servers** beyond Gitea: GitHub, GitLab.
 - **Secrets**: optional HashiCorp Vault support.
+- **Email providers**: additional transactional email providers beyond
+  Brevo (e.g. Resend, Postmark, Amazon SES).
 - **Topology**: a "lightweight" profile with multiple services sharing a
   single LXC, for more resource-constrained hardware.
 - Optional layers on top of the CLI: a dedicated Claude Code skill/plugin,

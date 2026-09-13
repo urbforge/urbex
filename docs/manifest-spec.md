@@ -47,6 +47,12 @@ domain:
 observability:
   metrics: true       # export metrics to Prometheus
   logs: true          # ship logs to the logging stack (see ADR-0004)
+
+email:                 # optional: transactional email (see ADR-0015)
+  provider: brevo       # only 'brevo' in v1, more providers planned
+  fromAddress: no-reply@my-app.example.com
+  fromName: My App
+  # the provider API key is a secret, never set here (see ADR-0011)
 ```
 
 ## Design notes

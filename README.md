@@ -32,6 +32,8 @@ and roadmap.
   terminal, but also usable by a human.
 - The public domain is **configurable**, not hardcoded: Urbex must be
   usable by anyone with their own Proxmox and their own domain.
+- Optional transactional email via a managed provider (**Brevo** in v1,
+  more planned) — no self-hosted mail server.
 
 ## Future evolutions (v2+)
 
