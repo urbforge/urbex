@@ -4,7 +4,10 @@ A step-by-step walkthrough of the six things you'd actually do with
 Urbex today, using the real `urbex` CLI (see
 [`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli)) against a
 worked example: **acme-app**, a personal project with a Go backend
-service (`api`) and a web frontend.
+service (`api`) and a web frontend. A [Cookbook](#cookbook-additional-scenarios)
+section after it covers four more situations you'll run into:
+decommissioning a project, running from a fresh machine/agent session,
+adding a second service, and rolling back a bad release.
 
 > **Read this first.** This guide is written against the CLI as it
 > exists today, not the finished v1 vision in
@@ -267,6 +270,123 @@ To build the full picture yourself right now:
    and [ADR-0005](decisions/0005-cloudflare-tunnel-ingress.md), both
    still unimplemented) - it's always `http://<ip>:<port>`.
 
+## Cookbook: additional scenarios
+
+Four more real situations you'll run into, kept separate from the core
+walkthrough above so that one stays a straight line.
+
+### Decommissioning a project
+
+```sh
+urbex destroy staging
+urbex destroy prod
+```
+
+Each tears down every service currently applied for that environment via
+`terraform destroy`, then removes their entries from
+`state/allocations.json` (`allocation.Ledger.Remove`) so `status`/`deploy`
+correctly stop considering them provisioned:
+
+```
+$ urbex destroy staging
+Destroyed acme-app (staging): [acme-app-api-staging acme-app-worker-staging].
+```
+
+Running it again afterwards is a safe no-op (`Nothing to destroy: no
+services of acme-app (staging) have been applied.`), since nothing is
+left allocated.
+
+⚠️ This only removes the LXCs. There's nothing else to clean up yet
+either way - a Keycloak realm ([ADR-0014](decisions/0014-keycloak-realm-per-project.md)),
+DNS records ([ADR-0007](decisions/0007-technitium-configurable-domain.md)),
+and Cloudflare Tunnel routes ([ADR-0005](decisions/0005-cloudflare-tunnel-ingress.md))
+don't get created by `apply` yet, so `destroy` has nothing extra to
+remove for them today. When those land, `destroy` will need to grow to
+cover them too. Git tags from `urbex promote` are untouched - they're
+just history.
+
+### Running urbex from a fresh machine (or a fresh agent session)
+
+Since `urbex bootstrap` doesn't push the GitOps repo to Gitea yet (see
+[Known limitations](#known-limitations-surfaced-by-this-walkthrough)),
+"the GitOps repo" is only as durable as wherever you put it - there's
+nothing to `git clone` from a server by default. To run commands from a
+different machine, or from a new Claude Code/Codex session with no prior
+state:
+
+1. **Make the GitOps repo directory reachable.** Put it under your own
+   Git remote and clone it, or `rsync`/`scp` the directory as-is. Its
+   `terraform.tfstate` is plaintext JSON today (not yet SOPS-encrypted
+   as [ADR-0013](decisions/0013-terraform-state-in-gitops-repo.md)
+   specifies) - treat the whole directory like a secret in transit and
+   at rest.
+2. **Recreate credentials on the new machine**: export
+   `URBEX_PROXMOX_TOKEN` and `URBEX_AGE_KEY` (or write
+   `~/.urbex/credentials.yaml`), and make sure an SSH agent holds the
+   private key matching `proxmox.sshPublicKey` in `urbex.platform.yaml` -
+   both Terraform's provider and Ansible connect over SSH.
+3. **Point at the repo**: `export URBEX_GITOPS_REPO=/path/to/the/clone`.
+4. Anything you now run (`status`, `plan`, `apply`, `deploy`) sees
+   exactly the state the previous machine left behind -
+   `allocations.json` and the Terraform state are the source of truth,
+   not anything local to a given machine.
+
+⚠️ Nothing enforces this today. If two machines run `apply` concurrently
+against copies of the GitOps repo that have drifted, they can conflict or
+silently overwrite each other's state - see the concurrency risk called
+out in [ADR-0013](decisions/0013-terraform-state-in-gitops-repo.md)'s
+Consequences. Treat "one GitOps repo copy in active use at a time, pulled
+before and pushed after every command" as a manual discipline for now.
+
+### Adding a second service to an existing project
+
+A small, common day-2 change. Edit `urbex.yaml` to add another entry
+under `services:`, e.g. a background worker alongside `api`:
+
+```yaml
+services:
+  - name: api
+    runtime: go
+    port: 8080
+  - name: worker
+    runtime: go
+    port: 9000
+```
+
+Then:
+
+```sh
+urbex plan staging    # the terraform plan shows only the new worker LXC - api is untouched
+urbex apply staging
+```
+
+`apply` allocates a new VMID/IP for `acme-app-worker-staging` only;
+`api`'s existing allocation and LXC are left alone
+(`allocation.Ledger.Allocate` is idempotent per hostname). `urbex status
+staging` then lists both services.
+
+### Rolling back a bad prod release
+
+⚠️ There's no `urbex rollback` command, and since image builds/pushes
+aren't automated yet (see
+[Known limitations](#known-limitations-surfaced-by-this-walkthrough)),
+"rollback" today really means "get the compose file back to whatever the
+previous good version looked like." Two honest options:
+
+1. If you edited `docker-compose.yml` on the LXC by hand for the
+   previous version, SSH in and revert it, then `docker compose up -d`
+   yourself.
+2. If you've only ever used `urbex deploy`/`urbex promote`: `git
+   checkout` the previous tag in the app repo, then re-run `urbex deploy
+   prod`. This only actually helps if `urbex.yaml` itself was unchanged
+   between the two versions - `deploy` re-renders the inventory from the
+   **current** `urbex.yaml` on disk, not from Git history, so it can't
+   reconstruct an older manifest's shape for you.
+
+A real rollback needs the deployed-version tracking gap below closed
+first - today, "which version is live" is something you have to remember
+yourself.
+
 ## Known limitations surfaced by this walkthrough
 
 Everything below is tracked as unimplemented in
@@ -283,6 +403,8 @@ where they actually bite:
 | No fleet-wide status | Step 6 | Run `urbex status [env]` per project, per environment |
 | GitOps repo not pushed to Gitea | Step 1 onward | The "GitOps repo" is just a local directory you manage (and should back up / put under your own Git remote) |
 | Terraform state unencrypted in practice | Step 1 | `terraform.tfstate` is plain JSON on disk today, not yet SOPS-encrypted as ADR-0013 specifies - keep the GitOps repo private and access-controlled |
+| No cross-machine concurrency guard | Cookbook: fresh machine | Keep one GitOps repo copy in active use at a time, pulled before and pushed after every command |
+| No rollback command, no removal of Keycloak/DNS/ingress on destroy | Cookbook: rollback, decommissioning | Manual compose/tag surgery for rollback; nothing extra to clean up yet since those integrations don't exist either |
 
 These are natural next increments, roughly in the order a real deployment
 would need them: image build/push, then DNS+ingress, then Komodo
