@@ -13,8 +13,13 @@ infrastructure in every environment.
 
 ## Status
 
-📋 Planning phase. No code yet — see `docs/` for architecture, decisions,
-and roadmap.
+🚧 Early scaffold. All 8 `urbex` CLI subcommands (`init`, `bootstrap`,
+`plan`, `apply`, `deploy`, `status`, `promote`, `destroy`) have a real
+implementation in [`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli),
+but several pieces of the v1 vision below aren't wired up yet (image
+build/push, DNS/ingress, Komodo integration - see
+[`docs/guide.md`](docs/guide.md) for the full list encountered in
+practice). See `docs/` for architecture, decisions, and roadmap.
 
 ## v1 — goal
 
@@ -52,6 +57,9 @@ and roadmap.
 
 ## Documentation
 
+- [`docs/guide.md`](docs/guide.md) — real-world, step-by-step walkthrough
+  (bootstrap → deploy → test → promote → iterate → fleet status) using
+  the actual CLI, with known gaps called out inline.
 - [`docs/architecture.md`](docs/architecture.md) — components, flows, CLI.
 - [`docs/manifest-spec.md`](docs/manifest-spec.md) — schema of the app
   manifest (`urbex.yaml`); formal schema in
