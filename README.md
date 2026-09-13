@@ -1,9 +1,10 @@
 # Urbex
 
-Urbex is a personal project that automates the creation of build, deploy,
-and publishing infrastructure (staging/production) for personal apps, so
-that whoever develops them — manually or through an LLM agent (Claude Code,
-Codex) — can focus solely on the application itself.
+Urbex is a project to automate the creation and management of the
+infrastructure needed to build, deploy, and publish (staging/production)
+personal apps and projects, so that whoever develops them — manually or
+through an LLM agent (Claude Code, Codex) — can focus solely on the
+application itself.
 
 Given a project with a frontend part (mobile → Firebase, web → Cloudflare
 Pages) and/or a services part (Java, Python, Go, or any Docker image with a

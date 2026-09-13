@@ -29,7 +29,8 @@ Urbex operates in two explicit modes:
 - A "everything via GitOps from the start" flow would require inventing a
   temporary pre-Gitea Git repo and then migrating the remote: conceptually
   purer but much more complex to implement and explain correctly, for a
-  marginal benefit on a personal project.
+  marginal benefit at Urbex's target scale (a single operator managing
+  personal-app infrastructure).
 - Having two explicit, documented modes (bootstrap vs steady-state) is
   easier to reason about, test, and explain to an LLM that needs to
   understand which phase a given Proxmox is in.

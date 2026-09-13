@@ -22,8 +22,8 @@ on Git. Options evaluated: SOPS+age, HashiCorp Vault, Ansible Vault.
 ## Rationale
 
 - SOPS+age requires no additional server to bootstrap and maintain,
-  unlike Vault: more suitable as a default for a personal project and for
-  the initial bootstrap phase (see
+  unlike Vault: more suitable as a default for single-operator,
+  personal-app-scale usage and for the initial bootstrap phase (see
   [ADR-0006](0006-bootstrap-command.md)), when the base infrastructure
   does not exist yet.
 - It is the de-facto standard in the GitOps world for exactly this use
