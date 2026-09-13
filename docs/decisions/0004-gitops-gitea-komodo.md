@@ -44,7 +44,7 @@ in sync with the state declared in the repos.
 
 The original request mentions "logging and metrics" as a base service
 responsibility, but only the Prometheus+Grafana stack (metrics) was
-explicitly chosen. Proposed design assumption: add **Loki + Promtail** as
-the natural logging complement in the same Grafana stack. This point
-remains open and must be confirmed during technical design (see Open
-Questions in [`roadmap.md`](../roadmap.md)).
+explicitly chosen. Decision: add **Loki + Promtail** as the logging
+complement in the same Grafana stack, on the same `Prom` LXC used for
+Prometheus/Grafana — it is the standard, low-overhead choice for this
+exact stack and needs no separate justification beyond that fit.

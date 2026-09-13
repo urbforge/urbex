@@ -1,9 +1,12 @@
 # App manifest spec — `urbex.yaml`
 
-> Draft v0. Lives in the app repo (see
+> Lives in the app repo (see
 > [ADR-0002](decisions/0002-app-manifest-in-app-repo.md)), generated and
-> maintained by the LLM developing the app. Schema to be formally
-> refined/validated (e.g. with JSON Schema) during technical design.
+> maintained by the LLM developing the app. The formal, machine-checkable
+> version of this schema lives at
+> [`schemas/urbex.schema.json`](../schemas/urbex.schema.json) (JSON
+> Schema, draft 2020-12); `urbex init`/`urbex plan` validate `urbex.yaml`
+> against it.
 
 ```yaml
 # urbex.yaml
@@ -58,5 +61,6 @@ observability:
   GitOps repo (see
   [ADR-0011](decisions/0011-secrets-sops-age.md)) — exact reference
   mechanism to be defined during technical design.
-- `resources` has reasonable defaults if omitted (to be defined), so the
-  LLM isn't forced to always specify everything.
+- `resources` has reasonable defaults if omitted (`cpu: 1`,
+  `memory: 1Gi`, `disk: 5Gi`, see the JSON Schema), so the LLM isn't
+  forced to always specify everything.

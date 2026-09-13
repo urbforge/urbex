@@ -26,9 +26,7 @@ and roadmap.
   - **Technitium DNS** — internal name resolution between services.
   - **Keycloak** — identity provider (SSO for admin tools and OIDC for
     apps).
-  - **Prometheus + Grafana** (+ logging stack, see
-    [ADR-0004](docs/decisions/0004-gitops-gitea-komodo.md)) — metrics and
-    observability.
+  - **Prometheus + Grafana + Loki** — metrics, logs, and observability.
 - All infrastructure is declared and versioned in a **GitOps repo**.
 - Main interface: a **CLI** (`urbex`), designed to be driven by an LLM in a
   terminal, but also usable by a human.
@@ -45,6 +43,7 @@ and roadmap.
 
 - [`docs/architecture.md`](docs/architecture.md) — components, flows, CLI.
 - [`docs/manifest-spec.md`](docs/manifest-spec.md) — schema of the app
-  manifest (`urbex.yaml`).
+  manifest (`urbex.yaml`); formal schema in
+  [`schemas/urbex.schema.json`](schemas/urbex.schema.json).
 - [`docs/roadmap.md`](docs/roadmap.md) — v1 vs v2+ scope.
 - [`docs/decisions/`](docs/decisions/) — Architecture Decision Records.

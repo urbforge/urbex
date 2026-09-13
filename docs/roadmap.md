@@ -9,7 +9,7 @@
 - Services: **Java, Python, Go**, or any **Docker image** with a ready
   Dockerfile.
 - Base services created on-demand: **Gitea, Komodo, Technitium, Keycloak,
-  Prometheus + Grafana (+ Loki, to be confirmed)**.
+  Prometheus + Grafana + Loki**.
 - Ingress: **Cloudflare Tunnel**.
 - Secrets: **SOPS + age**.
 - Topology: **one LXC per service per environment** (staging/prod
@@ -27,27 +27,20 @@
 - Optional layers on top of the CLI: a dedicated Claude Code skill/plugin,
   an MCP server.
 
-## Open questions
+## Design decisions status
 
-Architectural points where a reasonable assumption was made during
-planning but that still need to be confirmed/refined during technical
-design:
+All architectural points identified during initial planning have been
+resolved as ADRs (see [`decisions/`](decisions/)):
 
-- **Logging**: confirm Loki + Promtail as the logging stack alongside
-  Prometheus/Grafana (see note in
-  [ADR-0004](decisions/0004-gitops-gitea-komodo.md#logging-note)).
-- **Terraform state**: define where/how state is stored (remote backend
-  vs encrypted state committed to the GitOps repo) consistently with the
-  rest of the GitOps flow.
-- **Platform config**: define the format and location of the global
-  configuration file (domain, Proxmox credentials, Cloudflare zone — see
-  [ADR-0007](decisions/0007-technitium-configurable-domain.md)), distinct
-  from the per-app `urbex.yaml` manifest.
-- **Keycloak model per project**: one realm per project vs multiple
-  clients in a shared realm (see
-  [ADR-0008](decisions/0008-keycloak-scope.md)).
-- **age key distribution**: how it is securely made available to every
-  LXC that needs to decrypt secrets at deploy time (see
-  [ADR-0011](decisions/0011-secrets-sops-age.md)).
-- **Formal manifest schema**: JSON Schema validation for
-  [`urbex.yaml`](manifest-spec.md) and default values for `resources`.
+| Area | Resolved by |
+|---|---|
+| Logging stack | [ADR-0004](decisions/0004-gitops-gitea-komodo.md#logging-note) |
+| Terraform state location | [ADR-0013](decisions/0013-terraform-state-in-gitops-repo.md) |
+| Platform config format & location | [ADR-0012](decisions/0012-platform-config-and-credentials.md) |
+| Keycloak model per project | [ADR-0014](decisions/0014-keycloak-realm-per-project.md) |
+| age key / credentials distribution | [ADR-0012](decisions/0012-platform-config-and-credentials.md) |
+| Formal manifest schema | [`schemas/urbex.schema.json`](../schemas/urbex.schema.json) |
+
+No open architectural questions remain before starting implementation.
+New ones that surface during CLI/Terraform/Ansible implementation should
+be recorded here as they come up.

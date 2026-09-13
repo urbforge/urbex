@@ -134,16 +134,17 @@ A single Keycloak, three uses:
 2. OIDC provider for dev apps (apps register as clients).
 3. Service APIs are protected by roles defined in Keycloak.
 
-See [ADR-0008](decisions/0008-keycloak-scope.md).
+Each project gets its own Keycloak realm, separate from the `platform`
+realm used for admin SSO. See
+[ADR-0008](decisions/0008-keycloak-scope.md) and
+[ADR-0014](decisions/0014-keycloak-realm-per-project.md).
 
-### Observability: Prometheus + Grafana (+ Loki)
+### Observability: Prometheus + Grafana + Loki
 
-Prometheus/Grafana cover the explicitly requested metrics. The original
-request also mentions "logging": the natural complement in the Grafana
-stack is **Loki + Promtail**, added as a design assumption — to be
-confirmed during technical detailing (see
-[ADR-0004](decisions/0004-gitops-gitea-komodo.md#logging-note), Open
-Questions section).
+Prometheus/Grafana cover the explicitly requested metrics. **Loki +
+Promtail** complete the stack for the explicitly requested "logging",
+running on the same base-services LXC. See
+[ADR-0004](decisions/0004-gitops-gitea-komodo.md#logging-note).
 
 ### Environment topology
 
@@ -162,6 +163,24 @@ or release → Komodo applies the redeploy to the production LXC. See
 SOPS + age to encrypt secrets committed to the GitOps repo in v1; optional
 HashiCorp Vault support planned for v2+. See
 [ADR-0011](decisions/0011-secrets-sops-age.md).
+
+### Platform configuration and credentials
+
+Non-sensitive platform settings (base domain, Cloudflare zone, Proxmox
+connection details, DNS/Keycloak endpoints) live in a versioned
+`urbex.platform.yaml` at the root of the GitOps repo. Credentials (API
+tokens, the age private key) never enter Git — they live in a local
+`~/.urbex/credentials.yaml` (or environment variables) on whichever
+machine runs the CLI. See
+[ADR-0012](decisions/0012-platform-config-and-credentials.md).
+
+### Terraform state
+
+State is kept as a local file, encrypted with SOPS+age, and committed to
+the GitOps repo under `state/<scope>/terraform.tfstate`. `urbex
+plan`/`apply` pull, decrypt, run Terraform, then re-encrypt and push the
+result. See
+[ADR-0013](decisions/0013-terraform-state-in-gitops-repo.md).
 
 ## Bootstrap vs steady-state
 
