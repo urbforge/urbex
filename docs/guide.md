@@ -23,7 +23,7 @@ from an interrupted bootstrap.
 ## Prerequisites
 
 - A running Proxmox server, reachable over the network, with an API
-  token (`user@realm!tokenid=secret`).
+  token.
 - `terraform` (or `tofu`) and `ansible-playbook` installed on whichever
   machine runs `urbex` commands - the CLI shells out to both. Also `git`
   and `ssh` (with an agent holding the key matching
@@ -37,6 +37,11 @@ from an interrupted bootstrap.
   but does **not** push to it yet (see
   [ADR-0006](decisions/0006-bootstrap-command.md)), so for now the
   GitOps repo is just a local directory you manage yourself.
+
+**Don't have these yet?** See [`credentials.md`](credentials.md) for
+exactly where each one comes from (Proxmox token, SSH key, age keypair),
+and for the ones you'll only need once later integrations land
+(Cloudflare, Gitea, Brevo).
 
 ## 1. Bootstrap the infrastructure
 

@@ -63,6 +63,8 @@ architecture, decisions, and roadmap.
 - [`docs/guide.md`](docs/guide.md) — real-world, step-by-step walkthrough
   (bootstrap → deploy → test → promote → iterate → fleet status) using
   the actual CLI, with known gaps called out inline.
+- [`docs/credentials.md`](docs/credentials.md) — every credential Urbex
+  reads, what it's for, and exactly how to get it.
 - [`docs/architecture.md`](docs/architecture.md) — components, flows, CLI.
 - [`docs/manifest-spec.md`](docs/manifest-spec.md) — schema of the app
   manifest (`urbex.yaml`); formal schema in
