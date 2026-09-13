@@ -42,6 +42,14 @@ and roadmap.
 - Git servers beyond Gitea: GitHub, GitLab.
 - Secrets management: optional HashiCorp Vault support alongside SOPS+age.
 
+## Repositories
+
+- [`urbforge/urbex`](https://github.com/urbforge/urbex) (this repo) —
+  architecture, ADRs, manifest spec/schema, roadmap.
+- [`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli) — the
+  `urbex` CLI implementation (Go). See
+  [ADR-0016](docs/decisions/0016-cli-repo-split.md).
+
 ## Documentation
 
 - [`docs/architecture.md`](docs/architecture.md) — components, flows, CLI.

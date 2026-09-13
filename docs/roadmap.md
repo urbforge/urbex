@@ -28,6 +28,10 @@
   single LXC, for more resource-constrained hardware.
 - Optional layers on top of the CLI: a dedicated Claude Code skill/plugin,
   an MCP server.
+- **Schema sync automation**: a CI check (or codegen step) so the
+  manifest schema vendored in `urbforge/urbex-cli` can't silently drift
+  from `urbforge/urbex/schemas/urbex.schema.json` (see
+  [ADR-0016](decisions/0016-cli-repo-split.md)).
 
 ## Design decisions status
 
