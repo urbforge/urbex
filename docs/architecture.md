@@ -205,3 +205,10 @@ Gitea exists):
    repo + reconciliation via Komodo/CLI.
 
 See [ADR-0006](decisions/0006-bootstrap-command.md).
+
+The Terraform modules and Ansible playbooks for the base services are
+embedded in the `urbex` CLI binary and materialized into the GitOps repo
+the first time `urbex bootstrap` runs; a Proxmox pre-flight check aborts
+bootstrap if a base-service hostname already exists outside of Terraform's
+knowledge, instead of silently adopting or duplicating it. See
+[ADR-0017](decisions/0017-embedded-base-infra-assets.md).
