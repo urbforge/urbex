@@ -17,9 +17,10 @@ infrastructure in every environment.
 `plan`, `apply`, `deploy`, `status`, `promote`, `destroy`) have a real
 implementation in [`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli),
 but several pieces of the v1 vision below aren't wired up yet (image
-build/push, DNS/ingress, Komodo integration - see
-[`docs/guide.md`](docs/guide.md) for the full list encountered in
-practice). See `docs/` for architecture, decisions, and roadmap.
+build/push, DNS/ingress, Komodo integration). See
+[`docs/status.md`](docs/status.md) for the full supported/not-supported
+breakdown and implementation priorities, and `docs/` more generally for
+architecture, decisions, and roadmap.
 
 ## v1 — goal
 
@@ -57,6 +58,8 @@ practice). See `docs/` for architecture, decisions, and roadmap.
 
 ## Documentation
 
+- [`docs/status.md`](docs/status.md) — what's supported today vs. not
+  yet, and priorities for what to implement next.
 - [`docs/guide.md`](docs/guide.md) — real-world, step-by-step walkthrough
   (bootstrap → deploy → test → promote → iterate → fleet status) using
   the actual CLI, with known gaps called out inline.
