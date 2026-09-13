@@ -5,9 +5,12 @@ Urbex today, using the real `urbex` CLI (see
 [`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli)) against a
 worked example: **acme-app**, a personal project with a Go backend
 service (`api`) and a web frontend. A [Cookbook](#cookbook-additional-scenarios)
-section after it covers four more situations you'll run into:
+section after it covers eight more situations you'll run into:
 decommissioning a project, running from a fresh machine/agent session,
-adding a second service, and rolling back a bad release.
+adding a second service, rolling back a bad release, updating a
+service's config/resources, declaring a service with its own
+Dockerfile, running several projects on one platform, and recovering
+from an interrupted bootstrap.
 
 > **Read this first.** This guide is written against the CLI as it
 > exists today, not the finished v1 vision in
@@ -386,6 +389,112 @@ previous good version looked like." Two honest options:
 A real rollback needs the deployed-version tracking gap below closed
 first - today, "which version is live" is something you have to remember
 yourself.
+
+### Updating a service's config or resources
+
+Two different day-2 changes, handled two different ways:
+
+- **Non-secret env vars** (`services[].env`) or the healthcheck path:
+  edit `urbex.yaml`, then just
+  ```sh
+  urbex deploy staging
+  ```
+  `deploy` re-renders the Ansible inventory from the manifest on disk
+  every time, so a changed `env_vars`/`healthcheck_path` reaches the
+  compose file and triggers a restart (`docker compose up -d` only runs
+  when the rendered file actually changed) - no `apply` needed, since
+  the LXC itself isn't changing.
+- **`resources` (cpu/memory/disk)**: these are Terraform-managed
+  (`platform/terraform/modules/lxc`), so you need
+  ```sh
+  urbex plan staging     # review the diff before touching anything
+  urbex apply staging
+  ```
+  ⚠️ Untested against real Proxmox (see the CLI's own README caveat):
+  CPU/memory changes are ordinarily applied in place by the `bpg/proxmox`
+  provider, but disk changes - especially shrinking - may not be
+  supported the same way and could force replacing the container. Always
+  read the `terraform plan` output before running `apply` for a resize.
+
+### Declaring a service with its own Dockerfile
+
+Not every service has to be `java`/`python`/`go` - a service can point at
+a Dockerfile you already have instead:
+
+```yaml
+services:
+  - name: worker
+    runtime: docker
+    dockerfile: ./worker/Dockerfile
+    port: 9000
+```
+
+`dockerfile` is required whenever `runtime: docker` (enforced by
+[`schemas/urbex.schema.json`](../schemas/urbex.schema.json) - `urbex
+init` rejects a manifest that sets one without the other). Everything
+else about `plan`/`apply`/`deploy` for this service works exactly like
+any other - including the same placeholder-image limitation, since
+building the image from `dockerfile` isn't automated any more than
+building from source is (see [Known limitations](#known-limitations-surfaced-by-this-walkthrough)).
+
+### Running multiple independent projects on one platform
+
+Nothing special to do - just `urbex init`/`apply` a second project
+(`sidekick`, say) against the same `--gitops-repo`. Hostnames are always
+`<project>-<service>-<env>`, and VMIDs/IPs come from one shared counter
+in `state/allocations.json` across *every* project that uses this GitOps
+repo, so they never collide:
+
+```json
+{
+  "entries": {
+    "acme-app-api-staging":    {"vmid": 9100, "ip": "192.168.1.210"},
+    "acme-app-worker-staging": {"vmid": 9101, "ip": "192.168.1.211"},
+    "sidekick-api-staging":    {"vmid": 9102, "ip": "192.168.1.212"}
+  },
+  "nextVmid": 9103,
+  "nextIpOffset": 213
+}
+```
+
+`urbex status`/`plan`/`apply`/`deploy`/`destroy` all still operate on one
+project at a time (the `urbex.yaml` in your current directory) - see the
+[no fleet-wide status](#known-limitations-surfaced-by-this-walkthrough)
+gap for what that means day to day with several projects running.
+
+### Recovering from an interrupted or partial bootstrap
+
+`urbex bootstrap` is designed to be safely re-run - if it dies partway
+(network blip during `terraform apply`, a failed Ansible task, you
+`Ctrl-C`'d it), just run the exact same command again:
+
+```sh
+urbex bootstrap --gitops-repo ~/urbex-gitops
+```
+
+Terraform's state already reflects whatever it finished creating before
+the failure, so re-running only creates what's still missing and leaves
+already-provisioned LXCs alone; Ansible's tasks are idempotent, so
+already-configured services aren't touched either (see
+[ADR-0006](decisions/0006-bootstrap-command.md)).
+
+⚠️ The one case this can't recover from automatically: a container named
+`urbex-gitea` (etc.) exists on Proxmox but Terraform's local state
+(`terraform/base/terraform.tfstate` in the GitOps repo) doesn't know
+about it - e.g. you're pointing `--gitops-repo` at a fresh empty
+directory while the LXCs from an earlier run are still on Proxmox. The
+pre-flight check refuses to guess and aborts loudly instead:
+
+```
+found existing Proxmox container(s) [urbex-gitea] not tracked in
+/home/you/urbex-gitops/terraform/base/terraform.tfstate - resolve
+manually (rename/remove them, or point --gitops-repo at the repo that
+already manages them) before running bootstrap
+```
+
+That message is the fix: point `--gitops-repo` at wherever the original
+GitOps repo actually is, or manually rename/remove the stray containers
+on Proxmox if they're genuinely orphaned.
 
 ## Known limitations surfaced by this walkthrough
 
