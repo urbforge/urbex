@@ -4,6 +4,10 @@
 
 - Infrastructure target: **Proxmox only** (an already-running server).
 - Git server managed by Urbex: **Gitea only**.
+- Container registry: **Gitea's built-in registry**
+  ([ADR-0018](decisions/0018-image-build-komodo-gitea-registry.md)).
+- CI/CD (image build + deploy): **Komodo**.
+- Orchestrator: **Docker Compose** (one per LXC).
 - Provisioning: **Terraform/OpenTofu + Ansible**.
 - Frontend: **Cloudflare Pages** (web), **Firebase** (mobile).
 - Services: **Java, Python, Go**, or any **Docker image** with a ready
@@ -21,6 +25,9 @@
 
 - **Cloud providers** beyond Proxmox: Azure, GCP, AWS.
 - **Git servers** beyond Gitea: GitHub, GitLab.
+- **Container registries** beyond Gitea: ghcr.io (paired with GitHub).
+- **CI/CD** beyond Komodo: GitHub Actions, ArgoCD.
+- **Orchestrators** beyond Docker Compose: Kubernetes.
 - **Secrets**: optional HashiCorp Vault support.
 - **Email providers**: additional transactional email providers beyond
   Brevo (e.g. Resend, Postmark, Amazon SES).
@@ -45,6 +52,7 @@ resolved as ADRs (see [`decisions/`](decisions/)):
 | Platform config format & location | [ADR-0012](decisions/0012-platform-config-and-credentials.md) |
 | Keycloak model per project | [ADR-0014](decisions/0014-keycloak-realm-per-project.md) |
 | age key / credentials distribution | [ADR-0012](decisions/0012-platform-config-and-credentials.md) |
+| Image build & registry | [ADR-0018](decisions/0018-image-build-komodo-gitea-registry.md) |
 | Formal manifest schema | [`schemas/urbex.schema.json`](../schemas/urbex.schema.json) |
 
 No open architectural questions remain before starting implementation.

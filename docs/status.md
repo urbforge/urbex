@@ -7,7 +7,7 @@ perspective of *using* the CLI, this document takes stock of the whole
 project at once, for planning purposes. Update it whenever a priority
 item below gets implemented, or a new gap is discovered.
 
-As of this writing: 17 ADRs, all 8 `urbex` CLI subcommands implemented,
+As of this writing: 18 ADRs, all 8 `urbex` CLI subcommands implemented,
 65 unit tests across 16 Go packages in
 [`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli). Nothing
 has been run against a real Proxmox server or real
@@ -33,7 +33,7 @@ has been run against a real Proxmox server or real
 
 | Area | Gap | ADR(s) |
 |---|---|---|
-| Image build & push | `apply`/`deploy` render a compose file with a **placeholder** image reference; nothing builds or pushes a real image from a Dockerfile or from source | [0003](decisions/0003-terraform-ansible-provisioning.md) |
+| Image build & push | `apply`/`deploy` render a compose file with a **placeholder** image reference; nothing builds or pushes a real image from a Dockerfile or from source. Design decided: Komodo builds, Gitea registry | [0018](decisions/0018-image-build-komodo-gitea-registry.md) |
 | GitOps repo → Gitea | `bootstrap` creates the Gitea LXC but never pushes anything to it; "the GitOps repo" is just a local directory | [0004](decisions/0004-gitops-gitea-komodo.md), [0006](decisions/0006-bootstrap-command.md) |
 | Komodo integration | No code talks to Komodo at all; `deploy`/`promote` fake its job via direct Ansible | [0004](decisions/0004-gitops-gitea-komodo.md) |
 | Push-triggered staging deploy | A push to `main` is supposed to auto-deploy staging; nothing watches for it | [0010](decisions/0010-promotion-flow.md) |
@@ -78,14 +78,16 @@ image doesn't exist.
    this being trustworthy.
 2. **Image build & push.** The single biggest blocker to a real
    zero-touch deploy - without it, `apply`/`deploy` never produce an
-   app that's actually running the code that was promoted. Needs a
-   design decision first: build in Komodo, in a Gitea Actions-style CI,
-   or via the CLI itself calling `docker build`/`docker push`.
+   app that's actually running the code that was promoted. Decided in
+   [ADR-0018](decisions/0018-image-build-komodo-gitea-registry.md):
+   Komodo builds, pushes to Gitea's container registry. This makes it
+   depend on items 3 and 4 below, which therefore get done as part of
+   it rather than after it.
 
 ### P1 - complete the v1 promise (in dependency order)
 
 3. **Push the GitOps repo to Gitea.** Prerequisite for Komodo to have
-   anything to watch.
+   anything to watch, and for image builds (item 2).
 4. **Komodo integration**, replacing `deploy`/`promote`'s direct-Ansible
    shortcut with real GitOps reconciliation - including push-triggered
    staging deploys (item 3's payoff).
@@ -113,6 +115,8 @@ image doesn't exist.
 
 ### P4 - v2+ scope (deliberately deferred)
 
-13. Cloud providers beyond Proxmox, Git servers beyond Gitea, Vault -
+13. Cloud providers beyond Proxmox, Git servers beyond Gitea (and
+    ghcr.io as registry), CI/CD beyond Komodo (GitHub Actions, ArgoCD),
+    Kubernetes as orchestrator, Vault -
     already scoped for later in [`roadmap.md`](roadmap.md); no urgency
     while v1 itself is incomplete.
