@@ -13,11 +13,12 @@ infrastructure in every environment.
 
 ## Status
 
-🚧 Early scaffold. All 8 `urbex` CLI subcommands (`init`, `bootstrap`,
+🚧 Early stage. All 8 `urbex` CLI subcommands (`init`, `bootstrap`,
 `plan`, `apply`, `deploy`, `status`, `promote`, `destroy`) have a real
-implementation in [`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli),
-but several pieces of the v1 vision below aren't wired up yet (image
-build/push, DNS/ingress, Komodo integration). See
+implementation in [`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli):
+bootstrap sets up Gitea and Komodo, and `apply`/`deploy` build the app's
+images on Komodo and deploy them. Not wired up yet: DNS/ingress,
+Komodo-driven rollouts, and a run against a real Proxmox server. See
 [`docs/status.md`](docs/status.md) for the full supported/not-supported
 breakdown and implementation priorities, and `docs/` more generally for
 architecture, decisions, and roadmap.

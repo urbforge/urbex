@@ -55,6 +55,24 @@ email:                 # optional: transactional email (see ADR-0015)
   # the provider API key is a secret, never set here (see ADR-0011)
 ```
 
+## Service runtimes
+
+Komodo builds every service's image from the app repo at the deployed
+commit (see [ADR-0018](decisions/0018-image-build-komodo-gitea-registry.md)).
+For the language runtimes Urbex supplies the Dockerfile, which assumes:
+
+| `runtime` | Build | Start |
+|---|---|---|
+| `go` | `go build` of `./cmd/<service name>` if that directory exists, else the module root | the resulting binary |
+| `python` | `pip install -r requirements.txt` if present | `python main.py` |
+| `java` | Gradle wrapper (`gradlew`) if present, else Maven (`mvnw`, or `mvn` with `pom.xml`) | `java -jar` on the built jar |
+| `docker` | the given `dockerfile`, with its directory as build context | the image's own entrypoint |
+
+In every case the container gets `PORT` set to the service's `port` and
+must listen on it. A `healthcheck` path is probed with `wget` inside the
+container, which Urbex's images include; a `docker` image must provide
+it too.
+
 ## Design notes
 
 - `apiVersion` allows the schema to evolve without breaking existing

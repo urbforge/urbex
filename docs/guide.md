@@ -32,16 +32,15 @@ from an interrupted bootstrap.
 - An `age` keypair for `URBEX_AGE_KEY` (required by `urbex bootstrap`'s
   credential check even though secret encryption itself isn't wired up
   yet - see [Known limitations](#known-limitations-surfaced-by-this-walkthrough)).
-- A Git host for your app repos (GitHub, GitLab, or a self-hosted
-  server) and for the GitOps repo - `urbex bootstrap` creates a Gitea LXC
-  but does **not** push to it yet (see
-  [ADR-0006](decisions/0006-bootstrap-command.md)), so for now the
-  GitOps repo is just a local directory you manage yourself.
+- Your app repos can live anywhere (GitHub, GitLab, just local). Urbex
+  keeps its own copy of each on the Gitea it provisions - that's what
+  Komodo builds images from - and pushes the GitOps repo there too.
 
 **Don't have these yet?** See [`credentials.md`](credentials.md) for
 exactly where each one comes from (Proxmox token, SSH key, age keypair),
-and for the ones you'll only need once later integrations land
-(Cloudflare, Gitea, Brevo).
+which ones bootstrap generates for you (Gitea/Komodo admin passwords and
+tokens), and the ones you'll only need once later integrations land
+(Cloudflare, Brevo).
 
 ## 1. Bootstrap the infrastructure
 
@@ -54,6 +53,9 @@ urbex bootstrap --gitops-repo ~/urbex-gitops
 First run scaffolds `~/urbex-gitops/urbex.platform.yaml` and stops.
 Edit it - at minimum `proxmox.apiUrl`, `proxmox.node`, `proxmox.lxcTemplate`,
 `proxmox.sshPublicKey`, `proxmox.network.cidr`/`gateway`, and `git.giteaUrl`.
+If your API token is scoped to a resource pool, also set `proxmox.pool`
+(and `proxmox.keyctl: false` unless the token is `root@pam` - see
+[`credentials.md`](credentials.md#proxmox-api-token)).
 Then set credentials (never written to any file the GitOps repo tracks):
 
 ```sh
@@ -69,17 +71,38 @@ urbex bootstrap --gitops-repo ~/urbex-gitops
 
 This creates 5 LXCs on Proxmox (Gitea, Komodo, Technitium, Keycloak,
 observability) via Terraform, then configures each with Docker via
-Ansible. Re-running the same command later is safe - it's idempotent,
-and aborts instead of duplicating anything if it finds a
-`urbex-*`-named container Terraform doesn't know about (see
+Ansible. Then it wires the platform together:
+
+- generates admin passwords for Gitea, Komodo, and Keycloak, and
+  stores them - with the Gitea tokens and the Komodo API key it creates
+  next - in `~/.urbex/credentials.yaml` (mode 0600, never in the GitOps
+  repo);
+- creates the Gitea org (`git.org`, default `urbex`) and its `gitops`
+  repo, and pushes the GitOps repo there;
+- gives Komodo the Gitea account it needs to clone app repos and push
+  images to Gitea's container registry. Komodo's own LXC doubles as the
+  image builder (`urbex-komodo`).
+
+```
+Base services provisioned.
+Gitea ready at http://192.168.1.200:3000 (org urbex).
+Komodo ready at http://192.168.1.201:9120 (builder urbex-komodo).
+GitOps repo pushed to http://192.168.1.200:3000/urbex/gitops.git.
+Platform ready. Gitea/Komodo admin user: urbex-admin; generated passwords and tokens are in /home/you/.urbex/credentials.yaml.
+```
+
+Re-running the same command later is safe - it's idempotent, keeps the
+secrets and tokens it already generated, and aborts instead of
+duplicating anything if it finds a `urbex-*`-named container Terraform
+doesn't know about (see
 [ADR-0017](decisions/0017-embedded-base-infra-assets.md)).
 
 ⚠️ **Nothing here is reachable by name yet.** DNS registration in
-Technitium isn't implemented, so note the IPs Terraform assigned - they're
-in `~/urbex-gitops/terraform/base/terraform.tfstate` (encrypt this
-yourself for now; see [Known limitations](#known-limitations-surfaced-by-this-walkthrough)) -
-and reach the base services directly, e.g.
-`ssh root@<gitea-ip>` or `http://<keycloak-ip>:8080`.
+Technitium isn't implemented, and everything is plain HTTP on the LAN
+(no ingress/TLS yet). Base services get consecutive IPs starting at
+`proxmox.network.baseHostOffset`, in the order Gitea (`:3000`), Komodo
+(`:9120`), Technitium (`:5380`), Keycloak (`:8080`), observability
+(Grafana `:3000`).
 
 ## 2. Deploy a service (frontend + backend)
 
@@ -121,19 +144,41 @@ Validate it, then provision staging:
 urbex init                              # validates urbex.yaml
 export URBEX_GITOPS_REPO=~/urbex-gitops
 urbex plan staging                      # terraform plan, nothing applied yet
-urbex apply staging                     # creates the LXC, installs Docker, starts compose
+urbex apply staging                     # creates the LXC, builds the image, deploys it
 ```
 
-⚠️ **The container that starts has no real image yet.** `apply` renders
-`/opt/urbex/docker-compose.yml` on the new LXC referencing a placeholder
-`acme-app/api:staging-latest`, since building/pushing an image from
-your Dockerfile or source is not implemented (tracked alongside `urbex
-deploy` - see the TODO in
-[`docker-compose.yml.j2`](https://github.com/urbforge/urbex-cli/blob/main/platform/ansible/roles/service/templates/docker-compose.yml.j2)
-in `urbex-cli`). `docker compose up -d` will fail to pull it. Today,
-close this gap yourself: build and push your image under that exact
-name/tag to a registry the LXC can reach, or SSH in and edit
-`docker-compose.yml` directly, then `docker compose up -d`.
+`apply` creates the LXC, then builds and deploys the **committed HEAD**
+of the app repo ([ADR-0018](decisions/0018-image-build-komodo-gitea-registry.md)):
+
+1. pushes HEAD to `urbex/acme-app` on Gitea (branch `main`);
+2. has Komodo build one image per service at that commit and push it to
+   Gitea's registry as `<gitea>/urbex/acme-app-api:<short-sha>`;
+3. deploys it with Ansible, pinning that exact tag in the LXC's
+   `docker-compose.yml`;
+4. commits and pushes the GitOps repo, whose inventory now records the
+   deployed image.
+
+```
+Building acme-app-api at 3f9c2e1 on Komodo...
+Built 192.168.1.200:3000/urbex/acme-app-api:3f9c2e1.
+Deployed acme-app (staging) at 3f9c2e1:
+  api              http://192.168.1.210:8080  (192.168.1.200:3000/urbex/acme-app-api:3f9c2e1)
+```
+
+For `runtime: go`, `python`, and `java`, Urbex supplies the Dockerfile.
+Its conventions:
+
+| Runtime | Builds | Runs |
+|---|---|---|
+| `go` | `./cmd/<service>` if it exists, else the module root | the binary |
+| `python` | `pip install -r requirements.txt` if present | `python main.py` |
+| `java` | Gradle wrapper if present, else Maven (`mvnw` or `mvn`) | the built executable jar |
+
+Every service must listen on `$PORT`, which Urbex sets to the manifest's
+`port`. For anything else, use `runtime: docker` with your own
+Dockerfile (see the [Cookbook](#declaring-a-service-with-its-own-dockerfile)).
+Only committed code is built: `apply`/`deploy` warn if the working tree
+is dirty and deploy HEAD without those changes.
 
 ### Frontend
 
@@ -157,13 +202,14 @@ acme-app (staging):
 DNS, TLS certificates, and the latest deployed release are not tracked yet.
 ```
 
-`allocated=yes` means `urbex apply` gave it a VMID/IP;
+`apply`/`deploy` already printed each service's URL. `allocated=yes` means `urbex apply` gave it a VMID/IP;
 `provisioned=yes` means the LXC actually exists on Proxmox right now
 (the two can disagree - e.g. right after a failed `apply`, or after a
 manual deletion on Proxmox).
 
-⚠️ **`status` doesn't print the IP or port**, only presence. Get the IP
-from the allocation ledger in the GitOps repo:
+⚠️ **`status` doesn't print the IP or port**, only presence. Besides the
+`apply`/`deploy` output, the IP is in the allocation ledger in the GitOps
+repo:
 
 ```sh
 cat ~/urbex-gitops/state/allocations.json
@@ -182,43 +228,40 @@ Prod needs its own infrastructure first - it's a separate LXC from
 staging (see [ADR-0009](decisions/0009-one-lxc-per-service-per-env.md)):
 
 ```sh
-urbex apply prod       # same "placeholder image" caveat as staging - resolve it there too
+urbex apply prod
 urbex promote
 ```
 
 `promote` tags HEAD of the `acme-app` repo (`v0.1.0`, auto-incrementing
-the patch version on each subsequent call), pushes the tag, then
-immediately redeploys prod itself:
+the patch version on each subsequent call), pushes the tag to `origin`
+and to Gitea, then deploys that commit to prod. The image is **reused**,
+not rebuilt: it's the one staging got for the same commit, so prod runs
+exactly what you tested:
 
 ```
 Tagged and pushed v0.1.0.
-Redeployed acme-app (prod).
-Note: this ran ansible-playbook directly against the existing LXCs - it is
-not yet integrated with Komodo's GitOps reconciliation (docs/decisions/0004-gitops-gitea-komodo.md).
+Image 192.168.1.200:3000/urbex/acme-app-api:3f9c2e1 already built, reusing it.
+Deployed acme-app (prod) at 3f9c2e1:
+  api              http://192.168.1.220:8080  (192.168.1.200:3000/urbex/acme-app-api:3f9c2e1)
 Promoted v0.1.0 to prod.
 ```
 
-⚠️ That note is the key thing to understand about `promote` today: per
-[ADR-0010](decisions/0010-promotion-flow.md), pushing a tag is supposed
-to be *the* trigger - Komodo watches for it and redeploys prod on its
-own. Since that integration doesn't exist yet, `urbex promote` fakes it
-by calling the same direct-Ansible redeploy `urbex deploy` uses,
-immediately, from your machine. The tag it pushes is real Git history;
-the automatic reaction to it is not real yet.
-
-Use `--skip-deploy` to only create/push the tag without the immediate
-redeploy (closer to the eventual behavior, but nothing will pick it up
-until Komodo integration exists).
+⚠️ Per [ADR-0010](decisions/0010-promotion-flow.md), pushing a tag is
+supposed to be *the* trigger - Komodo watches for it and rolls prod out
+on its own. Komodo builds the images today, but doesn't roll them out
+yet: `urbex promote` runs that rollout itself, from your machine, with
+the same Ansible step `urbex deploy` uses. Use `--skip-deploy` to only
+create/push the tag.
 
 ## 5. Ship a fix or a new feature
 
 Make your change, then:
 
-- **App code only** (same service, same resources): commit, push to
-  `main`, then
+- **App code only** (same service, same resources): commit, then
   ```sh
   urbex deploy staging
   ```
+  which builds the new commit and rolls it out.
   ⚠️ Per [ADR-0010](decisions/0010-promotion-flow.md), a push to `main`
   is supposed to auto-deploy staging. That push-triggered reconciliation
   doesn't exist yet - `urbex deploy staging` is the manual stand-in.
@@ -258,15 +301,15 @@ To build the full picture yourself right now:
    urbex status staging
    urbex status prod
    ```
-3. **Which version is deployed where** - ⚠️ not tracked by Urbex at all
-   yet. The compose file's image tag is always the placeholder
-   `<project>/<service>:<env>-latest` regardless of what was actually
-   promoted; there's no record linking a `urbex promote` tag to what's
-   currently running. For now, cross-reference manually:
+3. **Which version is deployed where** - the GitOps repo records it:
+   every `apply`/`deploy`/`promote` commits the rendered inventory, which
+   pins each service's image to the deployed commit:
    ```sh
-   git -C /path/to/acme-app tag --list      # every version ever promoted
-   git -C /path/to/acme-app log -1 --oneline main   # what's on staging (last push)
+   grep docker_image ~/urbex-gitops/ansible/projects/*/*/inventory.yml
+   git -C ~/urbex-gitops log --oneline      # "urbex deploy acme-app staging @ 3f9c2e1", ...
+   git -C /path/to/acme-app tag --points-at 3f9c2e1   # which release that commit is
    ```
+   ⚠️ There's no command that summarizes this yet.
 4. **How to reach each service** - IPs live in the GitOps repo, per
    project+env:
    ```sh
@@ -315,24 +358,22 @@ just history.
 
 ### Running urbex from a fresh machine (or a fresh agent session)
 
-Since `urbex bootstrap` doesn't push the GitOps repo to Gitea yet (see
-[Known limitations](#known-limitations-surfaced-by-this-walkthrough)),
-"the GitOps repo" is only as durable as wherever you put it - there's
-nothing to `git clone` from a server by default. To run commands from a
-different machine, or from a new Claude Code/Codex session with no prior
-state:
+Every `bootstrap`/`apply`/`deploy`/`promote`/`destroy` pushes the GitOps
+repo to Gitea, so a new machine, or a new Claude Code/Codex session with
+no prior state, starts from there:
 
-1. **Make the GitOps repo directory reachable.** Put it under your own
-   Git remote and clone it, or `rsync`/`scp` the directory as-is. Its
+1. **Clone the GitOps repo** from Gitea
+   (`http://<gitea-ip>:3000/urbex/gitops.git`, as `urbex-admin`). Its
    `terraform.tfstate` is plaintext JSON today (not yet SOPS-encrypted
    as [ADR-0013](decisions/0013-terraform-state-in-gitops-repo.md)
-   specifies) - treat the whole directory like a secret in transit and
-   at rest.
-2. **Recreate credentials on the new machine**: export
-   `URBEX_PROXMOX_TOKEN` and `URBEX_AGE_KEY` (or write
-   `~/.urbex/credentials.yaml`), and make sure an SSH agent holds the
-   private key matching `proxmox.sshPublicKey` in `urbex.platform.yaml` -
-   both Terraform's provider and Ansible connect over SSH.
+   specifies) - that's why the repo is private.
+2. **Copy `~/.urbex/credentials.yaml`** from the machine that ran
+   bootstrap: besides your Proxmox token and age key, it holds the
+   generated Gitea/Komodo passwords, tokens, and API key that `apply`/
+   `deploy` need. Transfer it like any secret. Also make sure an SSH
+   agent holds the private key matching `proxmox.sshPublicKey` in
+   `urbex.platform.yaml` - both Terraform's provider and Ansible connect
+   over SSH.
 3. **Point at the repo**: `export URBEX_GITOPS_REPO=/path/to/the/clone`.
 4. Anything you now run (`status`, `plan`, `apply`, `deploy`) sees
    exactly the state the previous machine left behind -
@@ -375,25 +416,20 @@ staging` then lists both services.
 
 ### Rolling back a bad prod release
 
-⚠️ There's no `urbex rollback` command, and since image builds/pushes
-aren't automated yet (see
-[Known limitations](#known-limitations-surfaced-by-this-walkthrough)),
-"rollback" today really means "get the compose file back to whatever the
-previous good version looked like." Two honest options:
+⚠️ There's no `urbex rollback` command yet, but images are immutable
+and tagged by commit, so rolling back is a redeploy of an older commit:
 
-1. If you edited `docker-compose.yml` on the LXC by hand for the
-   previous version, SSH in and revert it, then `docker compose up -d`
-   yourself.
-2. If you've only ever used `urbex deploy`/`urbex promote`: `git
-   checkout` the previous tag in the app repo, then re-run `urbex deploy
-   prod`. This only actually helps if `urbex.yaml` itself was unchanged
-   between the two versions - `deploy` re-renders the inventory from the
-   **current** `urbex.yaml` on disk, not from Git history, so it can't
-   reconstruct an older manifest's shape for you.
+```sh
+git -C /path/to/acme-app checkout v0.1.3     # the last good release
+urbex deploy prod                             # reuses that commit's image - no rebuild
+git -C /path/to/acme-app checkout main
+```
 
-A real rollback needs the deployed-version tracking gap below closed
-first - today, "which version is live" is something you have to remember
-yourself.
+Caveats: `deploy` pushes HEAD to Gitea's `main`, so after a rollback
+Gitea's copy is behind your real `main` until the next deploy (that's
+fine - the next `deploy` fast-forwards it). And the manifest used is the
+checked-out `urbex.yaml`, so ports/env vars roll back too, which is
+usually what you want.
 
 ### Updating a service's config or resources
 
@@ -406,9 +442,9 @@ Two different day-2 changes, handled two different ways:
   ```
   `deploy` re-renders the Ansible inventory from the manifest on disk
   every time, so a changed `env_vars`/`healthcheck_path` reaches the
-  compose file and triggers a restart (`docker compose up -d` only runs
-  when the rendered file actually changed) - no `apply` needed, since
-  the LXC itself isn't changing.
+  compose file and `docker compose up -d` recreates the container (it's a
+  no-op when nothing changed) - no `apply` needed, since the LXC itself
+  isn't changing.
 - **`resources` (cpu/memory/disk)**: these are Terraform-managed
   (`platform/terraform/modules/lxc`), so you need
   ```sh
@@ -436,11 +472,13 @@ services:
 
 `dockerfile` is required whenever `runtime: docker` (enforced by
 [`schemas/urbex.schema.json`](../schemas/urbex.schema.json) - `urbex
-init` rejects a manifest that sets one without the other). Everything
-else about `plan`/`apply`/`deploy` for this service works exactly like
-any other - including the same placeholder-image limitation, since
-building the image from `dockerfile` isn't automated any more than
-building from source is (see [Known limitations](#known-limitations-surfaced-by-this-walkthrough)).
+init` rejects a manifest that sets one without the other). Komodo builds
+it with the Dockerfile's directory as build context (`./worker` here),
+like `build: ./worker` in docker compose. Everything else about
+`plan`/`apply`/`deploy` for this service works exactly like any other.
+The container still gets `PORT` set to the manifest's `port`, and the
+healthcheck (if declared) runs `wget` inside the container, so your image
+needs it.
 
 ### Running multiple independent projects on one platform
 
@@ -510,16 +548,14 @@ where they actually bite:
 
 | Gap | Where it shows up | Workaround today |
 |---|---|---|
-| No image build/push | `apply`/`deploy` | Build and push manually under the exact placeholder name, or edit `docker-compose.yml` on the LXC by hand |
-| No DNS/ingress/TLS | Steps 3, 4, 6 | Reach services by IP from `state/allocations.json` |
-| No Komodo integration | Steps 4, 5 | `urbex deploy`/`urbex promote` redeploy directly instead of reacting to Git |
-| No deployed-version tracking | Step 6 | Cross-reference `git tag`/`git log` with what you last ran `deploy`/`promote` against manually |
+| No DNS/ingress/TLS | Steps 1, 3, 4, 6 | Reach services by IP (printed by `apply`/`deploy`, also in `state/allocations.json`); the Gitea registry is plain HTTP, trusted via Docker's `insecure-registries` |
+| Rollouts not driven by Komodo | Steps 4, 5 | Komodo builds images, but `urbex deploy`/`urbex promote` roll them out with Ansible from your machine instead of Komodo reacting to Git pushes/tags |
+| No deployed-version summary | Step 6 | `grep docker_image` in the GitOps repo's inventories, or its `git log` |
 | No fleet-wide status | Step 6 | Run `urbex status [env]` per project, per environment |
-| GitOps repo not pushed to Gitea | Step 1 onward | The "GitOps repo" is just a local directory you manage (and should back up / put under your own Git remote) |
 | Terraform state unencrypted in practice | Step 1 | `terraform.tfstate` is plain JSON on disk today, not yet SOPS-encrypted as ADR-0013 specifies - keep the GitOps repo private and access-controlled |
 | No cross-machine concurrency guard | Cookbook: fresh machine | Keep one GitOps repo copy in active use at a time, pulled before and pushed after every command |
 | No rollback command, no removal of Keycloak/DNS/ingress on destroy | Cookbook: rollback, decommissioning | Manual compose/tag surgery for rollback; nothing extra to clean up yet since those integrations don't exist either |
 
 These are natural next increments, roughly in the order a real deployment
-would need them: image build/push, then DNS+ingress, then Komodo
-integration and version tracking.
+would need them: DNS+ingress, then Komodo-driven rollouts
+(push-to-deploy), then version tracking and rollback.
