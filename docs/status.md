@@ -7,11 +7,12 @@ perspective of *using* the CLI, this document takes stock of the whole
 project at once, for planning purposes. Update it whenever a priority
 item below gets implemented, or a new gap is discovered.
 
-As of this writing: 18 ADRs, all 8 `urbex` CLI subcommands implemented,
-85 unit tests across 16 Go packages in
-[`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli). The
-pipeline from base services to a running app has been validated with
-real Gitea, Komodo, Docker, Terraform, and Ansible binaries, but not yet
+As of this writing: 19 ADRs, all 8 `urbex` CLI subcommands implemented,
+89 unit tests across 14 Go packages in
+[`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli). The real
+`urbex` binary has been run end to end - bootstrap through
+merge-triggered deploys - against Debian 13 machines standing in for
+LXCs, with only Terraform and the Proxmox API faked. It has not yet run
 against a real Proxmox server - see
 [What has been validated](#what-has-been-validated) below.
 
@@ -22,23 +23,25 @@ against a real Proxmox server - see
 | App manifest (`urbex.yaml`) | Formal JSON Schema, typed Go decoding, `urbex init` scaffolds and validates |
 | Platform config (`urbex.platform.yaml`) | Scaffolded and validated by `urbex bootstrap` |
 | Credentials | Env vars, falling back to `~/.urbex/credentials.yaml`; never written to the GitOps repo |
-| Base-service provisioning | Terraform (5 fixed LXCs: Gitea, Komodo, Technitium, Keycloak, observability; optional resource pool) + Ansible (Docker + each service's compose); idempotent, with a pre-flight check that aborts instead of adopting/duplicating an untracked container |
-| Platform setup (`urbex bootstrap`) | Generates admin passwords/secrets into `~/.urbex/credentials.yaml`; creates Gitea tokens, org, and `gitops` repo; a Komodo API key and Komodo's Gitea git/registry accounts; pushes the GitOps repo to Gitea |
-| Image build & push | Komodo builds each service at the exact commit from the app's repo on Gitea (own Dockerfile, or Urbex's for go/java/python) and pushes it to Gitea's registry, tagged by commit; existing images are reused ([ADR-0018](decisions/0018-image-build-komodo-gitea-registry.md)) |
-| `urbex apply` | Terraform, then build + deploy of the app repo's HEAD commit, then commits and pushes the GitOps repo (the inventory pins the deployed image) |
+| Base-service provisioning | Terraform (5 fixed Debian 13 LXCs: Gitea, Komodo, Technitium, Keycloak, observability; optional resource pool) + Ansible (Docker + each service's compose); idempotent, with a pre-flight check that aborts instead of adopting/duplicating an untracked container |
+| Platform setup (`urbex bootstrap`) | Generates admin passwords/secrets into `~/.urbex/credentials.yaml`; creates a Gitea token, org, and `gitops` repo; a Komodo API key, the onboarding key project LXCs join with, and Komodo's Gitea git/registry accounts; pushes the GitOps repo to Gitea |
+| Image build & push | Komodo builds each service from its environment's branch of the app repo on Gitea (own Dockerfile, or Urbex's for go/java/python) and pushes it to Gitea's registry as `<version>-<env>` ([ADR-0018](decisions/0018-image-build-komodo-gitea-registry.md)) |
+| **Deploy on merge** | Merging into `staging` deploys staging, merging into `main` deploys prod: a Gitea webhook triggers a Komodo Procedure that builds every service of the environment and rolls it out on its LXC through the Periphery agent ([ADR-0019](decisions/0019-branch-environments-komodo-rollouts.md)) |
+| `urbex apply` | Terraform, Docker + Periphery on the LXCs (Ansible), then the environment's Komodo Builds/Deployments/Procedure and Gitea webhook, a first deploy, and a push of the GitOps repo (which records the declared Komodo resources) |
 | Project-service provisioning | Generic `for_each` Terraform module (any number of manifest services); static VMID/IP allocation shared across all projects in one GitOps repo, so they never collide |
-| `urbex deploy` | Builds (or reuses) the HEAD commit's images and rolls them out to already-applied LXCs with Ansible; syncs the GitOps repo |
-| `urbex promote` | Real `git tag` + push (auto-incrementing semver, to `origin` and Gitea), then deploys the same commit to prod, reusing staging's image |
-| `urbex destroy` | `terraform destroy` for applied services, then clears their allocation-ledger entries and syncs the GitOps repo |
-| `urbex status` | Cross-references Proxmox container presence with the allocation ledger, per base services or per project+environment |
+| `urbex deploy` | Re-syncs the environment's Komodo resources from `urbex.yaml` and has Komodo build and deploy its branch now - the manual trigger, and how manifest changes reach Komodo |
+| `urbex promote` | Opens (or finds) the `staging` → `main` pull request on Gitea; `--merge` merges it, deploying prod. Refuses when there is nothing to promote |
+| `urbex destroy` | Removes the environment's webhook and Komodo resources, `terraform destroy`, then clears the allocation-ledger entries and syncs the GitOps repo |
+| `urbex status` | Cross-references Proxmox container presence with the allocation ledger and, per service, the container state and image Komodo reports |
 | Transactional email | Manifest field only (`email.provider: brevo`); no code path uses it yet - see [Not supported yet](#not-supported-yet) |
 
 ## Not supported yet
 
 | Area | Gap | ADR(s) |
 |---|---|---|
-| Komodo-driven rollouts | Komodo builds images, but rollouts run as Ansible from the operator's machine; Komodo doesn't manage project LXCs (no Periphery/Stacks there) | [0004](decisions/0004-gitops-gitea-komodo.md), [0018](decisions/0018-image-build-komodo-gitea-registry.md) |
-| Push-triggered staging deploy | A push to `main` is supposed to auto-deploy staging; nothing watches for it | [0010](decisions/0010-promotion-flow.md) |
+| Manifest changes on merge | A merge deploys code, but `urbex.yaml` changes (env vars, port, resources, new services) only take effect on `urbex apply`/`deploy` | [0019](decisions/0019-branch-environments-komodo-rollouts.md) |
+| Komodo resources as GitOps | Urbex declares Komodo resources through its API and records them in the GitOps repo; Komodo doesn't reconcile from that repo (no ResourceSync) | [0004](decisions/0004-gitops-gitea-komodo.md) |
+| Pinned base-service images | Technitium, Prometheus, Loki, and Grafana still use `latest` | - |
 | DNS registration | Technitium LXC exists; nothing registers a record in it | [0007](decisions/0007-technitium-configurable-domain.md) |
 | Ingress (Cloudflare Tunnel) | Services are reachable only via their private LXC IP | [0005](decisions/0005-cloudflare-tunnel-ingress.md) |
 | Keycloak realm/client provisioning | Keycloak LXC exists; nothing creates the `platform` realm, per-project realms, or app OIDC clients/roles | [0008](decisions/0008-keycloak-scope.md), [0014](decisions/0014-keycloak-realm-per-project.md) |
@@ -46,7 +49,7 @@ against a real Proxmox server - see
 | Terraform state encryption | State is plain JSON on disk, not SOPS-encrypted as designed | [0013](decisions/0013-terraform-state-in-gitops-repo.md) |
 | Observability wiring | Prometheus/Grafana/Loki LXC exists; no project service is actually scraped or ships logs to it, despite `observability.metrics`/`logs` in the manifest | - |
 | Frontend deploy | `frontend` in the manifest is documentation only; no command builds/deploys to Cloudflare Pages or Firebase | - |
-| Deployed-version tracking | The GitOps repo's inventories record each environment's image (commit), but no command summarizes it; no `urbex rollback` (redeploying an older commit works) | [0010](decisions/0010-promotion-flow.md) |
+| Rollback | `urbex status` shows the running image, but there is no `urbex rollback`: revert the commit on the branch, or pin an older version on the Deployment in Komodo | [0019](decisions/0019-branch-environments-komodo-rollouts.md) |
 | Fleet-wide status | `urbex status` is scoped to one project+environment at a time; no cross-project view | - |
 | Cross-machine concurrency guard | Two machines applying against copies of the same GitOps repo can silently conflict | [0013](decisions/0013-terraform-state-in-gitops-repo.md) |
 | Cloud providers beyond Proxmox (Azure, GCP, AWS) | Not started - v2+ by design | [roadmap](roadmap.md) |
@@ -56,26 +59,39 @@ against a real Proxmox server - see
 ## What has been validated
 
 Beyond unit tests (fakes for Proxmox, Gitea, Komodo, and command
-execution), the following ran for real, on containers standing in for
-LXCs:
+execution), the **real `urbex` binary** ran this whole sequence against
+Debian 13 systemd machines reachable over SSH at the static IPs Urbex
+allocates - the same thing an LXC is to Ansible. Only `terraform` (a
+stub) and the Proxmox API (a stub listing the machines) were faked.
 
-- `terraform validate` of the base and project modules with the real
-  `bpg/proxmox` provider (this caught a missing `required_providers` in
-  the shared LXC module).
-- The Ansible `common`, `gitea`, `komodo`, and `service` roles on
-  Debian 12 systemd containers: Docker install, Gitea with its admin
-  user, the full Komodo stack (Postgres, FerretDB, Core, Periphery), and
-  a service pulled from Gitea's registry and reported healthy. Second
-  runs are idempotent (`changed=0`).
-- The CLI's Gitea/Komodo code against those real instances: tokens, org,
-  repos, Komodo API key and accounts, then Komodo building `go` and
-  `docker` services from the app repo on Gitea and pushing them to the
-  registry, and re-runs reusing the image.
+1. `urbex bootstrap`: all five base-service roles (Gitea, Komodo with
+   Postgres/FerretDB/Core/Periphery, Technitium, Keycloak,
+   Prometheus/Loki/Grafana), then the platform setup and the GitOps repo
+   push. A second run changes nothing.
+2. `urbex apply staging` and `urbex apply prod`: Docker and Periphery on
+   the project machines, Komodo resources, webhooks, first deploy - the
+   service answers, healthy.
+3. A pull request merged into `staging` on Gitea: the new version is
+   live about 10 seconds later, with no command run.
+4. `urbex promote --merge`: opens and merges `staging` → `main`; prod
+   serves the new version about 10 seconds later.
+5. `urbex deploy staging` after changing an env var in `urbex.yaml`;
+   `urbex status`; `urbex destroy staging` (prod untouched); `urbex
+   apply staging` again on a recreated machine.
 
-**Not yet validated:** `terraform apply` against a real Proxmox (LXC
-creation, pool placement, `keyctl` permissions with a non-root token),
-and Ansible over SSH into real LXCs. The `technitium`, `keycloak`, and
-`observability` roles haven't run either.
+Separately, `terraform validate` passes on the base and project modules
+with the real `bpg/proxmox` provider, and the `python` and `java`
+runtime Dockerfiles were built and run on their own.
+
+Running things for real found and fixed: a missing `required_providers`
+in the LXC module, a Komodo compose without its database, Prometheus
+unable to read its config, roles that never restarted a service after a
+failed run, Ansible conditionals and modules rejected by current
+ansible-core, and a recreated machine unable to rejoin Komodo.
+
+**Not yet validated:** `terraform apply` against a real Proxmox - LXC
+creation from the Debian 13 template, pool placement, and the `keyctl`
+feature with a non-root token (see [`credentials.md`](credentials.md)).
 
 ## Priorities
 
@@ -86,22 +102,21 @@ image doesn't exist.
 ### P0 - prove the foundation
 
 1. **Validate against a real Proxmox.** Run `urbex bootstrap` and
-   `urbex apply` against the test node, and fix what's left (see
+   `urbex apply` against the test node: the only layer still unproven
+   is Terraform creating the LXCs (see
    [What has been validated](#what-has-been-validated)). Expect the
    `keyctl` feature to need a root-set workaround with a pool-scoped
    token.
 2. ~~**Image build & push.**~~ Done: Komodo builds, Gitea's registry
-   stores, images tagged by commit
-   ([ADR-0018](decisions/0018-image-build-komodo-gitea-registry.md)).
+   stores ([ADR-0018](decisions/0018-image-build-komodo-gitea-registry.md)).
 
 ### P1 - complete the v1 promise (in dependency order)
 
 3. ~~**Push the GitOps repo to Gitea.**~~ Done: bootstrap and every
-   apply/deploy/promote/destroy push it.
-4. **Komodo-driven rollouts**, replacing the Ansible rollout in
-   `deploy`/`promote` with Komodo Stacks on project LXCs (Periphery on
-   each) - including push-triggered staging deploys and tag-triggered
-   prod deploys.
+   apply/deploy/destroy push it.
+4. ~~**Komodo-driven rollouts.**~~ Done: merging into `staging`/`main`
+   builds and deploys through Komodo
+   ([ADR-0019](decisions/0019-branch-environments-komodo-rollouts.md)).
 5. **DNS registration in Technitium.** Removes the "find the IP in
    `state/allocations.json`" step from every other workflow.
 6. **Cloudflare Tunnel ingress**, once there's a domain/DNS story to
@@ -119,7 +134,8 @@ image doesn't exist.
 
 ### P3 - operability polish
 
-10. **Deployed-version tracking and real rollback.**
+10. **`urbex rollback`**, and applying `urbex.yaml` changes on merge
+    (Komodo ResourceSync from the GitOps repo).
 11. **Fleet-wide status** across projects/environments.
 12. **Cross-machine concurrency guard** on the shared Terraform state
     and allocation ledger.

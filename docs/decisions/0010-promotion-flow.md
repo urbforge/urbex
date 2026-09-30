@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted
+Superseded by [ADR-0019](0019-branch-environments-komodo-rollouts.md):
+environments are now tied to branches (`staging`, `main`), not to pushes
+and tags.
 
 ## Context
 

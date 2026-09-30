@@ -2,8 +2,12 @@
 
 ## Status
 
-Accepted - implemented in `urbforge/urbex-cli` (image build; rollouts
-still run through Ansible, see Consequences).
+Accepted - implemented in `urbforge/urbex-cli`. Its tagging scheme
+(one image per commit, reused from staging to prod) and its Ansible
+rollout are superseded by
+[ADR-0019](0019-branch-environments-komodo-rollouts.md): Komodo now
+rolls out too, with one build per environment branch. Registry, builder,
+Dockerfiles, and the HTTP/insecure-registry consequences still stand.
 
 ## Context
 

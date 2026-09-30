@@ -16,9 +16,10 @@ infrastructure in every environment.
 🚧 Early stage. All 8 `urbex` CLI subcommands (`init`, `bootstrap`,
 `plan`, `apply`, `deploy`, `status`, `promote`, `destroy`) have a real
 implementation in [`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli):
-bootstrap sets up Gitea and Komodo, and `apply`/`deploy` build the app's
-images on Komodo and deploy them. Not wired up yet: DNS/ingress,
-Komodo-driven rollouts, and a run against a real Proxmox server. See
+bootstrap sets up Gitea and Komodo, `apply` hands an environment over to
+Komodo, and from then on **merging a pull request into `staging` or
+`main` builds and deploys that environment**. Not wired up yet:
+DNS/ingress, Keycloak, and a run against a real Proxmox server. See
 [`docs/status.md`](docs/status.md) for the full supported/not-supported
 breakdown and implementation priorities, and `docs/` more generally for
 architecture, decisions, and roadmap.
@@ -26,8 +27,8 @@ architecture, decisions, and roadmap.
 ## v1 — goal
 
 - Infrastructure target: an already-running **Proxmox** server.
-- Every project service runs in a dedicated **LXC**, with its own
-  `docker compose`, cloned from a Git repo.
+- Every project service runs in a dedicated **LXC** (Debian 13), as a
+  container Komodo builds from the project's Git repo and rolls out.
 - Platform services (created on-demand if missing):
   - **Gitea** — self-hosted Git server (app repos + GitOps repo).
   - **Komodo** — build/update pipeline and LXC management.

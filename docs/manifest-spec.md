@@ -57,8 +57,10 @@ email:                 # optional: transactional email (see ADR-0015)
 
 ## Service runtimes
 
-Komodo builds every service's image from the app repo at the deployed
-commit (see [ADR-0018](decisions/0018-image-build-komodo-gitea-registry.md)).
+Komodo builds every service's image from the app repo on Gitea, at the
+head of the environment's branch - `staging` for staging, `main` for
+prod (see [ADR-0018](decisions/0018-image-build-komodo-gitea-registry.md)
+and [ADR-0019](decisions/0019-branch-environments-komodo-rollouts.md)).
 For the language runtimes Urbex supplies the Dockerfile, which assumes:
 
 | `runtime` | Build | Start |
@@ -72,6 +74,10 @@ In every case the container gets `PORT` set to the service's `port` and
 must listen on it. A `healthcheck` path is probed with `wget` inside the
 container, which Urbex's images include; a `docker` image must provide
 it too.
+
+The manifest is read when you run `urbex apply` or `urbex deploy`, from
+the working copy you run them in: merging a change to `urbex.yaml` does
+not apply it by itself.
 
 ## Design notes
 
