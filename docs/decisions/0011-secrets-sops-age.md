@@ -2,7 +2,11 @@
 
 ## Status
 
-Accepted
+Accepted. Implemented for per-environment application secrets as
+described in [ADR-0020](0020-trunk-releases-gitops-environments.md): the
+age private key is delivered to each project LXC's Periphery agent by
+Ansible, from the operator's environment. Terraform state is not
+encrypted yet ([ADR-0013](0013-terraform-state-in-gitops-repo.md)).
 
 ## Context
 

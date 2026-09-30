@@ -57,10 +57,10 @@ email:                 # optional: transactional email (see ADR-0015)
 
 ## Service runtimes
 
-Komodo builds every service's image from the app repo on Gitea, at the
-head of the environment's branch - `staging` for staging, `main` for
-prod (see [ADR-0018](decisions/0018-image-build-komodo-gitea-registry.md)
-and [ADR-0019](decisions/0019-branch-environments-komodo-rollouts.md)).
+Komodo builds every service's image from the app repo on Gitea, once
+per release tag (`vX.Y.Z` on `main`; see
+[ADR-0018](decisions/0018-image-build-komodo-gitea-registry.md) and
+[ADR-0020](decisions/0020-trunk-releases-gitops-environments.md)).
 For the language runtimes Urbex supplies the Dockerfile, which assumes:
 
 | `runtime` | Build | Start |
@@ -75,9 +75,19 @@ must listen on it. A `healthcheck` path is probed with `wget` inside the
 container, which Urbex's images include; a `docker` image must provide
 it too.
 
-The manifest is read when you run `urbex apply` or `urbex deploy`, from
-the working copy you run them in: merging a change to `urbex.yaml` does
-not apply it by itself.
+## What the manifest decides, and what the GitOps repo does
+
+The manifest describes the project: its services, how they are built,
+the port and healthcheck of each. `urbex apply` and `urbex deploy` read
+it from the working copy you run them in and regenerate each service's
+compose file in the GitOps repo from it.
+
+What differs per environment lives in the GitOps repo, in
+`environments/<env>/<project>/<service>/`: the version to run
+(`version.env`), configuration (`config.env`), and secrets
+(`secrets.sops.env`). The `env.<environment>` block of a service only
+seeds `config.env` the first time the environment is applied; after
+that, change `config.env` in the GitOps repo.
 
 ## Design notes
 

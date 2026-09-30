@@ -13,16 +13,16 @@ infrastructure in every environment.
 
 ## Status
 
-🚧 Early stage. All 8 `urbex` CLI subcommands (`init`, `bootstrap`,
-`plan`, `apply`, `deploy`, `status`, `promote`, `destroy`) have a real
-implementation in [`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli):
-bootstrap sets up Gitea and Komodo, `apply` hands an environment over to
-Komodo, and from then on **merging a pull request into `staging` or
-`main` builds and deploys that environment**. Not wired up yet:
-DNS/ingress, Keycloak, and a run against a real Proxmox server. See
-[`docs/status.md`](docs/status.md) for the full supported/not-supported
-breakdown and implementation priorities, and `docs/` more generally for
-architecture, decisions, and roadmap.
+🚧 Early stage. The `urbex` CLI is implemented in
+[`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli): bootstrap
+sets up Gitea and Komodo; projects are developed trunk-based and
+released by tagging, which has Komodo build their images; and each
+environment runs what its folder in the GitOps repo says - version,
+configuration, SOPS-encrypted secrets - deployed by Komodo on every
+change. Not wired up yet: DNS/ingress, Keycloak, and a run against a
+real Proxmox server. See [`docs/status.md`](docs/status.md) for the full
+supported/not-supported breakdown and implementation priorities, and
+`docs/` more generally for architecture, decisions, and roadmap.
 
 ## v1 — goal
 
@@ -36,7 +36,9 @@ architecture, decisions, and roadmap.
   - **Keycloak** — identity provider (SSO for admin tools and OIDC for
     apps).
   - **Prometheus + Grafana + Loki** — metrics, logs, and observability.
-- All infrastructure is declared and versioned in a **GitOps repo**.
+- All infrastructure is declared and versioned in a **GitOps repo**,
+  which also says, per environment, what each project runs: version,
+  configuration, secrets.
 - Main interface: a **CLI** (`urbex`), designed to be driven by an LLM in a
   terminal, but also usable by a human.
 - The public domain is **configurable**, not hardcoded: Urbex must be

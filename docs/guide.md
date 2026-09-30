@@ -8,7 +8,7 @@ service (`api`) and a web frontend. A [Cookbook](#cookbook-additional-scenarios)
 section after it covers eight more situations you'll run into:
 decommissioning a project, running from a fresh machine/agent session,
 adding a second service, rolling back a bad release, updating a
-service's config/resources, declaring a service with its own
+service's config, secrets, or resources, declaring a service with its own
 Dockerfile, running several projects on one platform, and recovering
 from an interrupted bootstrap.
 
@@ -22,15 +22,16 @@ from an interrupted bootstrap.
 
 ## The model in one paragraph
 
-Each project has a repo on the Gitea that Urbex provisions, with one
-branch per environment: **`staging`** and **`main`** (production).
-Merging a pull request into one of them makes Komodo build the project's
-images and roll them out on that environment's LXCs - no command, no
-SSH, no operator machine involved. The `urbex` CLI is for everything
-around that: creating the platform (`bootstrap`), creating or changing
-an environment's infrastructure and pipeline (`apply`), and opening the
-promotion pull request (`promote`). See
-[ADR-0019](decisions/0019-branch-environments-komodo-rollouts.md).
+Each project has a repo on the Gitea that Urbex provisions, developed
+**trunk-based** on `main`. A **release is a tag** (`vX.Y.Z`): tagging
+makes Komodo build the project's images, once. What each environment
+runs is written in the **GitOps repo**, in
+`environments/<env>/<project>/<service>/`: the version, the
+configuration, the secrets. Komodo deploys those folders, so deploying,
+promoting, and rolling back are commits to the GitOps repo - which the
+`urbex` CLI makes for you (`deploy`, `promote`, `secret`), but which you
+can just as well make by hand. See
+[ADR-0020](decisions/0020-trunk-releases-gitops-environments.md).
 
 ## Prerequisites
 
@@ -41,9 +42,8 @@ promotion pull request (`promote`). See
   machine runs `urbex bootstrap`/`apply` - the CLI shells out to both.
   Also `git` and `ssh` (with an agent holding the key matching
   `proxmox.sshPublicKey`, since Ansible connects over SSH).
-- An `age` keypair for `URBEX_AGE_KEY` (required by `urbex bootstrap`'s
-  credential check even though secret encryption itself isn't wired up
-  yet - see [Known limitations](#known-limitations-surfaced-by-this-walkthrough)).
+- An `age` keypair for `URBEX_AGE_KEY`: every secret in the GitOps repo
+  is encrypted for it. And `sops`, if you'll use `urbex secret`.
 
 **Don't have these yet?** See [`credentials.md`](credentials.md) for
 exactly where each one comes from (Proxmox token, SSH key, age keypair),
@@ -87,11 +87,17 @@ Ansible. Then it wires the platform together:
   next - in `~/.urbex/credentials.yaml` (mode 0600, never in the GitOps
   repo);
 - creates the Gitea org (`git.org`, default `urbex`) and its `gitops`
-  repo, and pushes the GitOps repo there;
-- gives Komodo the Gitea account it needs to clone app repos and push
-  images to Gitea's container registry, and creates the onboarding key
-  project LXCs will join Komodo with. Komodo's own LXC doubles as the
-  image builder (`urbex-komodo`).
+  repo, writes `.sops.yaml` (the age public key secrets are encrypted
+  for), and pushes the GitOps repo there;
+- gives Komodo the Gitea account it needs to clone repos and push images
+  to Gitea's container registry, and creates the onboarding key project
+  LXCs will join Komodo with. Komodo's own LXC doubles as the image
+  builder (`urbex-komodo`);
+- installs in Komodo the two things every project shares: the
+  `urbex-release` Action, which builds release tags, and the
+  `urbex-gitops` Procedure, which deploys the GitOps repo's environment
+  folders whenever they change (a webhook on the repo) and every 15
+  minutes regardless.
 
 ```
 Base services provisioned.
@@ -159,33 +165,48 @@ urbex plan staging                      # terraform plan, nothing applied yet
 urbex apply staging
 ```
 
-`apply` does everything needed for staging to run and to keep deploying
-itself:
+`apply` sets up the project and the environment, and deploys nothing
+yet:
 
 1. creates the LXC (Terraform) and installs Docker and the Komodo
    Periphery agent on it (Ansible);
-2. creates `urbex/acme-app` on Gitea and, since it has no `staging`
-   branch yet, creates it from your local HEAD;
-3. declares in Komodo a Build and a Deployment for `api`, and the
-   `acme-app-staging` Procedure that runs them;
-4. adds a webhook on the Gitea repo that triggers that Procedure on
-   every push to `staging`;
-5. runs the Procedure once, so staging is up when `apply` returns.
+2. creates `urbex/acme-app` on Gitea - with `main` taken from your local
+   HEAD, since Gitea doesn't have it yet - a Komodo Build for `api`, and
+   the webhook that has Komodo build every release tag;
+3. writes `environments/staging/acme-app/api/` in the GitOps repo
+   (compose file, `config.env` seeded from the manifest's `env.staging`,
+   an empty secrets file) and declares the Komodo Stack that deploys
+   that folder on the LXC.
 
 ```
-Created branch staging of urbex/acme-app on Gitea from the local HEAD.
-Building and deploying acme-app-staging from branch staging on Komodo...
-Deployed acme-app (staging) from branch staging:
-  api              http://192.168.1.210:8080  running (192.168.1.200:3000/urbex/acme-app-api:0.0.1-staging)
-From now on, merging into staging deploys staging automatically.
+Created urbex/acme-app on Gitea with branch main from the local HEAD.
+acme-app (staging) is ready, with no version to run yet:
+  api              http://192.168.1.210:8080
+Release one with 'urbex release', then run 'urbex deploy staging'.
 ```
 
-Now make Gitea your remote for the project, so your pull requests land
-there:
+Make Gitea your remote for the project:
 
 ```sh
 git remote add origin http://192.168.1.200:3000/urbex/acme-app.git
 git fetch origin
+```
+
+Then release what's on `main` and put it on staging:
+
+```sh
+urbex release            # tags v0.1.0 on main; Komodo builds acme-app-api:0.1.0
+urbex deploy staging     # writes VERSION=0.1.0 into the GitOps repo and pushes; Komodo deploys
+```
+
+```
+Tagged v0.1.0 on main; Komodo is building it...
+Released acme-app 0.1.0:
+  api              192.168.1.200:3000/urbex/acme-app-api:0.1.0
+
+Waiting for Komodo to deploy acme-app (staging) from the GitOps repo...
+Deployed acme-app (staging):
+  api              http://192.168.1.210:8080  0.1.0 (192.168.1.200:3000/urbex/acme-app-api:0.1.0)
 ```
 
 For `runtime: go`, `python`, and `java`, Urbex supplies the Dockerfile.
@@ -217,8 +238,8 @@ urbex status staging
 ```
 
 ```
-acme-app (staging, branch staging):
-  api              acme-app-api-staging             allocated=yes provisioned=yes deployment=running image=192.168.1.200:3000/urbex/acme-app-api:0.0.1-staging
+acme-app (staging):
+  api              acme-app-api-staging             allocated=yes provisioned=yes version=0.1.0 stack=running image=192.168.1.200:3000/urbex/acme-app-api:0.1.0
 
 DNS and TLS certificates are not tracked yet.
 ```
@@ -226,11 +247,11 @@ DNS and TLS certificates are not tracked yet.
 `allocated=yes` means `urbex apply` gave it a VMID/IP;
 `provisioned=yes` means the LXC actually exists on Proxmox right now
 (the two can disagree - e.g. right after a failed `apply`, or after a
-manual deletion on Proxmox); `deployment` and `image` are what Komodo
-reports the LXC is running.
+manual deletion on Proxmox); `version` is what the GitOps repo asks for,
+`stack` and `image` what Komodo reports running.
 
-`apply` printed the service's URL; the IP is also in the allocation
-ledger in the GitOps repo:
+`apply` and `deploy` print the service's URL; the IP is also in the
+allocation ledger in the GitOps repo:
 
 ```sh
 cat ~/urbex-gitops/state/allocations.json
@@ -242,40 +263,52 @@ curl http://192.168.1.210:8080/healthz
 
 ## 4. Ship a fix or a new feature
 
-This is the everyday loop, and it doesn't involve `urbex` at all:
+Develop on `main` (directly or through short-lived branches and pull
+requests - Urbex doesn't care), then release and deploy:
 
 ```sh
-git checkout -b fix-greeting origin/staging
-# ... change code, commit ...
-git push origin fix-greeting
+git push origin main
+urbex release            # v0.1.1
+urbex deploy staging     # staging now runs 0.1.1
 ```
 
-Open a pull request into **`staging`** on Gitea and merge it. Gitea
-calls Komodo, which builds the new image and replaces the container -
-staging serves the new version seconds after the build finishes. Follow
-it in Komodo's UI (Procedure `acme-app-staging`), or:
+Pushing to `main` builds and deploys nothing; the tag is what builds.
+`urbex release` is only a convenience for it - this does the same:
 
 ```sh
-urbex status staging      # image=...:0.0.2-staging
+git tag -a v0.1.1 -m "Release 0.1.1" && git push origin v0.1.1
 ```
 
-Only changes to `urbex.yaml` need the CLI:
+Likewise `urbex deploy` only edits the GitOps repo. By hand:
 
-- **Env vars, port, healthcheck**: once the change is merged, run
+```sh
+cd ~/urbex-gitops
+echo "VERSION=0.1.1" > environments/staging/acme-app/api/version.env
+git commit -am "acme-app 0.1.1 on staging" && git push
+```
+
+⚠️ There's no continuous deployment of `main` to staging yet: staging
+moves when you deploy a release to it.
+
+What else changes, and where:
+
+- **Configuration** (non-secret env vars): edit
+  `environments/<env>/acme-app/api/config.env` in the GitOps repo and
+  push. Komodo redeploys the service.
+- **Secrets**:
   ```sh
-  git checkout staging && git pull
-  urbex deploy staging
+  printf %s "$DB_PASSWORD" | urbex secret set staging api DB_PASSWORD
   ```
-  which re-syncs Komodo's Build/Deployment from the manifest and
-  redeploys.
+  encrypts it into `secrets.sops.env` next to the configuration and
+  pushes; the service is redeployed with `DB_PASSWORD` in its
+  environment. See the [Cookbook](#updating-a-services-config-or-resources).
+- **Port, healthcheck, Dockerfile** (`urbex.yaml`): `urbex deploy <env>`
+  regenerates the compose file from the manifest.
 - **Infrastructure** (a new service, changed `resources`):
   ```sh
   urbex plan staging     # review the diff
   urbex apply staging    # allocates a new LXC if you added a service; re-provisions changed ones
   ```
-
-⚠️ A merge deploys code, never the manifest: Komodo keeps running with
-the settings from the last `urbex apply`/`deploy`.
 
 ## 5. Promote to production
 
@@ -283,7 +316,7 @@ Prod needs its own infrastructure first - separate LXCs from staging
 (see [ADR-0009](decisions/0009-one-lxc-per-service-per-env.md)). Once:
 
 ```sh
-urbex apply prod       # same as staging, tracking branch main
+urbex apply prod
 ```
 
 Then, every time staging is good:
@@ -293,49 +326,44 @@ urbex promote
 ```
 
 ```
-Opened pull request #7 (staging -> main): http://192.168.1.200:3000/urbex/acme-app/pulls/7
-Merge it to deploy production (or re-run with --merge).
+api: none -> 0.1.1
+Waiting for Komodo to deploy acme-app (prod) from the GitOps repo...
+Deployed acme-app (prod):
+  api              http://192.168.1.220:8080  0.1.1 (192.168.1.200:3000/urbex/acme-app-api:0.1.1)
 ```
 
-Merging that pull request deploys production, exactly like a merge into
-`staging` deploys staging. `urbex promote --merge` opens and merges it in
-one go; `urbex promote` alone says `Nothing to promote` when `main`
-already has everything `staging` has.
+`promote` copies each service's version from `environments/staging` to
+`environments/prod` and pushes. Production runs **the very image staging
+ran** - nothing is rebuilt. Configuration and secrets are not copied:
+they are per environment on purpose.
 
-⚠️ Production is **rebuilt** from `main`, not given staging's image (a
-merge commit is a different commit). Builds are from the same sources,
-but if you need byte-identical artifacts across environments, that's not
-what this flow gives you.
+⚠️ `promote` commits to the GitOps repo directly. If production should
+be gated by review, protect `environments/prod/` on Gitea and make the
+change through a pull request on the GitOps repo instead.
 
 ## 6. Overall status: what's deployed where, which version, how to reach it
 
-This is the honest state of things today - there is **no single command**
-that answers "show me everything, across every project and
-environment." `urbex status` is scoped to one project (the `urbex.yaml`
-in your current directory) and, with an argument, one environment.
+The GitOps repo is the answer to "what should be running":
 
-To build the full picture yourself right now:
+```sh
+grep -r VERSION ~/urbex-gitops/environments/
+# environments/prod/acme-app/api/version.env:VERSION=0.1.1
+# environments/staging/acme-app/api/version.env:VERSION=0.1.2
+git -C ~/urbex-gitops log --oneline -- environments/     # the deployment history
+```
 
-1. **Which base services are up:**
-   ```sh
-   urbex status
-   ```
-2. **Which project services are up, and running what** - repeat from
-   inside each app repo:
+What actually is running:
+
+1. **Base services:** `urbex status`
+2. **A project's services, wanted against running** - from inside each
+   app repo:
    ```sh
    urbex status staging
    urbex status prod
    ```
-   The image tag is `<version>-<env>`; Komodo also pushes a
-   `<commit>-<env>` tag for every build, and its UI shows the commit and
-   log of each one. Komodo's UI (`http://<komodo-ip>:9120`) is the
-   cross-project view: every Server, Build, Deployment, and Procedure.
-3. **What Urbex asked Komodo to run** - recorded in the GitOps repo on
-   every `apply`/`deploy`:
-   ```sh
-   ls ~/urbex-gitops/komodo/*/          # <project>/<env>.json
-   git -C ~/urbex-gitops log --oneline  # "urbex apply acme-app staging", ...
-   ```
+3. **Everything at once:** Komodo's UI (`http://<komodo-ip>:9120`) lists
+   every Server, Build, and Stack. ⚠️ There's no `urbex` command for a
+   cross-project view yet.
 4. **How to reach each service** - IPs live in the GitOps repo, per
    project+env:
    ```sh
@@ -359,11 +387,12 @@ urbex destroy staging
 urbex destroy prod
 ```
 
-Each removes the environment's webhook on Gitea and its Komodo resources
-(Procedure, Deployments, Builds - which stops the containers), tears
-down the LXCs via `terraform destroy`, removes their Servers from
+Each takes the environment's Komodo Stacks down and deletes them,
+removes the project's folder from that environment in the GitOps repo,
+tears down the LXCs via `terraform destroy`, removes their Servers from
 Komodo, then removes their entries from `state/allocations.json` so
-`status`/`deploy` correctly stop considering them provisioned:
+`status`/`deploy` correctly stop considering them provisioned. The
+project's Builds and release webhook go with its last environment:
 
 ```
 $ urbex destroy staging
@@ -385,10 +414,10 @@ cover them too.
 
 ### Running urbex from a fresh machine (or a fresh agent session)
 
-Deploying needs no machine at all - merge a pull request. The CLI is
-only needed for `apply`/`deploy`/`promote`/`destroy`, and a new machine,
-or a new Claude Code/Codex session with no prior state, gets there like
-this:
+Releasing and deploying need no particular machine: a tag on the
+project repo, a commit to the GitOps repo. For the `urbex` commands, a
+new machine, or a new Claude Code/Codex session with no prior state,
+gets there like this:
 
 1. **Clone the GitOps repo** from Gitea
    (`http://<gitea-ip>:3000/urbex/gitops.git`, as `urbex-admin`). Its
@@ -398,7 +427,8 @@ this:
 2. **Copy `~/.urbex/credentials.yaml`** from the machine that ran
    bootstrap: besides your Proxmox token and age key, it holds the
    generated Gitea/Komodo passwords, token, and keys. Transfer it like
-   any secret. For `apply`, also make sure an SSH agent holds the
+   any secret - the age key above all: it decrypts every secret in the
+   GitOps repo. For `apply`, also make sure an SSH agent holds the
    private key matching `proxmox.sshPublicKey` in `urbex.platform.yaml`.
 3. **Point at the repo**: `export URBEX_GITOPS_REPO=/path/to/the/clone`.
 4. Anything you now run (`status`, `plan`, `apply`, `deploy`) sees
@@ -428,55 +458,61 @@ services:
     port: 9000
 ```
 
-Merge that into `staging`, then, from an up-to-date checkout of it:
+Commit it to `main`, then:
 
 ```sh
 urbex plan staging    # the terraform plan shows only the new worker LXC - api is untouched
-urbex apply staging
+urbex apply staging   # new LXC, new Build, new folder and Stack for the worker
+urbex release         # the first release that has a worker image
+urbex deploy staging
 ```
 
 `apply` allocates a new VMID/IP for `acme-app-worker-staging` only;
 `api`'s existing allocation and LXC are left alone
-(`allocation.Ledger.Allocate` is idempotent per hostname). It adds the
-worker's Build and Deployment to the `acme-app-staging` Procedure, so
-the next merge builds and deploys both. `urbex status staging` then
-lists both services. Do the same with `urbex apply prod` once the change
-reaches `main`.
+(`allocation.Ledger.Allocate` is idempotent per hostname). Releases made
+before the worker existed have no image for it, which is why `deploy`
+needs a new one - it refuses a version some service was never built
+for. Do the same with `urbex apply prod` before promoting.
 
 ### Rolling back a bad prod release
 
-⚠️ There's no `urbex rollback` command yet. Two ways, both outside the
-CLI:
+Deploy the previous release - its image is still in the registry, so
+nothing is rebuilt:
 
-1. **Revert in Git** - the one that keeps Git and production in
-   agreement. On Gitea (or locally), revert the offending merge on
-   `main`; pushing the revert deploys it like any other change:
-   ```sh
-   git checkout main && git pull
-   git revert -m 1 <merge-commit>
-   git push origin main
-   ```
-2. **Pin the previous image in Komodo** - faster, no rebuild: in
-   Komodo's UI, open the Deployment (`acme-app-api-prod`), set its image
-   version to the previous one (e.g. `0.0.6`) and deploy. It stays
-   pinned - merges into `main` keep building but redeploy the pinned
-   version - until you clear the version in Komodo or run `urbex deploy
-   prod`, which puts it back on the latest build.
+```sh
+urbex deploy prod --version 0.1.0
+```
+
+or, equivalently, revert the commit that changed
+`environments/prod/.../version.env` in the GitOps repo and push. Either
+way the GitOps repo's history shows the rollback.
+
+If the bad release changed configuration or secrets too, those are
+separate commits in the environment's folder: revert them as well.
 
 ### Updating a service's config or resources
 
-Two different day-2 changes, handled two different ways:
+Different day-2 changes, each with its place:
 
-- **Non-secret env vars** (`services[].env`) or the healthcheck path:
-  edit `urbex.yaml`, then just
+- **Non-secret configuration**: edit
+  `environments/<env>/acme-app/api/config.env` in the GitOps repo,
+  commit, push. Komodo redeploys the service. (The `env` block in
+  `urbex.yaml` only seeds this file the first time an environment is
+  applied.)
+- **Secrets**:
   ```sh
-  urbex deploy staging
+  printf %s "$DB_PASSWORD" | urbex secret set prod api DB_PASSWORD
+  urbex secret list prod api          # names only
+  urbex secret unset prod api DB_PASSWORD
   ```
-  `deploy` re-syncs the service's Komodo Deployment from the manifest on
-  disk and redeploys, so the container is recreated with the new
-  settings - no `apply` needed, since the LXC itself isn't changing. Run
-  it from a checkout of the environment's branch, so the manifest you
-  apply is the one that was merged.
+  The value is read from standard input, encrypted with SOPS for the
+  platform's age key into `secrets.sops.env`, committed and pushed. It
+  is decrypted only on the service's LXC, when Komodo deploys. With
+  `URBEX_AGE_KEY` exported as `SOPS_AGE_KEY`, plain `sops
+  environments/prod/acme-app/api/secrets.sops.env` edits the same file.
+- **Port or healthcheck path** (`urbex.yaml`): commit the change, then
+  `urbex deploy <env>` - it regenerates the compose file from the
+  manifest.
 - **`resources` (cpu/memory/disk)**: these are Terraform-managed
   (`platform/terraform/modules/lxc`), so you need
   ```sh
@@ -510,8 +546,7 @@ like `build: ./worker` in docker compose. Everything else about
 `plan`/`apply`/`deploy` for this service works exactly like any other.
 The container still gets `PORT` set to the manifest's `port`, and the
 healthcheck (if declared) runs `wget` inside the container, so your image
-needs it. Like any service, it is built from the environment's branch on
-every merge.
+needs it. Like any service, it is built once per release tag.
 
 ### Running multiple independent projects on one platform
 
@@ -582,15 +617,16 @@ where they actually bite:
 | Gap | Where it shows up | Workaround today |
 |---|---|---|
 | No DNS/ingress/TLS | Steps 1, 3, 6 | Reach services by IP (printed by `apply`/`deploy`, also in `state/allocations.json`); Gitea and its registry are plain HTTP, trusted via Docker's `insecure-registries` |
-| Manifest changes aren't applied by a merge | Step 4 | Run `urbex deploy <env>` (or `apply` for infrastructure) from a checkout of the branch after merging |
-| Prod is rebuilt, not promoted as an artifact | Step 5 | Accept it, or pin a version on the Komodo Deployment |
-| No rollback command | Cookbook: rollback | Revert on the branch, or pin the previous version in Komodo |
-| No fleet-wide status | Step 6 | Run `urbex status [env]` per project, per environment, or use Komodo's UI |
+| No continuous deployment to staging | Step 4 | `urbex release && urbex deploy staging` after pushing to `main` |
+| `promote` commits straight to the GitOps repo | Step 5 | Protect `environments/prod/` on Gitea and change it by pull request |
+| Only `vX.Y.Z` tags are releases | Step 4 | No pre-release tags; use a patch version |
+| A push seconds after another can be missed by Komodo | Steps 4, 5 | The `urbex` commands that wait handle it; by hand, it is picked up within 15 minutes, or run the `urbex-gitops` Procedure in Komodo |
+| No fleet-wide status | Step 6 | `grep -r VERSION environments/` in the GitOps repo, `urbex status [env]` per project, or Komodo's UI |
 | Frontend not deployed | Step 2 | Deploy to Cloudflare Pages/Firebase yourself |
 | Terraform state unencrypted in practice | Step 1 | `terraform.tfstate` is plain JSON, not yet SOPS-encrypted as ADR-0013 specifies - the GitOps repo on Gitea is private; keep it that way |
 | No cross-machine concurrency guard | Cookbook: fresh machine | Keep one GitOps repo copy in active use at a time, pulled before and pushed after every command |
 | No removal of Keycloak/DNS/ingress on destroy | Cookbook: decommissioning | Nothing extra to clean up yet, since those integrations don't exist either |
 
 These are natural next increments, roughly in the order a real deployment
-would need them: DNS+ingress, then applying manifest changes on merge,
-then rollback.
+would need them: DNS+ingress, then continuous deployment to staging and
+promotion by pull request.

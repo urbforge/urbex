@@ -2,9 +2,9 @@
 
 ## Status
 
-Superseded by [ADR-0019](0019-branch-environments-komodo-rollouts.md):
-environments are now tied to branches (`staging`, `main`), not to pushes
-and tags.
+Superseded by [ADR-0020](0020-trunk-releases-gitops-environments.md):
+a Git tag is a release, and what an environment runs is a version
+written in the GitOps repo.
 
 ## Context
 

@@ -2,12 +2,11 @@
 
 ## Status
 
-Accepted - implemented in `urbforge/urbex-cli`. Its tagging scheme
-(one image per commit, reused from staging to prod) and its Ansible
-rollout are superseded by
-[ADR-0019](0019-branch-environments-komodo-rollouts.md): Komodo now
-rolls out too, with one build per environment branch. Registry, builder,
-Dockerfiles, and the HTTP/insecure-registry consequences still stand.
+Accepted - implemented in `urbforge/urbex-cli`. Registry, builder,
+Dockerfiles, and the HTTP/insecure-registry consequences stand. What
+triggers a build, how images are tagged, and how they are rolled out are
+decided by [ADR-0020](0020-trunk-releases-gitops-environments.md): one
+image per release tag, deployed by Komodo from the GitOps repo.
 
 ## Context
 

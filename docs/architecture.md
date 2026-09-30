@@ -16,7 +16,7 @@ flowchart TB
     subgraph GitOpsRepo["GitOps repo (on Gitea)"]
         TF[Terraform/OpenTofu]
         ANS[Ansible]
-        SEC[Encrypted secrets - SOPS+age]
+        ENVS[environments/: versions, config, SOPS secrets]
     end
 
     subgraph Proxmox["Proxmox server"]
@@ -46,8 +46,9 @@ flowchart TB
 
     CLI -->|reads/writes| Manifest
     CLI -->|bootstrap / plan / apply| TF
-    CLI -->|declares builds, deployments, webhooks| Komodo
-    Code -->|merge into staging / main: webhook| Komodo
+    CLI -->|declares builds, stacks, webhooks| Komodo
+    Code -->|release tag vX.Y.Z: webhook| Komodo
+    ENVS -->|push: webhook| Komodo
     TF -->|provisions| Base
     TF -->|provisions| Staging
     TF -->|provisions| Prod
@@ -55,8 +56,8 @@ flowchart TB
     ANS -->|configures| Staging
     ANS -->|configures| Prod
     Gitea -->|GitOps repo + app repo| GitOpsRepo
-    Komodo -->|builds staging branch, deploys| SvcS
-    Komodo -->|builds main branch, deploys| SvcP
+    Komodo -->|deploys environments/staging| SvcS
+    Komodo -->|deploys environments/prod| SvcP
     Technitium -->|resolves internal names| Base
     Technitium -->|resolves internal names| Staging
     Technitium -->|resolves internal names| Prod
@@ -83,10 +84,12 @@ commands (draft, to be refined during technical design):
 | `urbex bootstrap` | Provisions the base services on a fresh Proxmox (Gitea, Komodo, Technitium, Keycloak, Prometheus/Grafana/Loki) and initializes the GitOps repo. See [ADR-0006](decisions/0006-bootstrap-command.md). |
 | `urbex init` | Generates/validates `urbex.yaml` in the app repo, typically run by the LLM after analyzing the project code. |
 | `urbex plan <env>` | Computes the infrastructure changes needed (Terraform diff + Ansible config) for an environment, without applying them. |
-| `urbex apply <env>` | Applies the planned changes: creates/updates LXCs, connects them to Komodo, declares the environment's builds/deployments and its Gitea webhook, and runs a first deploy. Still to come: DNS, ingress, Keycloak/Grafana registration. |
-| `urbex deploy <env>` | Re-syncs the environment's Komodo resources from `urbex.yaml` and has Komodo build and deploy its branch now. |
-| `urbex promote` | Opens the `staging` → `main` pull request on Gitea (`--merge` to merge it), which deploys production. |
-| `urbex status` | Current status of a project/environment (LXCs, what Komodo is running; later DNS and certificates). |
+| `urbex apply <env>` | Applies the planned changes: creates/updates LXCs, connects them to Komodo, declares the project's builds and the environment's folder and stacks. Still to come: DNS, ingress, Keycloak/Grafana registration. |
+| `urbex release` | Tags the next release on the project's `main`; Komodo builds its images. |
+| `urbex deploy <env>` | Sets the release an environment runs, in the GitOps repo; Komodo deploys it. |
+| `urbex promote` | Sets production to the versions staging runs. |
+| `urbex secret` | Manages an environment's SOPS-encrypted secrets in the GitOps repo. |
+| `urbex status` | Current status of a project/environment (LXCs, wanted and running versions; later DNS and certificates). |
 | `urbex destroy <env>` | Removes an environment's infrastructure. |
 
 ### App manifest (`urbex.yaml`)
@@ -106,17 +109,21 @@ Technitium/Keycloak). LXCs run Debian 13. See
 
 ### GitOps: repo on Gitea + Komodo
 
-All infrastructure (Terraform definitions, Ansible playbooks, encrypted
-secrets, base service manifests, and the Komodo resources declared for
-each project) is versioned in a GitOps repo hosted on a self-hosted Gitea
-instance on the same Proxmox. App repos live on the same Gitea.
+Everything that defines the platform and what runs on it is versioned
+in a GitOps repo hosted on a self-hosted Gitea instance on the same
+Proxmox: the infrastructure (Terraform definitions and state, Ansible
+playbooks) and, under `environments/`, one folder per environment with
+each service's compose file, configuration, encrypted secrets, and the
+version to deploy. App repos live on the same Gitea.
 
-Komodo is the build and rollout engine: it builds each service's image
-from the app repo, pushes it to Gitea's container registry, and runs it
-on the service's LXC through the Periphery agent installed there. See
+Komodo is the build and rollout engine. It builds each service's image
+from the app repo when a release is tagged, pushes it to Gitea's
+container registry, and deploys each environment folder of the GitOps
+repo on the service's LXC, through the Periphery agent installed there,
+whenever the folder changes. See
 [ADR-0004](decisions/0004-gitops-gitea-komodo.md),
 [ADR-0018](decisions/0018-image-build-komodo-gitea-registry.md), and
-[ADR-0019](decisions/0019-branch-environments-komodo-rollouts.md).
+[ADR-0020](decisions/0020-trunk-releases-gitops-environments.md).
 
 ### Ingress: Cloudflare Tunnel
 
@@ -161,16 +168,19 @@ isolated on separate LXCs). See
 
 ### Staging → production promotion
 
-One branch per environment: merging a pull request into `staging` deploys
-staging, merging into `main` deploys production - a Gitea webhook has
-Komodo build and roll out the branch. Promotion is a pull request from
-`staging` into `main`. See
-[ADR-0019](decisions/0019-branch-environments-komodo-rollouts.md).
+Project repos are developed trunk-based and released by tagging `main`
+(`vX.Y.Z`); each release is built once. An environment runs the version
+written in its folder of the GitOps repo, so deploying to staging,
+promoting to production, and rolling back are all commits there -
+production gets the very image staging ran. See
+[ADR-0020](decisions/0020-trunk-releases-gitops-environments.md).
 
 ### Secrets
 
 SOPS + age to encrypt secrets committed to the GitOps repo in v1; optional
-HashiCorp Vault support planned for v2+. See
+HashiCorp Vault support planned for v2+. Each service's secrets live next
+to its configuration, in its environment folder, and are decrypted only
+on its LXC at deploy time. See
 [ADR-0011](decisions/0011-secrets-sops-age.md).
 
 ### Platform configuration and credentials

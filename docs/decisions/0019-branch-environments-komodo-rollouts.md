@@ -2,9 +2,11 @@
 
 ## Status
 
-Accepted. Supersedes [ADR-0010](0010-promotion-flow.md) (push → staging,
-tag → prod) and the "Tags" and rollout parts of
-[ADR-0018](0018-image-build-komodo-gitea-registry.md).
+Superseded by [ADR-0020](0020-trunk-releases-gitops-environments.md):
+environments are folders of the GitOps repo, not branches of the
+project repo. What stands from this ADR is that Komodo rolls out, and
+that every project LXC runs Periphery (including how a recreated LXC
+rejoins).
 
 ## Context
 
