@@ -30,11 +30,25 @@ they do need the
   token inherits the user's full permissions (simplest for a personal,
   single-operator setup); checked, you must grant the token its own role
   separately. Copy the secret shown once - Proxmox never shows it again.
-- **Least privilege:** a dedicated Proxmox user with the `PVEVMAdmin`
-  role on the relevant node/pool is enough for Urbex to create, modify,
-  and destroy LXC containers (plus `PVEDatastoreUser` on the storages
-  for root disks and templates). Avoid using a `root@pam` token for
-  anything beyond a quick personal test.
+- **Least privilege:** give the permissions to a group, scope them to
+  a resource pool, and put the users (whose tokens have privilege
+  separation off, so they inherit them) in the group. As root on the
+  Proxmox host:
+  ```sh
+  pveum group add urbex --comment "Urbex operators: pool urbex only"
+  pveum pool add urbex                                  # if it doesn't exist
+  pveum pool modify urbex --storage local-zfs,local     # root disks, templates
+  pveum acl modify /pool/urbex --groups urbex --roles PVEVMAdmin,PVEDatastoreUser,PVEPoolUser
+  pveum acl modify /sdn/zones/localnetwork/vmbr0 --groups urbex --roles PVESDNUser
+  pveum user modify <user>@pve --groups urbex --append 1
+  ```
+  `PVEVMAdmin` manages the pool's LXCs, `PVEDatastoreUser` allocates
+  disks and reads templates on the pool's storages, `PVEPoolUser` lets
+  the token see the pool. `PVESDNUser` on the bridge is needed to attach
+  an LXC's network interface - without it, Proxmox refuses with
+  `Permission check failed (/sdn/zones/localnetwork/vmbr0, SDN.Use)`.
+  Nothing else on the node is needed. Avoid using a `root@pam` token
+  for anything beyond a quick personal test.
 - **Pool-scoped tokens:** if the token's permissions are granted on a
   resource pool, set `proxmox.pool` in `urbex.platform.yaml` so every
   LXC is created in it - otherwise the token can't see or manage the

@@ -45,6 +45,7 @@ copy of the GitOps repo.
 - [A build or a deploy failed](#a-build-or-a-deploy-failed)
 - [An LXC was recreated](#an-lxc-was-recreated)
 - [Bootstrap was interrupted](#bootstrap-was-interrupted)
+- [The LXCs can't resolve names](#the-lxcs-cant-resolve-names)
 - [Drive Urbex from an LLM agent](#drive-urbex-from-an-llm-agent)
 - [Known limitations and workarounds](#known-limitations-and-workarounds)
 
@@ -417,6 +418,23 @@ with `found existing Proxmox container(s) ... not tracked`, it found
 `urbex-*` containers that the GitOps repo you pointed it at doesn't know
 about: point `--gitops-repo` at the right one, or remove the stray
 containers.
+
+## The LXCs can't resolve names
+
+Symptom: `bootstrap` or `apply` fails in Ansible with `Failed to update
+apt cache`, while the LXCs can ping the internet. They copied the
+Proxmox host's `resolv.conf`, and the host resolves through something
+they can't reach - typically Tailscale's MagicDNS (`100.100.100.100`).
+Give them a resolver on the LAN in `urbex.platform.yaml`:
+
+```yaml
+proxmox:
+  network:
+    dnsServers: [192.168.1.1]
+```
+
+and run `urbex bootstrap` (or `urbex apply <env>`) again: Terraform
+updates the LXCs and Ansible picks up where it stopped.
 
 ## Drive Urbex from an LLM agent
 

@@ -19,7 +19,7 @@ proxmox:
   insecure: true
   node: pve
   storagePool: local-zfs
-  lxcTemplate: local:vztmpl/debian-13-standard_13.1-2_amd64.tar.zst
+  lxcTemplate: local:vztmpl/debian-13-standard_13.6-1_amd64.tar.zst
   sshPublicKey: "ssh-ed25519 AAAA... urbex"
   vmIdBase: 9000
   pool: urbex
@@ -29,6 +29,7 @@ proxmox:
     gateway: 192.168.1.1
     baseHostOffset: 200
     bridge: vmbr0
+    dnsServers: [192.168.1.1]
 ```
 
 ## Fields
@@ -42,7 +43,7 @@ proxmox:
 | `proxmox.insecure` | `false` | Skip TLS verification of the Proxmox API (its default certificate is self-signed). |
 | `proxmox.node` | required | The node every LXC is created on. |
 | `proxmox.storagePool` | `local-lvm` | Storage for the LXCs' root disks. |
-| `proxmox.lxcTemplate` | required | The Debian 13 template volume, e.g. `local:vztmpl/debian-13-standard_13.1-2_amd64.tar.zst` (`pveam list local` shows yours). |
+| `proxmox.lxcTemplate` | required | The Debian 13 template volume, e.g. `local:vztmpl/debian-13-standard_13.6-1_amd64.tar.zst` (`pveam list local` shows yours). |
 | `proxmox.sshPublicKey` | required | Public key installed for `root` on every LXC; Ansible connects with the matching private key, from your SSH agent. |
 | `proxmox.vmIdBase` | `9000` | First VMID: base services get `vmIdBase` to `+4`, project LXCs `vmIdBase+100` onwards. |
 | `proxmox.pool` | none | Resource pool every LXC goes in. Required when the API token's permissions are on a pool. |
@@ -50,7 +51,8 @@ proxmox:
 | `proxmox.network.cidr` | required | LAN the LXCs are on; their static IPs are taken from it. |
 | `proxmox.network.gateway` | required | Default gateway of the LXCs. |
 | `proxmox.network.baseHostOffset` | `200` | Host number of the first base service's IP (`.200` in a /24). Base services take 5 addresses from there; project LXCs start 10 after it (`.210`). |
-| `proxmox.network.bridge` | `vmbr0` | Proxmox bridge the LXCs attach to. |
+| `proxmox.network.bridge` | `vmbr0` | Proxmox bridge the LXCs attach to. The API token needs `SDN.Use` on it (see [credentials](credentials.md#proxmox-api-token)). |
+| `proxmox.network.dnsServers` | the host's | Nameservers of the LXCs. Unset, each LXC copies the Proxmox host's `resolv.conf` - which breaks when the host resolves through something the LXCs can't reach, such as Tailscale's MagicDNS (`100.100.100.100`): set your router or another LAN resolver. |
 | `cloudflare.accountId`, `cloudflare.zoneId`, `cloudflare.tunnelName` | | ⚠️ Not used yet (ingress). |
 | `dns.technitiumUrl` | | ⚠️ Not used yet (DNS records). |
 | `keycloak.baseUrl`, `keycloak.platformRealm` (`platform`) | | ⚠️ Not used yet (SSO). |

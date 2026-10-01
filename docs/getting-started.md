@@ -51,11 +51,12 @@ creating environments, releasing, promoting. Day to day, a push to
 On Proxmox:
 
 - an API token (see [credentials](reference/credentials.md#proxmox-api-token)),
-  with `PVEVMAdmin` on the node or on a resource pool;
+  with `PVEVMAdmin` on the node or on a resource pool, and `SDN.Use` on
+  the bridge;
 - the Debian 13 LXC template:
   ```sh
   pveam update && pveam available --section system | grep debian-13
-  pveam download local debian-13-standard_13.1-2_amd64.tar.zst
+  pveam download local debian-13-standard_13.6-1_amd64.tar.zst
   ```
 - a free block of IPs on the LAN: 5 for the base services, then one per
   service per environment.
@@ -102,7 +103,7 @@ proxmox:
   insecure: true                  # Proxmox's default self-signed certificate
   node: pve
   storagePool: local-zfs
-  lxcTemplate: local:vztmpl/debian-13-standard_13.1-2_amd64.tar.zst
+  lxcTemplate: local:vztmpl/debian-13-standard_13.6-1_amd64.tar.zst
   sshPublicKey: "ssh-ed25519 AAAA... urbex"
   pool: urbex                     # if the token is scoped to a pool
   keyctl: false                   # if the token isn't root@pam
@@ -110,6 +111,7 @@ proxmox:
     cidr: 192.168.1.0/24
     gateway: 192.168.1.1
     baseHostOffset: 200           # base services at .200-.204, projects from .210
+    dnsServers: [192.168.1.1]     # if the Proxmox host resolves via Tailscale or a local stub
 ```
 
 Then provide the two credentials Urbex can't generate, and run it again:
