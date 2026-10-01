@@ -2,12 +2,13 @@
 
 A snapshot of what Urbex actually does today versus the v1 vision in
 [`architecture.md`](architecture.md), and a prioritized list of what to
-build next. Where [`guide.md`](guide.md) documents gaps from the
-perspective of *using* the CLI, this document takes stock of the whole
-project at once, for planning purposes. Update it whenever a priority
+build next. Where the [getting started](getting-started.md) and
+[cookbook](cookbook.md) call out gaps from the perspective of *using*
+the CLI, this document takes stock of the whole project at once, for
+planning purposes. Update it whenever a priority
 item below gets implemented, or a new gap is discovered.
 
-As of this writing: 20 ADRs, 10 `urbex` CLI commands, 111 unit tests
+As of this writing: 21 ADRs, 10 `urbex` CLI commands, 122 unit tests
 across 17 Go packages, and an end-to-end test (`e2e/run.sh`) in
 [`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli) that runs
 the real binary through a whole project lifecycle against Debian 13
@@ -23,15 +24,17 @@ stubbed. It has not yet run against a real Proxmox server - see
 | Platform config (`urbex.platform.yaml`) | Scaffolded and validated by `urbex bootstrap` |
 | Credentials | Env vars, falling back to `~/.urbex/credentials.yaml`; never written to the GitOps repo |
 | Base-service provisioning | Terraform (5 fixed Debian 13 LXCs: Gitea, Komodo, Technitium, Keycloak, observability; optional resource pool) + Ansible (Docker + each service's compose); idempotent, with a pre-flight check that aborts instead of adopting/duplicating an untracked container |
-| Platform setup (`urbex bootstrap`) | Generates admin passwords/secrets into `~/.urbex/credentials.yaml`; creates a Gitea token, org, and `gitops` repo; a Komodo API key, the onboarding key project LXCs join with, and Komodo's Gitea git/registry accounts; the release Action, the GitOps Procedure and its webhook; `.sops.yaml`; pushes the GitOps repo to Gitea |
+| Platform setup (`urbex bootstrap`) | Generates admin passwords/secrets into `~/.urbex/credentials.yaml`; creates a Gitea token, org, and `gitops` repo; a Komodo API key, the onboarding key project LXCs join with, Komodo's Gitea git/registry accounts and `URBEX_*` variables; the release Action, the GitOps Procedure and its webhook; `.sops.yaml`; pushes the GitOps repo to Gitea ([platform resources](reference/platform-resources.md)) |
 | Project-service provisioning | Generic `for_each` Terraform module (any number of manifest services); static VMID/IP allocation shared across all projects in one GitOps repo, so they never collide; Docker + Komodo Periphery + sops on each LXC |
-| **Releases** | A `vX.Y.Z` tag on a project's `main` (pushed by hand or by `urbex release`) makes Komodo build every service once and push `<project>-<service>:X.Y.Z` to Gitea's registry ([ADR-0018](decisions/0018-image-build-komodo-gitea-registry.md), [ADR-0020](decisions/0020-trunk-releases-gitops-environments.md)) |
+| **Builds** | Every push to a project's `main` makes Komodo build each service and push `<project>-<service>:<short hash>` to Gitea's registry ([ADR-0018](decisions/0018-image-build-komodo-gitea-registry.md), [ADR-0021](decisions/0021-staging-follows-main.md)) |
+| **Continuous deployment to staging** | Staging follows `main` (`TRACK=main` in its version files): after each build, Komodo commits the new version to the GitOps repo and deploys it ([ADR-0021](decisions/0021-staging-follows-main.md)) |
+| **Releases** | A `vX.Y.Z` tag (pushed by hand or by `urbex release`, which tags the commit staging runs) gives that commit's images the tag `X.Y.Z` - no rebuild ([ADR-0020](decisions/0020-trunk-releases-gitops-environments.md), [ADR-0021](decisions/0021-staging-follows-main.md)) |
 | **Environments in the GitOps repo** | `environments/<env>/<project>/<service>/` holds the compose file, `version.env`, `config.env`, and `secrets.sops.env`; Komodo deploys each folder as a Stack on the service's LXC whenever it changes (webhook), and reconciles every 15 minutes |
 | **Secrets** | SOPS + age, per service and environment, in the GitOps repo; decrypted only on the LXC, at deploy time; `urbex secret set/unset/list` |
-| `urbex apply` | Terraform, Ansible, the project's Builds and release webhook, the environment's folder and Stacks; redeploys an environment that already has a version |
-| `urbex release` | Tags the next release on `main` and waits for its images |
-| `urbex deploy` | Sets an environment's version in the GitOps repo (latest release, or `--version`, which is also how to roll back), pushes, waits for Komodo to run it |
-| `urbex promote` | Sets prod's versions to staging's: prod runs the very images staging ran |
+| `urbex apply` | Terraform, Ansible, the project's Builds and webhook, the environment's folder and Stacks; a new staging builds and runs `main`'s head; redeploys an environment that already runs something |
+| `urbex release` | Tags the next release on the commit staging runs (or `main`, or `--ref`) and waits for its images |
+| `urbex deploy` | Sets an environment's version in the GitOps repo (latest release, `--version` with a release or commit - also how to roll back - or `--follow-main`), pushes, waits for Komodo to run it |
+| `urbex promote` | Sets prod to the release staging runs: prod runs the very images staging ran; refuses an unreleased commit |
 | `urbex destroy` | Takes the environment's Stacks down, removes its folder, `terraform destroy`, clears the allocation ledger; the project's Builds go with its last environment |
 | `urbex status` | Proxmox container presence, allocation ledger and, per service, the version the GitOps repo asks for against what Komodo runs |
 | Transactional email | Manifest field only (`email.provider: brevo`); no code path uses it yet - see [Not supported yet](#not-supported-yet) |
@@ -40,8 +43,9 @@ stubbed. It has not yet run against a real Proxmox server - see
 
 | Area | Gap | ADR(s) |
 |---|---|---|
-| Continuous deployment to staging | Nothing is deployed by a push to `main`; staging runs a release only once its version is set | [0020](decisions/0020-trunk-releases-gitops-environments.md) |
-| Promotion by pull request | `urbex promote` commits to the GitOps repo directly; a PR-gated production folder is a Gitea setting Urbex doesn't manage | [0020](decisions/0020-trunk-releases-gitops-environments.md) |
+| Promotion by pull request | `urbex promote` commits to the GitOps repo directly; a PR-gated production folder is a Gitea setting Urbex doesn't manage (see the [cookbook](cookbook.md#gate-production-behind-a-pull-request)) | [0020](decisions/0020-trunk-releases-gitops-environments.md) |
+| Image cleanup | Every push to `main` leaves an image in the registry; nothing prunes them | [0021](decisions/0021-staging-follows-main.md) |
+| Removing a service | Dropping a service from `urbex.yaml` leaves its LXC, Stack and folder behind | - |
 | Pre-releases | Only `vX.Y.Z` tags are releases; `-rc.1` and the like are ignored | [0020](decisions/0020-trunk-releases-gitops-environments.md) |
 | Pinned base-service images | Technitium, Prometheus, Loki, and Grafana still use `latest` | - |
 | DNS registration | Technitium LXC exists; nothing registers a record in it | [0007](decisions/0007-technitium-configurable-domain.md) |
@@ -67,21 +71,23 @@ base services are real. It covers:
 
 1. `urbex bootstrap`: all five base-service roles, the platform setup,
    the GitOps repo push; a second run changes nothing.
-2. `urbex apply staging`: an environment that exists and is empty.
-3. `urbex release` and `urbex deploy staging`: a tag, built by Komodo,
-   deployed from the GitOps repo.
-4. Trunk development: a push to `main` deploys nothing; a tag pushed by
-   hand is a release.
-5. `urbex apply prod` and `urbex promote`: prod runs staging's image,
-   nothing is rebuilt.
+2. `urbex apply staging`: staging follows `main` and runs its head.
+3. Continuous deployment: a push to `main` reaches staging with no
+   command, through a commit to the GitOps repo.
+4. `urbex release` tags the commit staging runs and publishes its image
+   without a new build; a tag pushed by hand is a release too.
+5. `urbex apply prod` (empty) and `urbex promote`: prod runs the release
+   staging runs; an unreleased commit is refused.
 6. Secrets: set, delivered to the service, absent in plaintext from the
    repo, unset.
 7. Configuration edited by hand in the GitOps repo and pushed with
    plain git; an unrelated commit restarts nothing.
-8. Rollback by deploying an older version; a version that was never
-   built is refused.
-9. `urbex destroy staging` (prod untouched), then `urbex apply` onto a
-   brand-new machine.
+8. Pinning staging to a release (pushes to `main` no longer move it),
+   then `--follow-main`.
+9. Rollback by deploying an older release; a release that doesn't exist
+   is refused.
+10. `urbex destroy staging` (prod untouched), then `urbex apply` onto a
+    brand-new machine.
 
 Separately, `terraform validate` passes on the base and project modules
 with the real `bpg/proxmox` provider, and the `python` and `java`
@@ -89,7 +95,7 @@ runtime Dockerfiles were built and run on their own.
 
 **Not yet validated:** `terraform apply` against a real Proxmox - LXC
 creation from the Debian 13 template, pool placement, and the `keyctl`
-feature with a non-root token (see [`credentials.md`](credentials.md)).
+feature with a non-root token (see [credentials](reference/credentials.md)).
 
 ## Priorities
 
@@ -129,9 +135,10 @@ Roughly in the order that makes each subsequent item worth doing.
 
 ### P3 - operability polish
 
-10. **Continuous deployment to staging** (bump staging's version for
-    every commit or release on `main`) and **promotion by pull request**
-    on the GitOps repo.
+10. ~~**Continuous deployment to staging.**~~ Done
+    ([ADR-0021](decisions/0021-staging-follows-main.md)). Still open:
+    **promotion by pull request** on the GitOps repo, and pruning old
+    images.
 11. **Fleet-wide status** across projects/environments.
 12. **Cross-machine concurrency guard** on the shared Terraform state
     and allocation ledger.

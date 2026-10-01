@@ -47,7 +47,8 @@ flowchart TB
     CLI -->|reads/writes| Manifest
     CLI -->|bootstrap / plan / apply| TF
     CLI -->|declares builds, stacks, webhooks| Komodo
-    Code -->|release tag vX.Y.Z: webhook| Komodo
+    Code -->|push to main, tag vX.Y.Z: webhook| Komodo
+    Komodo -->|sets staging to each build of main| ENVS
     ENVS -->|push: webhook| Komodo
     TF -->|provisions| Base
     TF -->|provisions| Staging
@@ -76,18 +77,18 @@ flowchart TB
 
 The project's main interface (see
 [ADR-0001](decisions/0001-cli-first-interface.md)). Portable: works with
-any agent that has shell access (Claude Code, Codex, or a human). Main
-commands (draft, to be refined during technical design):
+any agent that has shell access (Claude Code, Codex, or a human). Every
+command and flag is in the [CLI reference](reference/cli.md).
 
 | Command | Purpose |
 |---|---|
 | `urbex bootstrap` | Provisions the base services on a fresh Proxmox (Gitea, Komodo, Technitium, Keycloak, Prometheus/Grafana/Loki) and initializes the GitOps repo. See [ADR-0006](decisions/0006-bootstrap-command.md). |
 | `urbex init` | Generates/validates `urbex.yaml` in the app repo, typically run by the LLM after analyzing the project code. |
 | `urbex plan <env>` | Computes the infrastructure changes needed (Terraform diff + Ansible config) for an environment, without applying them. |
-| `urbex apply <env>` | Applies the planned changes: creates/updates LXCs, connects them to Komodo, declares the project's builds and the environment's folder and stacks. Still to come: DNS, ingress, Keycloak/Grafana registration. |
-| `urbex release` | Tags the next release on the project's `main`; Komodo builds its images. |
-| `urbex deploy <env>` | Sets the release an environment runs, in the GitOps repo; Komodo deploys it. |
-| `urbex promote` | Sets production to the versions staging runs. |
+| `urbex apply <env>` | Applies the planned changes: creates/updates LXCs, connects them to Komodo, declares the project's builds and the environment's folder and stacks; a new staging starts following `main`. Still to come: DNS, ingress, Keycloak/Grafana registration. |
+| `urbex release` | Tags the next release on the commit staging runs; Komodo gives that commit's images the version. |
+| `urbex deploy <env>` | Sets what an environment runs (a release, a commit, or "follow `main`"), in the GitOps repo; Komodo deploys it. |
+| `urbex promote` | Sets production to the release staging runs. |
 | `urbex secret` | Manages an environment's SOPS-encrypted secrets in the GitOps repo. |
 | `urbex status` | Current status of a project/environment (LXCs, wanted and running versions; later DNS and certificates). |
 | `urbex destroy <env>` | Removes an environment's infrastructure. |
@@ -97,7 +98,7 @@ commands (draft, to be refined during technical design):
 Lives in the app repo, not in the GitOps repo: it declares what the app
 needs, maintained by the same LLM that writes the app's code. See
 [ADR-0002](decisions/0002-app-manifest-in-app-repo.md) and the full schema
-in [`manifest-spec.md`](manifest-spec.md).
+in the [manifest reference](reference/manifest.md).
 
 ### Provisioning: Terraform/OpenTofu + Ansible
 
@@ -117,13 +118,16 @@ each service's compose file, configuration, encrypted secrets, and the
 version to deploy. App repos live on the same Gitea.
 
 Komodo is the build and rollout engine. It builds each service's image
-from the app repo when a release is tagged, pushes it to Gitea's
+from the app repo on every push to `main`, pushes it to Gitea's
 container registry, and deploys each environment folder of the GitOps
 repo on the service's LXC, through the Periphery agent installed there,
-whenever the folder changes. See
+whenever the folder changes. What Urbex creates in Gitea and Komodo is
+listed in [platform resources](reference/platform-resources.md); the
+repo's layout and files in the [GitOps repo reference](reference/gitops-repo.md). See
 [ADR-0004](decisions/0004-gitops-gitea-komodo.md),
-[ADR-0018](decisions/0018-image-build-komodo-gitea-registry.md), and
-[ADR-0020](decisions/0020-trunk-releases-gitops-environments.md).
+[ADR-0018](decisions/0018-image-build-komodo-gitea-registry.md),
+[ADR-0020](decisions/0020-trunk-releases-gitops-environments.md), and
+[ADR-0021](decisions/0021-staging-follows-main.md).
 
 ### Ingress: Cloudflare Tunnel
 
@@ -168,12 +172,40 @@ isolated on separate LXCs). See
 
 ### Staging → production promotion
 
-Project repos are developed trunk-based and released by tagging `main`
-(`vX.Y.Z`); each release is built once. An environment runs the version
-written in its folder of the GitOps repo, so deploying to staging,
-promoting to production, and rolling back are all commits there -
-production gets the very image staging ran. See
-[ADR-0020](decisions/0020-trunk-releases-gitops-environments.md).
+Project repos are developed trunk-based. Every push to `main` is built
+once, into images tagged with the commit, and staging follows `main`: it
+is set to each new build. A release is a tag (`vX.Y.Z`) on the commit
+staging runs, which gives that commit's images the version - nothing is
+rebuilt. Production runs releases. An environment runs the version
+written in its folder of the GitOps repo, so following `main`,
+promoting, and rolling back are all commits there - production gets the
+very image staging ran.
+
+```mermaid
+sequenceDiagram
+    participant Dev as Dev / agent
+    participant Repo as acme-app (Gitea)
+    participant K as Komodo
+    participant Reg as Registry (Gitea)
+    participant G as gitops (Gitea)
+    participant S as staging LXC
+    participant P as prod LXC
+    Dev->>Repo: git push main
+    Repo->>K: webhook: urbex-release
+    K->>Reg: build acme-app-api:8d41b07
+    K->>G: staging version.env: VERSION=8d41b07
+    G->>K: webhook: urbex-gitops
+    K->>S: deploy 8d41b07
+    Dev->>Repo: urbex release (tag v1.4.0 on 8d41b07)
+    Repo->>K: webhook: urbex-release
+    K->>Reg: tag 8d41b07 as 1.4.0 (no build)
+    Dev->>G: urbex promote (prod version.env: VERSION=1.4.0)
+    G->>K: webhook: urbex-gitops
+    K->>P: deploy 1.4.0
+```
+
+See [ADR-0020](decisions/0020-trunk-releases-gitops-environments.md) and
+[ADR-0021](decisions/0021-staging-follows-main.md).
 
 ### Secrets
 
@@ -204,10 +236,11 @@ the manifest. See
 
 ### Terraform state
 
-State is kept as a local file, encrypted with SOPS+age, and committed to
-the GitOps repo under `state/<scope>/terraform.tfstate`. `urbex
-plan`/`apply` pull, decrypt, run Terraform, then re-encrypt and push the
-result. See
+State is kept as a local file committed to the GitOps repo, next to the
+Terraform files it belongs to (`terraform/base/`,
+`terraform/projects/<project>/<env>/`). Encrypting it with SOPS+age is
+designed but not implemented yet: today it is plain JSON, holding no
+secrets. See
 [ADR-0013](decisions/0013-terraform-state-in-gitops-repo.md).
 
 ## Bootstrap vs steady-state

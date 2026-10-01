@@ -6,7 +6,9 @@ Accepted. Supersedes [ADR-0019](0019-branch-environments-komodo-rollouts.md)
 (one branch per environment) and replaces the promotion flow of
 [ADR-0010](0010-promotion-flow.md) for good. Builds the missing half of
 [ADR-0004](0004-gitops-gitea-komodo.md): Komodo reconciling from the
-GitOps repo.
+GitOps repo. Extended by [ADR-0021](0021-staging-follows-main.md): every
+push to `main` is built, staging follows `main`, and a release retags
+the image `main` built instead of building it again.
 
 ## Context
 

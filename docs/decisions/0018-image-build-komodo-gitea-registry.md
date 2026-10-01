@@ -83,7 +83,7 @@ provisions.
   read/write for the CLI and Komodo, one read-only for pulls), a Komodo
   API key, and Komodo's git provider and registry accounts for Gitea,
   all stored in `~/.urbex/credentials.yaml` (see
-  [`credentials.md`](../credentials.md)); it also pushes the GitOps
+  [the credentials reference](../reference/credentials.md)); it also pushes the GitOps
   repo to Gitea.
 - Until ingress/TLS exists ([ADR-0005](0005-cloudflare-tunnel-ingress.md)),
   Gitea (git and registry) is plain HTTP on the LAN: the Ansible

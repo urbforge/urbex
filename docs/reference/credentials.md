@@ -1,9 +1,9 @@
-# Credentials & prerequisites reference
+# Credentials reference
 
 Every value `urbex` reads from an environment variable, from
 `~/.urbex/credentials.yaml`, or from `urbex.platform.yaml` - what it's
 for, whether any command actually checks it yet, and exactly how to get
-it. See [ADR-0012](decisions/0012-platform-config-and-credentials.md)
+it. See [ADR-0012](../decisions/0012-platform-config-and-credentials.md)
 for the design (non-sensitive config in `urbex.platform.yaml`, secrets
 never in the GitOps repo).
 
@@ -71,12 +71,12 @@ they do need the
 
 - **Env var / credentials file key:** `URBEX_AGE_KEY` / `ageKey`
 - **Used by:** every secret in the GitOps repo. They are encrypted with
-  SOPS for this key ([ADR-0011](decisions/0011-secrets-sops-age.md)):
+  SOPS for this key ([ADR-0011](../decisions/0011-secrets-sops-age.md)):
   `urbex bootstrap` writes its public half to `.sops.yaml`, `urbex
   secret` encrypts and decrypts with it, and `urbex apply` hands it to
   the Periphery agent on each project LXC, which decrypts a service's
   secrets when Komodo deploys it
-  ([ADR-0020](decisions/0020-trunk-releases-gitops-environments.md)).
+  ([ADR-0020](../decisions/0020-trunk-releases-gitops-environments.md)).
   `bootstrap` rejects a value that isn't a valid age secret key.
 - **How to get one:** install [age](https://github.com/FiloSottile/age)
   (`brew install age`, or your distro's package), then:
@@ -123,12 +123,23 @@ deploying needs none of it: a commit to the GitOps repo is enough.
 run without the Gitea token, the Komodo API key, the onboarding key, and
 the webhook secret (`credentials.MissingForPlatform()`).
 
+Bootstrap also stores the Gitea token in Komodo, as the secret variable
+`URBEX_GITEA_TOKEN`: the `urbex-release` Action uses it to look up
+images and to commit staging's new version to the GitOps repo. Komodo
+never shows a secret variable's value in its UI or logs. See
+[platform resources](platform-resources.md).
+
+⚠️ Rotating generated credentials isn't supported yet: re-running
+bootstrap keeps every value already in the file, and changing one by
+hand (the Komodo database password, for one) can leave a service unable
+to start.
+
 ## Declared, but not required by any command yet
 
 These exist as fields in `urbex.platform.yaml`/`~/.urbex/credentials.yaml`
 because the design anticipates needing them, but no current `urbex`
 command reads or checks them. You can leave them unset today without
-anything complaining. See [`status.md`](status.md) for which priority
+anything complaining. See [`status.md`](../status.md) for which priority
 item each is waiting on.
 
 ### Cloudflare API token, account ID, zone ID
@@ -137,7 +148,7 @@ item each is waiting on.
   `cloudflareToken`; `cloudflare.accountId` and `cloudflare.zoneId` go in
   `urbex.platform.yaml` directly (non-sensitive).
 - **Will be used by:** Cloudflare Tunnel ingress provisioning
-  ([ADR-0005](decisions/0005-cloudflare-tunnel-ingress.md)) - not
+  ([ADR-0005](../decisions/0005-cloudflare-tunnel-ingress.md)) - not
   implemented yet.
 - **How to get them (when you need them):** Cloudflare dashboard → *My
   Profile* → *API Tokens* → *Create Token*, scoped to the zone matching
@@ -151,7 +162,7 @@ item each is waiting on.
   `URBEX_BREVO_*` variable in `urbex-cli` today, since nothing consumes
   it.
 - **Will be used by:** apps that declare `email.provider: brevo` in
-  their `urbex.yaml` ([ADR-0015](decisions/0015-transactional-email-brevo.md))
+  their `urbex.yaml` ([ADR-0015](../decisions/0015-transactional-email-brevo.md))
   - not implemented yet.
 - **How to get one (when you need it):** Brevo dashboard → *SMTP & API*
   → *API Keys* → *Generate a new API key*.

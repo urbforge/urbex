@@ -18,7 +18,7 @@ realm.
 - Every project gets its **own Keycloak realm**, named after the project
   (`project: my-app` in `urbex.yaml` → realm `my-app`), containing the
   OIDC clients and roles declared under each service's `auth` section in
-  the manifest (see [`manifest-spec.md`](../manifest-spec.md)).
+  the manifest (see [the manifest reference](../reference/manifest.md)).
 
 ## Rationale
 

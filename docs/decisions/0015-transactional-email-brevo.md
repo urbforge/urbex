@@ -44,7 +44,7 @@ structurally disadvantaged, Urbex relies on a managed service instead.
 ## Consequences
 
 - The app manifest schema (`schemas/urbex.schema.json`) gains an optional
-  `email` object; see [`manifest-spec.md`](../manifest-spec.md).
+  `email` object; see [the manifest reference](../reference/manifest.md).
 - `urbex apply`/`deploy` must know how to map `email.provider: brevo` to
   the right environment variables/secret references for the service; a
   provider-agnostic internal interface should be used so future providers

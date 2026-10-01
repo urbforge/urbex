@@ -20,9 +20,11 @@
 - Secrets: **SOPS + age**.
 - Topology: **one LXC per service per environment** (staging/prod
   separated).
-- Development and promotion: **trunk-based** project repos, **tagged
-  releases** (`vX.Y.Z`), and **one folder per environment in the GitOps
-  repo** deciding which release it runs.
+- Development and promotion: **trunk-based** project repos, every push
+  to `main` built and **deployed to staging**, **tagged releases**
+  (`vX.Y.Z`) promoted to production, and **one folder per environment in
+  the GitOps repo** deciding what it runs
+  ([ADR-0021](decisions/0021-staging-follows-main.md)).
 - Interface: **CLI** (`urbex`), usable by Claude Code, Codex, or a human.
 
 ## v2+ — future evolutions
@@ -35,8 +37,6 @@
 - **Secrets**: optional HashiCorp Vault support.
 - **Email providers**: additional transactional email providers beyond
   Brevo (e.g. Resend, Postmark, Amazon SES).
-- **Continuous deployment to staging**: bump staging's version
-  automatically for every commit (or release) on `main`.
 - **Promotion by pull request** on the GitOps repo, with protection on
   the production folder.
 - **Topology**: a "lightweight" profile with multiple services sharing a
@@ -61,7 +61,7 @@ resolved as ADRs (see [`decisions/`](decisions/)):
 | Keycloak model per project | [ADR-0014](decisions/0014-keycloak-realm-per-project.md) |
 | age key / credentials distribution | [ADR-0012](decisions/0012-platform-config-and-credentials.md) |
 | Image build & registry | [ADR-0018](decisions/0018-image-build-komodo-gitea-registry.md) |
-| Rollout & promotion flow | [ADR-0020](decisions/0020-trunk-releases-gitops-environments.md) |
+| Rollout & promotion flow | [ADR-0020](decisions/0020-trunk-releases-gitops-environments.md), [ADR-0021](decisions/0021-staging-follows-main.md) |
 | Formal manifest schema | [`schemas/urbex.schema.json`](../schemas/urbex.schema.json) |
 
 No open architectural questions remain before starting implementation.
