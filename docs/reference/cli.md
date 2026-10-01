@@ -108,9 +108,16 @@ urbex plan <env> [--file urbex.yaml] [--gitops-repo <dir>]
 ```
 
 Shows what `apply` would change in the infrastructure, without changing
-it: allocates (and records) a VMID and IP for each service's LXC in
+it: updates the GitOps repo from Gitea, allocates (and records) a VMID and IP for each service's LXC in
 `<env>` if it has none, writes the project's Terraform files under
 `terraform/projects/<project>/<env>/`, and runs `terraform plan`.
+
+Before any Terraform command, `plan`, `apply`, and `destroy` drop from
+the Terraform state the LXCs that no longer exist on Proxmox (deleted by
+hand, say), printing `LXC <vmid> is gone from Proxmox: forgetting ...`.
+Terraform would find out by itself with an unrestricted token, but a
+token scoped to a resource pool gets `403 Permission check failed` for a
+VMID outside the pool - which a deleted LXC is.
 
 Needs: `URBEX_PROXMOX_TOKEN`, `URBEX_AGE_KEY`, `terraform`.
 
@@ -306,13 +313,27 @@ urbex destroy <env> [--file urbex.yaml] [--gitops-repo <dir>]
 
 Removes an environment of the project, in this order:
 
-1. Takes its Komodo Stacks down (`docker compose down`) and deletes them.
-2. Removes `environments/<env>/<project>/` from the GitOps repo.
-3. `terraform destroy` for the services' LXCs.
+1. Updates the GitOps repo from Gitea.
+2. Takes its Komodo Stacks down (`docker compose down`) and deletes them:
+   from here on nothing deploys the environment.
+3. `terraform destroy` for the services' LXCs (and their disks).
 4. Deletes their Komodo Servers.
-5. If the project has no environment left: deletes its Komodo Builds and
-   the project repo's webhook.
-6. Frees their addresses in the allocation ledger, commits, pushes.
+5. If the project has no environment left: deletes the project repo's
+   webhook, waits for any build still running (a push just before), and
+   deletes its Komodo Builds.
+6. Updates the GitOps repo again and removes, in one commit:
+   `environments/<env>/<project>/`, the environment's Terraform files and
+   (now empty) state under `terraform/projects/<project>/<env>/`, its
+   Ansible inventory under `ansible/projects/<project>/<env>/`, and its
+   entries in the allocation ledger.
+
+The folder goes last on purpose: until the Stacks are gone, a push to
+`main` can still make the release Action update it, and removing it
+earlier would conflict with that commit.
+
+`destroy` can be run again after a failure: it resumes where it
+stopped. An LXC already gone from Proxmox is dropped from Terraform's
+state rather than failing (see [`plan`](#urbex-plan)).
 
 The project's repo and images stay on Gitea. Services that were never
 applied are skipped; if none were, nothing happens. Base services are

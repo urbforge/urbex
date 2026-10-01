@@ -109,6 +109,22 @@ a Proxmox host's Tailscale DNS (now `proxmox.network.dnsServers`), and
 a too-short timeout downloading `sops`. Not exercised there: rollback
 and pinning (identical to the e2e, no Proxmox involvement).
 
+Deleting the project (`urbex destroy staging`, `urbex destroy prod`) was
+then checked against a snapshot of everything taken before: exactly the
+project's LXCs, their ZFS volumes and pool membership, its Komodo
+Servers, Stacks and Build, the project webhook, and its files in the
+GitOps repo (environment folders, Terraform state and files, Ansible
+inventories, ledger entries) were gone; the base services, the project
+repo and its images on Gitea (kept by design) untouched. It surfaced
+three bugs, fixed: `destroy` worked from a stale copy of the GitOps repo
+and conflicted with the release Action's commits (now it refreshes, and
+removes the folder last); a Build busy with a push made during `destroy`
+couldn't be deleted (now waited for); and with a pool-scoped token,
+Terraform fails on an LXC that no longer exists (403 instead of 404), so
+a destroy interrupted halfway couldn't be resumed (now such LXCs are
+dropped from the state first). A destroy with a push to `main` racing it,
+and a destroy resumed after a failure, both ended clean.
+
 ## Priorities
 
 Roughly in the order that makes each subsequent item worth doing.
