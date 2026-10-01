@@ -13,8 +13,8 @@ across 17 Go packages, and an end-to-end test (`e2e/run.sh`) in
 [`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli) that runs
 the real binary through a whole project lifecycle against Debian 13
 machines standing in for LXCs, with only Terraform and the Proxmox API
-stubbed. It has not yet run against a real Proxmox server - see
-[What has been validated](#what-has-been-validated) below.
+stubbed - and the whole flow has also been run by hand on a real
+Proxmox VE 9.2 node, see [What has been validated](#what-has-been-validated).
 
 ## Supported today
 
@@ -94,9 +94,20 @@ Separately, `terraform validate` passes on the base and project modules
 with the real `bpg/proxmox` provider, and the `python` and `java`
 runtime Dockerfiles were built and run on their own.
 
-**Not yet validated:** `terraform apply` against a real Proxmox - LXC
-creation from the Debian 13 template, pool placement, and the `keyctl`
-feature with a non-root token (see [credentials](reference/credentials.md)).
+**On a real Proxmox** (VE 9.2, test node, 2026-10-01): with a
+pool-scoped, non-root token (the group setup in
+[credentials](reference/credentials.md#proxmox-api-token)) and
+`keyctl: false`, `urbex bootstrap` created and configured the five base
+services from the Debian 13.6 template, and a re-run changed nothing;
+then, for a sample Go service, `urbex apply staging` (built and ran
+`main`'s head), a push to `main` deployed to staging in 45 seconds,
+`urbex release` (no rebuild), `urbex apply prod`, `urbex promote`, a
+secret delivered to the service, and `urbex destroy staging` followed by
+`urbex apply staging` onto a new LXC. Docker runs in the unprivileged
+LXCs without `keyctl`. Two things it surfaced, both fixed: LXCs copying
+a Proxmox host's Tailscale DNS (now `proxmox.network.dnsServers`), and
+a too-short timeout downloading `sops`. Not exercised there: rollback
+and pinning (identical to the e2e, no Proxmox involvement).
 
 ## Priorities
 
@@ -104,12 +115,8 @@ Roughly in the order that makes each subsequent item worth doing.
 
 ### P0 - prove the foundation
 
-1. **Validate against a real Proxmox.** Run `urbex bootstrap` and
-   `urbex apply` against the test node: the only layer still unproven
-   is Terraform creating the LXCs (see
-   [What has been validated](#what-has-been-validated)). Expect the
-   `keyctl` feature to need a root-set workaround with a pool-scoped
-   token.
+1. ~~**Validate against a real Proxmox.**~~ Done (see
+   [What has been validated](#what-has-been-validated)).
 2. ~~**Image build & push.**~~ Done: Komodo builds, Gitea's registry
    stores ([ADR-0018](decisions/0018-image-build-komodo-gitea-registry.md)).
 

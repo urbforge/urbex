@@ -10,7 +10,7 @@ If you want the ideas before the commands, read
 the [reference](reference/).
 
 > ⚠️ Urbex is early-stage. Everything here has been run end to end by the
-> CLI's test suite, but not yet against a real Proxmox server - see
+> CLI's test suite and on a real Proxmox VE 9.2 node - see
 > [`status.md`](status.md). Gaps are called out with ⚠️.
 
 ## How Urbex works
