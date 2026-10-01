@@ -25,6 +25,16 @@
   (`vX.Y.Z`) promoted to production, and **one folder per environment in
   the GitOps repo** deciding what it runs
   ([ADR-0021](decisions/0021-staging-follows-main.md)).
+- Per-project isolation on Proxmox: creating a new project also creates
+  - a dedicated **resource pool**, holding all of the project's LXCs;
+  - a **group for the project's users**, with the minimum permissions
+    needed to operate it, granted on that pool only;
+  - the **technical users** (with their API tokens) that Urbex needs to
+    work on the project, scoped the same way.
+
+  Not implemented yet: today every LXC goes in the single pool set in
+  `urbex.platform.yaml` (`proxmox.pool`), managed with the operator's
+  token.
 - Interface: **CLI** (`urbex`), usable by Claude Code, Codex, or a human.
 
 ## v2+ — future evolutions

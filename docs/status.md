@@ -55,6 +55,7 @@ stubbed. It has not yet run against a real Proxmox server - see
 | Observability wiring | Prometheus/Grafana/Loki LXC exists; no project service is actually scraped or ships logs to it, despite `observability.metrics`/`logs` in the manifest | - |
 | Frontend deploy | `frontend` in the manifest is documentation only; no command builds/deploys to Cloudflare Pages or Firebase | - |
 | Fleet-wide status | `urbex status` is scoped to one project+environment at a time; Komodo's UI is the cross-project view | - |
+| Per-project Proxmox isolation | New projects should get their own resource pool, a group for their users with minimal permissions, and dedicated technical users; today every LXC goes in the platform-wide `proxmox.pool`, managed with the operator's token | [roadmap](roadmap.md) |
 | Cross-machine concurrency guard | Two machines applying against copies of the same GitOps repo can silently conflict | [0013](decisions/0013-terraform-state-in-gitops-repo.md) |
 | Cloud providers beyond Proxmox (Azure, GCP, AWS) | Not started - v2+ by design | [roadmap](roadmap.md) |
 | Git servers beyond Gitea (GitHub, GitLab) | Not started - v2+ by design | [roadmap](roadmap.md) |
