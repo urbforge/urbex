@@ -291,9 +291,13 @@ credentials.
 urbex status [<env>] [--file urbex.yaml] [--gitops-repo <dir>]
 ```
 
-Without `<env>`: which base-service LXCs exist on Proxmox, then every
-address of the platform - on the LAN and, with Cloudflare, public - and
-where the logins are.
+Without `<env>`: the platform and everything on it - which base-service
+LXCs exist on Proxmox, every address of the platform (on the LAN and,
+with Cloudflare, public), where the logins are, and every project
+environment of the GitOps repo: per service its LAN address, its public
+address (the tunnel's route, or the web frontend's Worker), the version
+it is set to, and its Stack's state in Komodo. It runs from anywhere: no
+`urbex.yaml` needed.
 
 ```
 Base services:
@@ -312,7 +316,17 @@ Endpoints:
 
 Logins: Gitea and Komodo urbex-admin, Grafana admin, Keycloak admin; passwords in ~/.urbex/credentials.yaml
 (giteaAdminPassword, komodoAdminPassword, grafanaAdminPassword, keycloakAdminPassword).
+
+Projects:
+  acme-app (staging)
+    api            http://192.168.1.210:8080    https://api-staging-acme-app-urbex.example.com   version=8d41b07(follows-main) stack=running
+    web            -                            https://staging-acme-app-urbex.example.com       version=8d41b07(follows-main) stack=running
+  acme-app (prod)
+    api            http://192.168.1.211:8080    https://api-acme-app-urbex.example.com           version=1.4.0 stack=running
 ```
+
+Both forms first update the GitOps repo from Gitea (the release Action
+commits there too), and say so if they can't.
 
 With `<env>`, for each service of the project:
 

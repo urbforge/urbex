@@ -453,13 +453,15 @@ bootstrap` builds a new platform from that working copy.
 ## Find every endpoint
 
 ```sh
-urbex status                 # the platform
-urbex status staging         # a project's environment, from its folder
+urbex status                 # the platform and every project environment
+urbex status staging         # one project's environment, from its folder
 ```
 
 `urbex status` lists every address of the platform - Gitea, Komodo and
 its webhooks, Keycloak, Technitium, Grafana, Prometheus, Loki - on the
-LAN and, with Cloudflare, on the internet, and where the logins are.
+LAN and, with Cloudflare, on the internet, where the logins are, and
+then every project environment in the GitOps repo with each service's
+LAN and public addresses, version and state.
 `urbex status <env>` lists, after each service's state, its LAN address
 and, if it is public or the web frontend, its HTTPS address. Both are
 computed from `urbex.platform.yaml` and the address ledger in the GitOps
