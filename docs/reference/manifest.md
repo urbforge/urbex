@@ -85,7 +85,8 @@ GitOps repo.
 | `resources.memory` | `<n>Mi` or `<n>Gi` | `1Gi` | Memory of the LXC. |
 | `resources.disk` | `<n>Mi` or `<n>Gi` | `5Gi` | Root disk of the LXC, rounded up to whole GiB. |
 | `env.staging`, `env.prod` | map of strings | | **Initial** configuration of the service in that environment: written to its `config.env` in the GitOps repo when the environment is first applied, and never again. Change `config.env` after that. Never put secrets here - use `urbex secret`. |
-| `auth.keycloak`, `auth.roles` | | | Validated, [not acted on yet](#declared-not-yet-acted-on). |
+| `auth.keycloak` | boolean | `false` | The service authenticates users with Keycloak: it gets `KEYCLOAK_REALM`, `KEYCLOAK_ISSUER` and `KEYCLOAK_JWKS_URL` (its environment's realm, the issuer the tokens carry, the signing keys) to validate tokens ([ADR-0024](../decisions/0024-keycloak-realm-per-environment.md)). |
+| `auth.roles` | list | | Realm roles the service checks: created in each environment's realm (`<project>-<env>`); in staging, a test user per role (`test-<role>`, see `urbex users`). |
 
 ## Runtimes
 
@@ -121,6 +122,12 @@ frontend:
 All four fields are required; `web` must use `cloudflare-pages` and
 `mobile` `firebase`.
 
+Every frontend gets a public OIDC client in each environment's Keycloak
+realm (`<project>-<env>`): `web` for a web frontend, redirecting to its
+hostname; `mobile` for a mobile app, redirecting to `<project>://...`.
+Use authorization code with PKCE; the issuer is printed by `urbex apply`
+and `urbex users`.
+
 A **web** frontend is deployed to Cloudflare Workers with static assets
 ([ADR-0022](../decisions/0022-cloudflare-tunnel-access-workers.md)),
 alongside the services and with the same flow:
@@ -151,7 +158,6 @@ command uses them yet - see [`status.md`](../status.md):
 | `domain.subdomain` | A custom name for the project's public hostnames (today they are derived from the project's name). |
 | `observability.metrics` | Scraping of the services' metrics by Prometheus. |
 | `email.provider` (`brevo`), `email.fromAddress`, `email.fromName` | Transactional email; the provider key will be a secret. |
-| `services[].auth.keycloak`, `services[].auth.roles` | A Keycloak client for the service, and the roles it checks. |
 
 ## What changes take effect how
 

@@ -50,17 +50,17 @@ Building on what v1 already runs:
 - **Several frontends per project**, web and mobile together (e.g. a
   web app, an admin console and a mobile app), each with its own build,
   hostname and deploy.
-- **Frontends registered as Keycloak clients automatically**: each web
-  and mobile frontend gets its OIDC client (redirect URIs from its
-  hostnames, per environment) in the project's realm.
+- ~~**Frontends registered as Keycloak clients automatically**~~ - done,
+  with a realm per environment, the services' roles and staging test
+  users ([ADR-0024](decisions/0024-keycloak-realm-per-environment.md)).
 - ~~**Service logs shipped to the observability stack automatically**~~
   - done, with the base services' logs and every LXC's resource metrics
   ([ADR-0023](decisions/0023-service-logs-to-loki.md)). Next in the same
   area: the services' own metrics, alerting, Loki retention.
 - **Per-project Proxmox isolation** (pool, group, technical users - see
   v1 scope above).
-- **Keycloak realms and clients per project** (ADR-0014), Keycloak in
-  production mode, and internal DNS registration in Technitium.
+- Keycloak in production mode, a `platform` realm for admin SSO, and
+  internal DNS registration in Technitium.
 
 ## v2+ — future evolutions
 

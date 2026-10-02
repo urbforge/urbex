@@ -10,7 +10,7 @@ in [`known-limitations.md`](known-limitations.md); the table below keeps
 only the gaps that matter for planning. Update both whenever a priority
 item gets implemented, or a new gap is discovered.
 
-As of this writing: 23 ADRs, 11 `urbex` CLI commands, 156 unit tests
+As of this writing: 24 ADRs, 12 `urbex` CLI commands, 156 unit tests
 across 20 Go packages, and an end-to-end test (`e2e/run.sh`) in
 [`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli) that runs
 the real binary through a whole project lifecycle against Debian 13
@@ -42,6 +42,7 @@ Proxmox VE 9.2 node, see [What has been validated](#what-has-been-validated).
 | `urbex status` | Proxmox container presence, allocation ledger and, per service, the version the GitOps repo asks for against what Komodo runs |
 | **Public endpoints (Cloudflare)** | One tunnel for the platform, `cloudflared` on `urbex-tunnel`; Keycloak public, Gitea and Komodo behind Cloudflare Access (one-time PIN for listed e-mails), Komodo's webhook listener public; services with `public: true` published per environment; flat or nested hostnames ([ADR-0022](decisions/0022-cloudflare-tunnel-access-workers.md)) |
 | **Logs and resource monitoring** | A Grafana Alloy agent on every LXC - base services and project services - sends its service's logs to Loki and the LXC's CPU, memory, disk and network to Prometheus, labelled `kind` (`platform`/`app`), `service`, `host`, and `project`/`env` for apps; Grafana comes with both data sources and the *Urbex logs* and *Urbex resources* dashboards; `observability.logs: false` stops a project's logs ([ADR-0023](decisions/0023-service-logs-to-loki.md)) |
+| **Identity (Keycloak)** | A realm per project environment (`<project>-<env>`) with the services' roles and a public OIDC client per frontend; in staging a test user per role (`urbex users staging`) and a password-login client for tests; services with `auth.keycloak` get the issuer and keys ([ADR-0024](decisions/0024-keycloak-realm-per-environment.md)) |
 | **Komodo** | Every LXC is a Komodo Server - the base services' too, for monitoring their containers - and Komodo's resources are tagged like Grafana: `platform`, or `app` + project (+ environment) |
 | **Endpoints** | `urbex status` lists every platform address (LAN and public) and where the logins are; `urbex status <env>` each service's |
 | **Running from a container** | `tools/operator/urbex-op` in urbex-cli: an image with urbex and its tools, run against a workspace folder |
@@ -60,7 +61,7 @@ Proxmox VE 9.2 node, see [What has been validated](#what-has-been-validated).
 | DNS registration | Technitium LXC exists; nothing registers a record in it | [0007](decisions/0007-technitium-configurable-domain.md) |
 | Custom public names | Public hostnames are derived from the project's and services' names; `domain.subdomain` in the manifest isn't used, and `nested` names need ACM enabled by hand | [0022](decisions/0022-cloudflare-tunnel-access-workers.md) |
 | Frontend-only projects | A web frontend needs at least one service in the manifest | [0022](decisions/0022-cloudflare-tunnel-access-workers.md) |
-| Keycloak realm/client provisioning | Keycloak LXC exists; nothing creates the `platform` realm, per-project realms, or app OIDC clients/roles | [0008](decisions/0008-keycloak-scope.md), [0014](decisions/0014-keycloak-realm-per-project.md) |
+| Keycloak beyond projects | No `platform` realm (admin SSO), no confidential clients for service-to-service calls; Keycloak in development mode | [0008](decisions/0008-keycloak-scope.md), [0024](decisions/0024-keycloak-realm-per-environment.md) |
 | Terraform state encryption | State is plain JSON in the (private) GitOps repo, not SOPS-encrypted as designed | [0013](decisions/0013-terraform-state-in-gitops-repo.md) |
 | Service metrics, alerting | LXC resource metrics are collected, but not the services' own metrics (`observability.metrics` is ignored); no alerting; Loki has no retention | [0023](decisions/0023-service-logs-to-loki.md) |
 | Mobile frontend deploy | `frontend.type: mobile` (Firebase) is validated, not deployed | - |
@@ -207,9 +208,9 @@ Roughly in the order that makes each subsequent item worth doing.
 
 ### P2 - identity, secrets, observability
 
-7. **Keycloak realm/client provisioning** - unblocks `auth.keycloak`/
-   `auth.roles` in the manifest, currently inert, and registers every
-   frontend as a client automatically (next, see [roadmap](roadmap.md)).
+7. ~~**Keycloak realm/client provisioning**~~ Done for projects
+   ([ADR-0024](decisions/0024-keycloak-realm-per-environment.md)); next:
+   the `platform` realm for admin SSO, production mode.
 8. ~~**Secret encryption (SOPS+age)**~~ Done for application secrets
    ([ADR-0020](decisions/0020-trunk-releases-gitops-environments.md));
    Terraform state is still stored unencrypted.

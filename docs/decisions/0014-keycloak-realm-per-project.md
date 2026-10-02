@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted
+Accepted; refined by [ADR-0024](0024-keycloak-realm-per-environment.md):
+a realm per project **environment** (`<project>-<env>`), so staging and
+production don't share users.
 
 ## Context
 

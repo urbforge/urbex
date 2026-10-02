@@ -27,6 +27,7 @@ copy of the GitOps repo.
 - [Publish a service](#publish-a-service)
 - [Deploy a web frontend](#deploy-a-web-frontend)
 - [Let someone else into Gitea and Komodo](#let-someone-else-into-gitea-and-komodo)
+- [Protect an endpoint with a role](#protect-an-endpoint-with-a-role)
 
 **Configuration and secrets**
 
@@ -281,6 +282,47 @@ Add their e-mail to `cloudflare.access.emails` and run `urbex bootstrap`.
 They open `https://git-urbex.example.com`, enter the address, and get a
 PIN by e-mail. That opens the door; Gitea and Komodo still ask for their
 own login (`urbex-admin`, or accounts you create in them).
+
+## Protect an endpoint with a role
+
+Declare that the service uses Keycloak, and the roles it checks:
+
+```yaml
+services:
+  - name: api
+    runtime: go
+    port: 8080
+    public: true
+    auth:
+      keycloak: true
+      roles: [member]
+```
+
+```sh
+urbex apply staging
+```
+
+Each environment gets its realm, `acme-app-staging` and `acme-app-prod`,
+with the role `member`; the service gets `KEYCLOAK_ISSUER` and
+`KEYCLOAK_JWKS_URL` to validate the bearer tokens it receives (signature
+with the realm's keys, issuer, expiry) and reads the roles from the
+token's `realm_access.roles`. The sample service in `urbex-cli`'s
+`e2e/app` does it with Go's standard library: `/` is public, `/member`
+needs the role.
+
+In staging there is a user per role, to try it:
+
+```sh
+urbex users staging        # test-member and its password, and the curl for a token
+TOKEN=$(curl -s https://auth-urbex.example.com/realms/acme-app-staging/protocol/openid-connect/token \
+  -d grant_type=password -d client_id=urbex-test -d username=test-member -d password=... | jq -r .access_token)
+curl -H "Authorization: Bearer $TOKEN" https://api-staging-acme-app-urbex.example.com/member
+```
+
+A web frontend logs users in with the realm's `web` client
+(authorization code with PKCE). Production's realm has no test users:
+create real ones in Keycloak's console (*acme-app-prod → Users*) and give
+them the role.
 
 ## Change configuration
 

@@ -65,7 +65,7 @@ node and Cloudflare account.
 
 | Limitation | Workaround / consequence |
 |---|---|
-| **Keycloak realms and clients aren't provisioned**: `auth.keycloak`/`auth.roles` are validated only, and frontends aren't registered as clients. | Create them in Keycloak's console. Automatic registration is planned ([roadmap](roadmap.md)). |
+| **Keycloak covers the projects' users only** ([ADR-0024](decisions/0024-keycloak-realm-per-environment.md)): no admin SSO for Gitea/Komodo/Grafana, no confidential clients for services calling each other, one client per frontend (and one frontend per project); destroying an environment deletes its realm's users. | Add what's missing in Keycloak's console: urbex keeps what it doesn't manage (extra redirect URIs, users, clients). |
 | **No internal DNS**: Technitium runs, nothing registers names in it. | Reach services by IP on the LAN. |
 | **Logs and LXC resource metrics only** ([ADR-0023](decisions/0023-service-logs-to-loki.md)): the services' own metrics (`observability.metrics`) aren't scraped, there is no per-container resource usage, no alerting, and web frontends' logs are on Cloudflare. | Cloudflare's Workers logs for frontends. |
 | **Loki keeps logs forever**: default single-node configuration, no retention set; the observability LXC's disk fills up over time. | Grow its disk (`terraform/base`), or clean Loki's volume. |

@@ -16,6 +16,7 @@ the [cookbook](../cookbook.md).
 - [`urbex status`](#urbex-status)
 - [`urbex destroy`](#urbex-destroy)
 - [`urbex teardown`](#urbex-teardown)
+- [`urbex users`](#urbex-users)
 - [Environment variables](#environment-variables)
 - [Exit status and output](#exit-status-and-output)
 
@@ -151,10 +152,14 @@ there is something to run, waits until it runs.
    (accepting the new key of a recreated LXC), writes each service's
    folder in the GitOps repo - and the web frontend's, if the manifest
    has one - declares their Komodo Stacks, commits and pushes.
-5. **Publishing** (with Cloudflare): routes the services with
+5. **Identity**: the environment's Keycloak realm (`<project>-<env>`),
+   the services' roles, a client per frontend; in staging a test user per
+   role and the `urbex-test` client, the passwords kept encrypted in the
+   GitOps repo ([ADR-0024](../decisions/0024-keycloak-realm-per-environment.md)).
+6. **Publishing** (with Cloudflare): routes the services with
    `public: true` through the platform's tunnel and points their DNS
    records at it; a service no longer public loses its route and record.
-6. **What to run:**
+7. **What to run:**
    - a new **staging** follows `main`: `apply` builds `main`'s head and
      waits until staging runs it;
    - a new **prod** stays empty until `urbex promote` or `urbex deploy
@@ -361,7 +366,7 @@ Removes an environment of the project, in this order:
 2. Takes its Komodo Stacks down (`docker compose down`) and deletes them:
    from here on nothing deploys the environment. With Cloudflare, removes
    its public services' routes and DNS records, and its web frontend's
-   Worker and custom domain.
+   Worker and custom domain. Deletes its Keycloak realm, users included.
 3. `terraform destroy` for the services' LXCs (and their disks).
 4. Deletes their Komodo Servers.
 5. If the project has no environment left: deletes the project repo's
@@ -423,6 +428,28 @@ Destroys the platform `urbex bootstrap` created: the inverse of
 
 Needs: `URBEX_PROXMOX_TOKEN`, `URBEX_AGE_KEY`, `terraform`. The Proxmox
 resource pool, its storages and the token are left as they are.
+
+## `urbex users`
+
+```
+urbex users <env> [--file urbex.yaml] [--gitops-repo <dir>]
+```
+
+Shows the environment's Keycloak realm and issuer and, in staging, the
+test users - `test-<role>`, one per role the services declare - with
+their passwords, decrypted from the GitOps repo, and the `curl` to get a
+token for one:
+
+```
+Realm hello-staging, issuer https://auth-urbex.example.com/realms/hello-staging
+  test-member              4f0c9b...
+
+A token for one of them:
+  curl -s https://auth-urbex.example.com/realms/hello-staging/protocol/openid-connect/token -d grant_type=password -d client_id=urbex-test \
+    -d username=test-member -d password=4f0c9b... | jq -r .access_token
+```
+
+Needs `sops` and `URBEX_AGE_KEY`. Production has no test users.
 
 ## Environment variables
 
