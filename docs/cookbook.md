@@ -546,6 +546,25 @@ In Grafana - its address and login are in `urbex status` - open
 - **Urbex resources**: a table of every LXC's current CPU, memory and
   disk, and their history, with the same filters.
 
+![The Urbex resources dashboard: a table of every LXC's current CPU and
+memory, labelled by kind (platform or app), service, environment and
+project, then the history of CPU, memory, root disk and network per
+LXC](images/grafana-urbex-resources.png)
+
+*Urbex resources on the test platform: the six base-service LXCs
+(`kind` platform) and the sample project's API in staging (`kind` app),
+filterable by kind, project, environment, service and LXC.*
+
+![The Urbex logs dashboard: a graph of log lines per service, coloured
+by kind and service, above the log lines themselves, each with its
+container, host and service labels](images/grafana-urbex-logs.png)
+
+*Urbex logs: the volume of lines per service, then the lines, each with
+its labels (`container`, `host`, `service`, ...). Here every kind and
+service is selected; pick a project and environment to see one
+service. (Captured before the dashboard's default range became 6 hours
+and its note on what isn't in Loki was added.)*
+
 In *Explore*, LogQL and PromQL work on the same labels:
 
 ```logql

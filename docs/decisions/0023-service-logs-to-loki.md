@@ -65,6 +65,11 @@ Options considered for getting container logs to Loki:
   development database keeps the credentials 26.0 created it with). The smallest LXCs grow to fit the agent: Technitium
   1 GiB, the tunnel's 512 MiB.
 
+![The Urbex resources dashboard](../images/grafana-urbex-resources.png)
+
+*The Urbex resources dashboard on the test platform: platform and app
+LXCs side by side, told apart by `kind`.*
+
 ## Rationale
 
 - Reading through the Docker API needs nothing from the services: no
