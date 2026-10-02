@@ -176,7 +176,11 @@ base service (`kind="platform"`, by service) and of the app
 memory and CPU count, and both dashboards working through Grafana. The
 CPU formula had to change: inside an LXC the idle counter undercounts
 (`1 - idle` showed 60-80% on idle LXCs, Proxmox 1-6%), so CPU is the
-busy time over the CPUs. The platform was run from `urbex-op` too.
+busy time over the CPUs. The platform was run from `urbex-op` too. Keycloak wrote nothing after starting, so it
+seemed missing from Loki: it now logs every HTTP request and user events
+(logins, failed logins), which needed Keycloak 26.1+ (pinned to 26.7.5);
+upgrading its development database from 26.0 failed on the database
+credentials until urbex pinned them.
 
 ## Priorities
 

@@ -44,6 +44,9 @@ Options considered for getting container logs to Loki:
   | `host` | the LXC | the LXC |
   | `container` (logs) | the container | the container |
 
+- **Keycloak logs what matters**: every HTTP request (access log) and
+  user events - logins, failed logins - at INFO; otherwise it writes
+  nothing after starting.
 - **Logs on by default**; `observability.logs: false` in `urbex.yaml`
   stops shipping a project's logs. Resource metrics are always collected.
 - **Grafana is provisioned** with Loki and Prometheus as data sources and
@@ -52,7 +55,8 @@ Options considered for getting container logs to Loki:
   and network per LXC, with the same filters, and a table of current
   values).
 - Images pinned: Loki 3.7.8, Grafana 13.2.3, Prometheus v3.15.0,
-  Alloy v1.20.1. The smallest LXCs grow to fit the agent: Technitium
+  Alloy v1.20.1, Keycloak 26.7.5 (from 26.0, for its access log; its
+  development database keeps the credentials 26.0 created it with). The smallest LXCs grow to fit the agent: Technitium
   1 GiB, the tunnel's 512 MiB.
 
 ## Rationale

@@ -522,6 +522,19 @@ curl -s -G http://<observability IP>:3100/loki/api/v1/query_range \
   --data-urlencode 'query={project="acme-app", service="api", env="staging"}' | jq -r '.data.result[].values[][1]'
 ```
 
+A service logs what it writes to stdout and stderr: an API that gets no
+requests has nothing new to show, and a web frontend's requests never
+reach Loki - Cloudflare serves them from the Worker (its logs are in the
+Cloudflare dashboard, *Workers & Pages → the Worker → Logs*). Keycloak
+logs every request and every login (`type="LOGIN"`, `type="LOGIN_ERROR"`):
+
+```logql
+{kind="platform", service="keycloak"} |= "type=\"LOGIN"
+```
+
+The dashboards look at the last 6 hours by default; widen the time range
+to see older lines.
+
 The logs are also where they always were: `docker logs` on the LXC, and
 the Stack's page in Komodo. To keep a project's logs out of Loki, set
 `observability.logs: false` in `urbex.yaml` and run `urbex apply <env>`;
