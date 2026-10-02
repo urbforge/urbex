@@ -54,9 +54,9 @@ Building on what v1 already runs:
   and mobile frontend gets its OIDC client (redirect URIs from its
   hostnames, per environment) in the project's realm.
 - ~~**Service logs shipped to the observability stack automatically**~~
-  - done ([ADR-0023](decisions/0023-service-logs-to-loki.md)). Next in
-  the same area: services' metrics to Prometheus, the base services'
-  logs, Loki retention.
+  - done, with the base services' logs and every LXC's resource metrics
+  ([ADR-0023](decisions/0023-service-logs-to-loki.md)). Next in the same
+  area: the services' own metrics, alerting, Loki retention.
 - **Per-project Proxmox isolation** (pool, group, technical users - see
   v1 scope above).
 - **Keycloak realms and clients per project** (ADR-0014), Keycloak in

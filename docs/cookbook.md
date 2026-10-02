@@ -47,8 +47,10 @@ copy of the GitOps repo.
 
 **Operating**
 
+- [Find every endpoint](#find-every-endpoint)
 - [See what runs where](#see-what-runs-where)
-- [Read a service's logs](#read-a-services-logs)
+- [Read logs, watch resources](#read-logs-watch-resources)
+- [Run urbex from a container](#run-urbex-from-a-container)
 - [Run urbex from another machine or a new agent session](#run-urbex-from-another-machine-or-a-new-agent-session)
 - [A push didn't deploy](#a-push-didnt-deploy)
 - [A build or a deploy failed](#a-build-or-a-deploy-failed)
@@ -448,6 +450,32 @@ repo's working copy is the only copy left - keep it - and
 `~/.urbex/credentials.yaml` keeps only what you provided. `urbex
 bootstrap` builds a new platform from that working copy.
 
+## Find every endpoint
+
+```sh
+urbex status                 # the platform
+urbex status staging         # a project's environment, from its folder
+```
+
+`urbex status` lists every address of the platform - Gitea, Komodo and
+its webhooks, Keycloak, Technitium, Grafana, Prometheus, Loki - on the
+LAN and, with Cloudflare, on the internet, and where the logins are.
+`urbex status <env>` lists, after each service's state, its LAN address
+and, if it is public or the web frontend, its HTTPS address. Both are
+computed from `urbex.platform.yaml` and the address ledger in the GitOps
+repo; `urbex apply` and `urbex deploy` print a project's addresses too.
+
+The names follow fixed rules (see
+[public hostnames](reference/platform-config.md#public-hostnames)): with
+the default `flat` names under `example.com`,
+
+| | Address |
+|---|---|
+| Keycloak / Gitea / Komodo | `https://auth-urbex.example.com`, `git-urbex`, `komodo-urbex` |
+| An API, staging / prod | `https://api-staging-acme-app-urbex.example.com`, `https://api-acme-app-urbex.example.com` |
+| The web frontend, staging / prod | `https://staging-acme-app-urbex.example.com`, `https://acme-app-urbex.example.com` |
+| A service on the LAN | `http://<its LXC's IP>:<port>` - `state/allocations.json` in the GitOps repo |
+
 ## See what runs where
 
 ```sh
@@ -458,20 +486,33 @@ git -C $URBEX_GITOPS_REPO log --oneline -- environments/   # every deploy, ever
 
 Komodo's UI shows every Stack, Build, and their logs, across projects.
 
-## Read a service's logs
+## Read logs, watch resources
 
-Every service's logs go to the platform's Loki
-([ADR-0023](decisions/0023-service-logs-to-loki.md)). In Grafana -
-`http://<observability IP>:3000`, user `admin`, password
-`grafanaAdminPassword` from `~/.urbex/credentials.yaml` - open
-*Dashboards → Urbex → Urbex logs* and pick the project, environment and
-service, or search a text. In *Explore*, with the Loki data source,
-LogQL works on the labels `project`, `service`, `env`, `host`,
-`container`:
+Every LXC sends its service's logs to Loki and its CPU, memory, disk and
+network to Prometheus ([ADR-0023](decisions/0023-service-logs-to-loki.md)),
+labelled `kind="platform"` for the base services (Gitea, Komodo,
+Keycloak, Technitium, observability, tunnel) and `kind="app"` for the
+projects' services, which also carry `project` and `env`.
+
+In Grafana - its address and login are in `urbex status` - open
+*Dashboards → Urbex*:
+
+- **Urbex logs**: pick the kind, project, environment and service, or
+  search a text;
+- **Urbex resources**: a table of every LXC's current CPU, memory and
+  disk, and their history, with the same filters.
+
+In *Explore*, LogQL and PromQL work on the same labels:
 
 ```logql
-{project="acme-app", env="prod"} |= "error"
-sum by (service) (count_over_time({project="acme-app", env="prod"} |= "error" [5m]))
+{kind="app", project="acme-app", env="prod"} |= "error"
+{kind="platform", service="komodo"}
+```
+
+```promql
+100 * (1 - node_memory_MemAvailable_bytes{kind="app", project="acme-app"} / node_memory_MemTotal_bytes{kind="app", project="acme-app"})
+# CPU %: busy time over the CPUs (the idle counter is unreliable in an LXC)
+100 * sum by (host) (rate(node_cpu_seconds_total{mode!~"idle|iowait|steal", kind="platform"}[5m])) / count by (host) (node_cpu_seconds_total{mode="idle", kind="platform"})
 ```
 
 From a terminal, Loki's API:
@@ -481,10 +522,30 @@ curl -s -G http://<observability IP>:3100/loki/api/v1/query_range \
   --data-urlencode 'query={project="acme-app", service="api", env="staging"}' | jq -r '.data.result[].values[][1]'
 ```
 
-The logs are also where they always were: `docker logs` on the
-service's LXC, and the Stack's page in Komodo. To keep a project's logs
-out of Loki, set `observability.logs: false` in `urbex.yaml` and run
-`urbex apply <env>`.
+The logs are also where they always were: `docker logs` on the LXC, and
+the Stack's page in Komodo. To keep a project's logs out of Loki, set
+`observability.logs: false` in `urbex.yaml` and run `urbex apply <env>`;
+its resource metrics are still collected.
+
+## Run urbex from a container
+
+Rather than installing `terraform`, `ansible-playbook`, `sops` and the
+rest, run `urbex` with `tools/operator/urbex-op` from `urbforge/urbex-cli`
+(podman or docker). It works on a **workspace**: one folder with the
+credentials, the SSH and age keys, the GitOps repo and your projects.
+
+```sh
+cd urbex-cli
+tools/operator/urbex-op build                     # the image, with urbex built from the checkout
+tools/operator/urbex-op -w ~/urbex-work init      # SSH key, age key, folders
+export URBEX_PROXMOX_TOKEN='urbex@pve!cli=...'     # tokens stay in your environment
+tools/operator/urbex-op -w ~/urbex-work 'urbex bootstrap'
+tools/operator/urbex-op -w ~/urbex-work 'cd /work/projects/acme-app && urbex apply staging'
+tools/operator/urbex-op -w ~/urbex-work shell     # an interactive shell
+```
+
+The workspace is `/work` in the container (`$HOME` is `/work/home`, the
+GitOps repo `/work/gitops`). Details in `tools/operator/README.md`.
 
 ## Run urbex from another machine or a new agent session
 

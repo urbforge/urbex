@@ -62,7 +62,9 @@ On Proxmox:
 - a free block of IPs on the LAN: 5 for the base services, then one per
   service per environment.
 
-On the machine that runs `urbex` (yours, or an agent's):
+On the machine that runs `urbex` (yours, or an agent's) - or, with only
+podman or docker installed, in a container: see
+[Run urbex from a container](cookbook.md#run-urbex-from-a-container):
 
 - the `urbex` binary, built from a checkout of
   [`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli):

@@ -291,13 +291,27 @@ credentials.
 urbex status [<env>] [--file urbex.yaml] [--gitops-repo <dir>]
 ```
 
-Without `<env>`: which base-service LXCs exist on Proxmox.
+Without `<env>`: which base-service LXCs exist on Proxmox, then every
+address of the platform - on the LAN and, with Cloudflare, public - and
+where the logins are.
 
 ```
 Base services:
   urbex-gitea              present
-  urbex-komodo             present
   ...
+
+Endpoints:
+  Gitea (web, git, registry)   http://192.168.1.200:3000              https://git-urbex.example.com  (public: behind Cloudflare Access)
+  Komodo                       http://192.168.1.201:9120              https://komodo-urbex.example.com  (public: behind Cloudflare Access)
+  Komodo webhooks              http://192.168.1.201:9120/listener/    https://hooks-urbex.example.com/listener/  (signed calls only)
+  Keycloak                     http://192.168.1.203:8080              https://auth-urbex.example.com
+  Technitium DNS console       http://192.168.1.202:5380
+  Grafana                      http://192.168.1.204:3000                (dashboards Urbex logs, Urbex resources)
+  Prometheus                   http://192.168.1.204:9090
+  Loki                         http://192.168.1.204:3100
+
+Logins: Gitea and Komodo urbex-admin, Grafana admin, Keycloak admin; passwords in ~/.urbex/credentials.yaml
+(giteaAdminPassword, komodoAdminPassword, grafanaAdminPassword, keycloakAdminPassword).
 ```
 
 With `<env>`, for each service of the project:
@@ -313,6 +327,10 @@ acme-app (staging):
 | `provisioned` | Its LXC exists on Proxmox right now. |
 | `version` | Its `version.env` in the GitOps repo; `(follows-main)` if it has `TRACK=main`; `none` if unset. |
 | `stack`, `image` | What Komodo reports: the Stack's state and the image it runs. |
+
+Then, under *Endpoints*, each service's address on the LAN
+(`http://<ip>:<port>`) and, for a public service or the web frontend,
+its HTTPS address.
 
 Needs: `URBEX_PROXMOX_TOKEN`; the platform credentials for the Komodo
 columns.
