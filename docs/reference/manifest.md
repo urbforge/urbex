@@ -15,7 +15,7 @@ secrets - is not here but in the [GitOps repo](gitops-repo.md).
 - [`services[]`](#services)
 - [Runtimes](#runtimes)
 - [`frontend`](#frontend)
-- [`domain`, `observability`, `email`, `auth`](#declared-not-yet-acted-on)
+- [`domain`, `observability.metrics`, `email`, `auth`](#declared-not-yet-acted-on)
 - [What changes take effect how](#what-changes-take-effect-how)
 
 ## Full example
@@ -60,7 +60,8 @@ frontend:
 | `project` | string | yes | The project's name on the platform: 3-40 characters, lowercase letters, digits, `-`, starting with a letter. It names the repo on Gitea, the LXCs, the images, and the folders in the GitOps repo, so changing it means a new project. |
 | `services` | list | one of `services` or `frontend` | The services to build and run. At least one if present. |
 | `frontend` | object | | See [`frontend`](#frontend). |
-| `domain`, `observability`, `email` | object | | Validated, [not acted on yet](#declared-not-yet-acted-on). |
+| `observability.logs` | boolean | `true` | Ship the services' logs to the platform's Loki ([ADR-0023](../decisions/0023-service-logs-to-loki.md)); `false` removes the log agent from the project's LXCs. |
+| `domain`, `observability.metrics`, `email` | object | | Validated, [not acted on yet](#declared-not-yet-acted-on). |
 
 Unknown fields are errors.
 
@@ -148,7 +149,7 @@ command uses them yet - see [`status.md`](../status.md):
 | Field | Meaning, once implemented |
 |---|---|
 | `domain.subdomain` | A custom name for the project's public hostnames (today they are derived from the project's name). |
-| `observability.metrics`, `observability.logs` | Scraping by Prometheus, log shipping to Loki. |
+| `observability.metrics` | Scraping of the services' metrics by Prometheus. |
 | `email.provider` (`brevo`), `email.fromAddress`, `email.fromName` | Transactional email; the provider key will be a secret. |
 | `services[].auth.keycloak`, `services[].auth.roles` | A Keycloak client for the service, and the roles it checks. |
 
@@ -165,3 +166,4 @@ command uses them yet - see [`status.md`](../status.md):
 | `frontend` added | `urbex apply <env>` in each environment. |
 | A removed service | Not handled: `urbex destroy <env>` and `apply` again, or remove its LXC, Stack, and folder by hand. |
 | `env` | Nothing, once the environment exists: edit its `config.env` in the GitOps repo. |
+| `observability.logs` | `urbex apply <env>` (it installs or removes the log agent). |

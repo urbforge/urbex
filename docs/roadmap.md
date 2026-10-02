@@ -53,10 +53,10 @@ Building on what v1 already runs:
 - **Frontends registered as Keycloak clients automatically**: each web
   and mobile frontend gets its OIDC client (redirect URIs from its
   hostnames, per environment) in the project's realm.
-- **Service logs shipped to the observability stack automatically**:
-  every service's container logs reach Loki, labelled with project,
-  service and environment, and are searchable in Grafana with no setup
-  in the project.
+- ~~**Service logs shipped to the observability stack automatically**~~
+  - done ([ADR-0023](decisions/0023-service-logs-to-loki.md)). Next in
+  the same area: services' metrics to Prometheus, the base services'
+  logs, Loki retention.
 - **Per-project Proxmox isolation** (pool, group, technical users - see
   v1 scope above).
 - **Keycloak realms and clients per project** (ADR-0014), Keycloak in

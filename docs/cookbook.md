@@ -48,6 +48,7 @@ copy of the GitOps repo.
 **Operating**
 
 - [See what runs where](#see-what-runs-where)
+- [Read a service's logs](#read-a-services-logs)
 - [Run urbex from another machine or a new agent session](#run-urbex-from-another-machine-or-a-new-agent-session)
 - [A push didn't deploy](#a-push-didnt-deploy)
 - [A build or a deploy failed](#a-build-or-a-deploy-failed)
@@ -456,6 +457,34 @@ git -C $URBEX_GITOPS_REPO log --oneline -- environments/   # every deploy, ever
 ```
 
 Komodo's UI shows every Stack, Build, and their logs, across projects.
+
+## Read a service's logs
+
+Every service's logs go to the platform's Loki
+([ADR-0023](decisions/0023-service-logs-to-loki.md)). In Grafana -
+`http://<observability IP>:3000`, user `admin`, password
+`grafanaAdminPassword` from `~/.urbex/credentials.yaml` - open
+*Dashboards → Urbex → Urbex logs* and pick the project, environment and
+service, or search a text. In *Explore*, with the Loki data source,
+LogQL works on the labels `project`, `service`, `env`, `host`,
+`container`:
+
+```logql
+{project="acme-app", env="prod"} |= "error"
+sum by (service) (count_over_time({project="acme-app", env="prod"} |= "error" [5m]))
+```
+
+From a terminal, Loki's API:
+
+```sh
+curl -s -G http://<observability IP>:3100/loki/api/v1/query_range \
+  --data-urlencode 'query={project="acme-app", service="api", env="staging"}' | jq -r '.data.result[].values[][1]'
+```
+
+The logs are also where they always were: `docker logs` on the
+service's LXC, and the Stack's page in Komodo. To keep a project's logs
+out of Loki, set `observability.logs: false` in `urbex.yaml` and run
+`urbex apply <env>`.
 
 ## Run urbex from another machine or a new agent session
 

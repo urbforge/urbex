@@ -27,9 +27,9 @@ runs inside each.
 | `urbex-komodo` | Komodo Core on `:9120`, its database (FerretDB on PostgreSQL), and a Periphery agent that is also the **builder** (server `urbex-komodo`). |
 | `urbex-technitium` | Technitium DNS, web console on `:5380`. |
 | `urbex-keycloak` | Keycloak on `:8080`. |
-| `urbex-observability` | Prometheus `:9090`, Loki `:3100`, Grafana `:3000`. |
+| `urbex-observability` | Prometheus `:9090`, Loki `:3100`, Grafana `:3000` (admin / `grafanaAdminPassword`), with Loki and Prometheus as data sources and the *Urbex logs* dashboard (folder *Urbex*). |
 | `urbex-tunnel` | `cloudflared`, the connector of the platform's Cloudflare Tunnel, with its token in `/opt/urbex/cloudflared.env`. |
-| each project LXC | Komodo Periphery; `sops` and the compose wrapper in `/opt/urbex/bin/`; the service's container. |
+| each project LXC | Grafana Alloy in `/opt/urbex/logs`, shipping the service's logs to Loki (unless `observability.logs: false`); Komodo Periphery; `sops` and the compose wrapper in `/opt/urbex/bin/`; the service's container. |
 
 The base services run as Docker Compose projects installed by Ansible;
 their data is in Docker volumes on the LXC.

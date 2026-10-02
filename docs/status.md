@@ -10,7 +10,7 @@ in [`known-limitations.md`](known-limitations.md); the table below keeps
 only the gaps that matter for planning. Update both whenever a priority
 item gets implemented, or a new gap is discovered.
 
-As of this writing: 22 ADRs, 11 `urbex` CLI commands, 156 unit tests
+As of this writing: 23 ADRs, 11 `urbex` CLI commands, 156 unit tests
 across 20 Go packages, and an end-to-end test (`e2e/run.sh`) in
 [`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli) that runs
 the real binary through a whole project lifecycle against Debian 13
@@ -41,6 +41,7 @@ Proxmox VE 9.2 node, see [What has been validated](#what-has-been-validated).
 | `urbex destroy` | Takes the environment's Stacks down, removes its folder, `terraform destroy`, clears the allocation ledger; the project's Builds go with its last environment |
 | `urbex status` | Proxmox container presence, allocation ledger and, per service, the version the GitOps repo asks for against what Komodo runs |
 | **Public endpoints (Cloudflare)** | One tunnel for the platform, `cloudflared` on `urbex-tunnel`; Keycloak public, Gitea and Komodo behind Cloudflare Access (one-time PIN for listed e-mails), Komodo's webhook listener public; services with `public: true` published per environment; flat or nested hostnames ([ADR-0022](decisions/0022-cloudflare-tunnel-access-workers.md)) |
+| **Service logs** | An Alloy agent on every project LXC ships the service's container logs to Loki, labelled `project`, `service`, `env`, `host`; Grafana comes with Loki and Prometheus as data sources and an *Urbex logs* dashboard; `observability.logs: false` turns it off ([ADR-0023](decisions/0023-service-logs-to-loki.md)) |
 | **Web frontends** | Built once per commit of `main`, deployed to a Cloudflare Worker with static assets per environment by a Stack on the builder; staging follows `main`, release/promote/rollback as for services ([ADR-0022](decisions/0022-cloudflare-tunnel-access-workers.md)) |
 | Transactional email | Manifest field only (`email.provider: brevo`); no code path uses it yet - see [Not supported yet](#not-supported-yet) |
 
@@ -58,7 +59,7 @@ Proxmox VE 9.2 node, see [What has been validated](#what-has-been-validated).
 | Frontend-only projects | A web frontend needs at least one service in the manifest | [0022](decisions/0022-cloudflare-tunnel-access-workers.md) |
 | Keycloak realm/client provisioning | Keycloak LXC exists; nothing creates the `platform` realm, per-project realms, or app OIDC clients/roles | [0008](decisions/0008-keycloak-scope.md), [0014](decisions/0014-keycloak-realm-per-project.md) |
 | Terraform state encryption | State is plain JSON in the (private) GitOps repo, not SOPS-encrypted as designed | [0013](decisions/0013-terraform-state-in-gitops-repo.md) |
-| Observability wiring | Prometheus/Grafana/Loki LXC exists; no project service is actually scraped or ships logs to it, despite `observability.metrics`/`logs` in the manifest | - |
+| Metrics | Prometheus runs; no project service is scraped (`observability.metrics` is ignored); base services' logs aren't collected; Loki has no retention | [0023](decisions/0023-service-logs-to-loki.md) |
 | Mobile frontend deploy | `frontend.type: mobile` (Firebase) is validated, not deployed | - |
 | Fleet-wide status | `urbex status` is scoped to one project+environment at a time; Komodo's UI is the cross-project view | - |
 | Per-project Proxmox isolation | New projects should get their own resource pool, a group for their users with minimal permissions, and dedicated technical users; today every LXC goes in the platform-wide `proxmox.pool`, managed with the operator's token | [roadmap](roadmap.md) |
@@ -160,6 +161,15 @@ exposed for a few minutes; now Access comes first and nothing is
 published without it), Access errors carried in a different field, and
 a Workers API answering 200 with no body.
 
+**Service logs** ([ADR-0023](decisions/0023-service-logs-to-loki.md)),
+on the same Proxmox node after a fresh bootstrap: the sample service's
+lines reached Loki as one stream labelled `project`, `service`, `env`,
+`host`, `container` - its own container only, not Periphery's or the
+agent's - and Grafana came up with the Loki and Prometheus data sources
+and the *Urbex logs* dashboard, querying Loki. The e2e test checks the
+same. It surfaced that Alloy ignored the filtering when given as
+`relabel_rules`: the containers are now filtered at discovery.
+
 ## Priorities
 
 Roughly in the order that makes each subsequent item worth doing.
@@ -190,10 +200,10 @@ Roughly in the order that makes each subsequent item worth doing.
 8. ~~**Secret encryption (SOPS+age)**~~ Done for application secrets
    ([ADR-0020](decisions/0020-trunk-releases-gitops-environments.md));
    Terraform state is still stored unencrypted.
-9. **Observability wiring** - ship every service's logs to Loki
-   automatically (next, see [roadmap](roadmap.md)), then metrics to
-   Prometheus, so `observability.metrics`/`logs` in the manifest do
-   something.
+9. **Observability wiring** - ~~services' logs to Loki~~ done
+   ([ADR-0023](decisions/0023-service-logs-to-loki.md)); next: metrics
+   to Prometheus (`observability.metrics`), the base services' logs,
+   Loki retention.
 
 ### P3 - operability polish
 

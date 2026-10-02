@@ -67,7 +67,9 @@ node and Cloudflare account.
 |---|---|
 | **Keycloak realms and clients aren't provisioned**: `auth.keycloak`/`auth.roles` are validated only, and frontends aren't registered as clients. | Create them in Keycloak's console. Automatic registration is planned ([roadmap](roadmap.md)). |
 | **No internal DNS**: Technitium runs, nothing registers names in it. | Reach services by IP on the LAN. |
-| **Observability isn't wired**: Prometheus, Loki and Grafana run, but no service's metrics or logs reach them, whatever `observability` says. | Planned: automatic log shipping ([roadmap](roadmap.md)). Logs are on the LXCs (`docker logs`) and in Komodo. |
+| **Only the services' logs are collected** ([ADR-0023](decisions/0023-service-logs-to-loki.md)): no metrics (`observability.metrics` is ignored), no logs of the base services (Gitea, Komodo, ...) or of web frontends (on Cloudflare). | Base services: `docker logs` on their LXC, Komodo's UI. Frontends: Cloudflare's Workers logs. |
+| **Loki keeps logs forever**: default single-node configuration, no retention set; the observability LXC's disk fills up over time. | Grow its disk (`terraform/base`), or clean Loki's volume. |
+| **Grafana's admin password** is the only login (no Keycloak SSO), and Grafana is reachable on the LAN only. | `admin` / `grafanaAdminPassword` from `~/.urbex/credentials.yaml`, on `http://<observability IP>:3000`. |
 | **Transactional email** (`email.provider: brevo`) is validated only. | - |
 
 ## Operations and security
