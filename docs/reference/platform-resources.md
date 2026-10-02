@@ -66,11 +66,28 @@ them up in Gitea under the organization's *Packages* when they pile up.
 | Git account, registry account | `urbex-admin` on `<gitea>`, with the Gitea token | `urbex bootstrap` | `urbex teardown` |
 | Variables | `URBEX_GITEA_URL`, `URBEX_GITEA_USER`, `URBEX_GITEA_TOKEN` (secret), `URBEX_ORG`; with Cloudflare `URBEX_CLOUDFLARE_TOKEN` (secret), `URBEX_CLOUDFLARE_ACCOUNT_ID` | `urbex bootstrap` | `urbex teardown` |
 | Server (builder) | `urbex-komodo` | `urbex bootstrap` | `urbex teardown` |
+| Servers of the base services | `urbex-gitea`, `urbex-technitium`, `urbex-keycloak`, `urbex-observability`, `urbex-tunnel`: Periphery in `/opt/urbex/periphery` on their LXCs, for monitoring their containers | `urbex bootstrap` | `urbex teardown` |
+| Tags | `platform`, `app`, each project's name, `staging`, `prod` | `urbex bootstrap`, `urbex apply` | - |
 | Action | `urbex-release` | `urbex bootstrap` | `urbex teardown` |
 | Procedure | `urbex-gitops` | `urbex bootstrap` | `urbex teardown` |
 | Builds | `<project>-<service>` | `urbex apply` | `urbex destroy` of the last environment |
 | Servers | `<project>-<service>-<env>` | the LXC's agent, with the onboarding key, during `urbex apply` | `urbex destroy <env>` |
 | Stacks | `<project>-<service>-<env>`; a web frontend's `<project>-web-<env>` runs on the builder | `urbex apply <env>` | `urbex destroy <env>` |
+
+### Tags
+
+Komodo's resources are tagged like the logs and metrics in Grafana
+([ADR-0023](../decisions/0023-service-logs-to-loki.md)), so Komodo's
+lists filter the same way:
+
+| Resources | Tags |
+|---|---|
+| The base services' Servers, the builder, `urbex-release`, `urbex-gitops` | `platform` |
+| A project's Builds | `app`, `<project>` |
+| A project environment's Servers and Stacks (web frontend included) | `app`, `<project>`, `<env>` |
+
+Urbex sets them on every `bootstrap` and `apply`, replacing the
+resource's tags.
 
 ### `urbex-release` (Action)
 

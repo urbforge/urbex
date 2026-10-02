@@ -538,7 +538,9 @@ The dashboards look at the last 6 hours by default; widen the time range
 to see older lines.
 
 The logs are also where they always were: `docker logs` on the LXC, and
-the Stack's page in Komodo. To keep a project's logs out of Loki, set
+the Stack's page in Komodo. Komodo shows every LXC as a Server, the base
+services' included, tagged like Grafana's labels: filter its lists by
+`platform`, `app`, a project's name, or `staging`/`prod`. To keep a project's logs out of Loki, set
 `observability.logs: false` in `urbex.yaml` and run `urbex apply <env>`;
 its resource metrics are still collected.
 

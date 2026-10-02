@@ -47,6 +47,12 @@ Options considered for getting container logs to Loki:
 - **Keycloak logs what matters**: every HTTP request (access log) and
   user events - logins, failed logins - at INFO; otherwise it writes
   nothing after starting.
+- **Komodo shows the same split**: the base services' LXCs run Komodo's
+  Periphery too (so Komodo monitors their containers), and Komodo's
+  resources carry the same tags - `platform` on the base services'
+  Servers, the builder and urbex's Action and Procedure; `app`, the
+  project and the environment on a project's Servers and Stacks (`app`
+  and the project on its Builds).
 - **Logs on by default**; `observability.logs: false` in `urbex.yaml`
   stops shipping a project's logs. Resource metrics are always collected.
 - **Grafana is provisioned** with Loki and Prometheus as data sources and
