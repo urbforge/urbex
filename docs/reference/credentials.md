@@ -24,31 +24,58 @@ they do need the
   provisions/destroys LXCs) and `urbex status`'s Proxmox query.
 - **Format:** `user@realm!tokenid=secret`, e.g.
   `root@pam!urbex=1234abcd-5678-...`.
-- **How to get one:** Proxmox web UI → *Datacenter* → *Permissions* →
-  *API Tokens* → *Add*. Pick or create a user, give the token an ID
-  (e.g. `urbex`), and decide on **Privilege Separation**: unchecked, the
-  token inherits the user's full permissions (simplest for a personal,
-  single-operator setup); checked, you must grant the token its own role
-  separately. Copy the secret shown once - Proxmox never shows it again.
-- **Least privilege:** give the permissions to a group, scope them to
-  a resource pool, and put the users (whose tokens have privilege
-  separation off, so they inherit them) in the group. As root on the
-  Proxmox host:
+- **How to get one - commands:** as `root` on the Proxmox host. This
+  creates the least-privilege setup Urbex was validated with: a resource
+  pool for everything Urbex creates, a group holding the permissions
+  (scoped to the pool), and a user in the group whose token inherits
+  them.
   ```sh
+  # Where Urbex works: a resource pool, with the storages for root disks
+  # (local-zfs here) and templates (local) in it.
+  pveum pool add urbex --comment "Urbex"
+  pveum pool modify urbex --storage local-zfs,local
+
+  # The permissions, on a group: change them here, never per user.
   pveum group add urbex --comment "Urbex operators: pool urbex only"
-  pveum pool add urbex                                  # if it doesn't exist
-  pveum pool modify urbex --storage local-zfs,local     # root disks, templates
   pveum acl modify /pool/urbex --groups urbex --roles PVEVMAdmin,PVEDatastoreUser,PVEPoolUser
   pveum acl modify /sdn/zones/localnetwork/vmbr0 --groups urbex --roles PVESDNUser
-  pveum user modify <user>@pve --groups urbex --append 1
+
+  # The user Urbex runs as, and its token (privilege separation off: it
+  # inherits the group's permissions).
+  pveum user add urbex@pve --comment "Urbex CLI" --groups urbex
+  pveum user token add urbex@pve cli --privsep 0 --comment "urbex"
+
+  # The Debian 13 template (needs root; the exact name: pveam available --section system).
+  pveam update && pveam download local debian-13-standard_13.6-1_amd64.tar.zst
   ```
-  `PVEVMAdmin` manages the pool's LXCs, `PVEDatastoreUser` allocates
-  disks and reads templates on the pool's storages, `PVEPoolUser` lets
-  the token see the pool. `PVESDNUser` on the bridge is needed to attach
-  an LXC's network interface - without it, Proxmox refuses with
-  `Permission check failed (/sdn/zones/localnetwork/vmbr0, SDN.Use)`.
-  Nothing else on the node is needed. Avoid using a `root@pam` token
-  for anything beyond a quick personal test.
+  `pveum user token add` prints the token's `full-tokenid`
+  (`urbex@pve!cli`) and `value` once - Proxmox never shows it again:
+  ```sh
+  export URBEX_PROXMOX_TOKEN='urbex@pve!cli=<value>'
+  ```
+  For a person who should operate the platform too, add their user to the
+  group (`pveum user modify <user>@pve --groups urbex --append 1`) rather
+  than granting anything to the user. Then in `urbex.platform.yaml`:
+  `proxmox.pool: urbex`, `proxmox.keyctl: false`, and the bridge in
+  `proxmox.network.bridge` (the ACL above names `vmbr0`).
+- **What each permission is for:** `PVEVMAdmin` manages the pool's LXCs,
+  `PVEDatastoreUser` allocates disks and reads templates on the pool's
+  storages, `PVEPoolUser` lets the token see the pool. `PVESDNUser` on
+  the bridge is needed to attach an LXC's network interface - without
+  it, Proxmox refuses with `Permission check failed
+  (/sdn/zones/localnetwork/vmbr0, SDN.Use)`. Nothing else on the node is
+  needed. Avoid a `root@pam` token for anything beyond a quick personal
+  test.
+- **From the web UI instead:** *Datacenter* → *Permissions*: *Pools*,
+  *Groups*, *Permissions* → *Add* (group permission, with the paths and
+  roles above), *Users*, then *API Tokens* → *Add* with **Privilege
+  Separation** unchecked.
+- **Checking it:**
+  ```sh
+  curl -sk -H "Authorization: PVEAPIToken=$URBEX_PROXMOX_TOKEN" \
+    https://<proxmox>:8006/api2/json/access/permissions | jq '.data | keys'
+  # ["/pool/urbex", "/sdn/zones/localnetwork/vmbr0", "/storage/local", "/storage/local-zfs"]
+  ```
 - **Pool-scoped tokens:** if the token's permissions are granted on a
   resource pool, set `proxmox.pool` in `urbex.platform.yaml` so every
   LXC is created in it - otherwise the token can't see or manage the
@@ -160,22 +187,119 @@ to start.
   ([ADR-0022](../decisions/0022-cloudflare-tunnel-access-workers.md)).
   Bootstrap also stores it in Komodo, as a secret variable, for the web
   frontends' deploys.
-- **How to get it:** Cloudflare dashboard → *Manage account* → *Account
-  API tokens* → *Create token* → custom, with:
+- **Permissions:**
 
-  | Scope | Permission |
-  |---|---|
-  | Account | Cloudflare Tunnel: Edit |
-  | Account | Workers Scripts: Edit |
-  | Account | Access: Apps and Policies: Edit |
-  | Account | Access: Organizations, Identity Providers, and Groups: Edit - only if the Zero Trust organization has no One-time PIN login yet; urbex adds it |
-  | Zone (your zone) | DNS: Edit |
-  | Zone (your zone) | Workers Routes: Edit |
-  | Zone (your zone) | Zone: Read |
+  | Scope | Permission (as the API names it) | For |
+  |---|---|---|
+  | Account | Cloudflare Tunnel Write | the platform's tunnel and its routes |
+  | Account | Workers Scripts Write | the web frontends' Workers |
+  | Account | Access: Apps and Policies Write | Access in front of Gitea and Komodo |
+  | Account | Access: Organizations, Identity Providers, and Groups Write | only to enable the one-time PIN login if Zero Trust has none yet |
+  | Zone (yours) | DNS Write | the public hostnames |
+  | Zone (yours) | Workers Routes Write | the web frontends' custom domains |
+  | Zone (yours) | Zone Read | finding the zone |
 
-  The account IDs are in the dashboard's URL and on the zone's
-  *Overview* page. A Zero Trust organization must exist (Zero Trust →
-  first visit, Free plan is enough).
+  This is the set the API calls Urbex makes need. The token Urbex was
+  validated with had a few more (Cloudflare Pages, zone-level ones); if
+  a call is refused, Urbex names the missing permission.
+  The dashboard shows them as "... Edit"/"... Read". A Zero Trust
+  organization must exist (first visit to Zero Trust; the Free plan is
+  enough). The account and zone IDs are on the zone's *Overview* page.
+
+- **How to get it - Terraform** (`cloudflare/cloudflare` v5). It looks
+  the permissions up by name, so nothing is copied by hand; it
+  authenticates with an existing token allowed to create tokens (e.g.
+  from the dashboard template *Create Additional Tokens*), in
+  `CLOUDFLARE_API_TOKEN`:
+  ```hcl
+  terraform {
+    required_providers {
+      cloudflare = { source = "cloudflare/cloudflare", version = "~> 5.0" }
+    }
+  }
+  provider "cloudflare" {}
+
+  variable "account_id" { type = string }
+  variable "zone_id" { type = string }
+
+  data "cloudflare_account_api_token_permission_groups_list" "all" {
+    account_id = var.account_id
+  }
+
+  locals {
+    group = { for g in data.cloudflare_account_api_token_permission_groups_list.all.result : g.name => g.id }
+    account_permissions = [
+      "Cloudflare Tunnel Write",
+      "Workers Scripts Write",
+      "Access: Apps and Policies Write",
+      "Access: Organizations, Identity Providers, and Groups Write",
+    ]
+    zone_permissions = ["DNS Write", "Workers Routes Write", "Zone Read"]
+  }
+
+  resource "cloudflare_account_token" "urbex" {
+    account_id = var.account_id
+    name       = "urbex"
+    policies = [
+      {
+        effect            = "allow"
+        permission_groups = [for n in local.account_permissions : { id = local.group[n] }]
+        resources         = jsonencode({ "com.cloudflare.api.account.${var.account_id}" = "*" })
+      },
+      {
+        effect            = "allow"
+        permission_groups = [for n in local.zone_permissions : { id = local.group[n] }]
+        resources         = jsonencode({ "com.cloudflare.api.account.zone.${var.zone_id}" = "*" })
+      },
+    ]
+  }
+
+  output "token" {
+    value     = cloudflare_account_token.urbex.value
+    sensitive = true
+  }
+  ```
+  ```sh
+  terraform apply -var account_id=<account id> -var zone_id=<zone id>
+  export URBEX_CLOUDFLARE_TOKEN="$(terraform output -raw token)"
+  ```
+  A name that doesn't match fails the plan (`Invalid index`) before
+  anything is created; the names the account offers are listed by
+  ```sh
+  curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+    "https://api.cloudflare.com/client/v4/accounts/<account id>/tokens/permission_groups" | jq -r '.result[].name' | sort
+  ```
+  Keep the Terraform state private: it holds the token.
+
+- **How to get it - API, with `curl` and `jq`**, the same token and
+  permissions, with the same creating token in `CLOUDFLARE_API_TOKEN`:
+  ```sh
+  ACCOUNT=<account id> ZONE=<zone id>
+  API=https://api.cloudflare.com/client/v4/accounts/$ACCOUNT/tokens
+  PERMS=$(curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$API/permission_groups")
+  ids() { jq -c --argjson names "$1" '[.result[] | select(.name as $n | $names | index($n)) | {id}]' <<<"$PERMS"; }
+  ACC=$(ids '["Cloudflare Tunnel Write","Workers Scripts Write","Access: Apps and Policies Write","Access: Organizations, Identity Providers, and Groups Write"]')
+  ZON=$(ids '["DNS Write","Workers Routes Write","Zone Read"]')
+  jq -n --argjson acc "$ACC" --argjson zon "$ZON" --arg a "$ACCOUNT" --arg z "$ZONE" '{
+    name: "urbex",
+    policies: [
+      {effect: "allow", permission_groups: $acc, resources: {("com.cloudflare.api.account." + $a): "*"}},
+      {effect: "allow", permission_groups: $zon, resources: {("com.cloudflare.api.account.zone." + $z): "*"}}
+    ]}' |
+  curl -s -X POST -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" "$API" --data @- |
+  jq -r '.result.value'        # the token: shown once
+  ```
+  Check that `ACC` lists 4 groups and `ZON` 3 before creating.
+
+- **How to get it - dashboard:** *Manage account* → *Account API tokens*
+  → *Create token* → *Custom token*, with the permissions above (account
+  ones on your account, zone ones on your zone only).
+
+- **Checking it:**
+  ```sh
+  curl -s -H "Authorization: Bearer $URBEX_CLOUDFLARE_TOKEN" \
+    https://api.cloudflare.com/client/v4/accounts/<account id>/tokens/verify | jq .result.status   # "active"
+  ```
 
 ## Declared, but not required by any command yet
 
