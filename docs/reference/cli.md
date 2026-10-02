@@ -92,14 +92,22 @@ the base services are updated.
    `urbex-gitops` Procedure; `.sops.yaml`; commits and pushes the GitOps
    repo, and adds its webhook. Tokens and keys already in the credentials
    file are reused, not rotated.
+7. With Cloudflare configured
+   ([ADR-0022](../decisions/0022-cloudflare-tunnel-access-workers.md)):
+   before Ansible, the tunnel `urbex-platform` and the token its
+   connector on `urbex-tunnel` runs with; at the end, Access first - the
+   one-time PIN login if missing, the policy for `cloudflare.access.emails`,
+   applications for Gitea and Komodo - then the routes and DNS records of
+   Keycloak, Gitea, Komodo and the webhook listener. If Access can't be set
+   up, nothing is published.
 
 | Flag | Meaning |
 |---|---|
 | `--dry-run` | Do steps 1-4 (files only, no secrets generated) and stop before Terraform. |
 
 Needs: `URBEX_PROXMOX_TOKEN`, `URBEX_AGE_KEY`, `terraform`,
-`ansible-playbook`, `git`, and an SSH agent with the key in
-`proxmox.sshPublicKey`. Everything it creates is listed in
+`ansible-playbook`, `git`, an SSH agent with the key in
+`proxmox.sshPublicKey`, and with Cloudflare `URBEX_CLOUDFLARE_TOKEN`. Everything it creates is listed in
 [platform resources](platform-resources.md).
 
 ## `urbex plan`
@@ -141,9 +149,12 @@ there is something to run, waits until it runs.
    project repo's webhook to the `urbex-release` Action.
 4. **The environment:** waits for the LXCs' agents to connect to Komodo
    (accepting the new key of a recreated LXC), writes each service's
-   folder in the GitOps repo, declares its Komodo Stack, commits and
-   pushes.
-5. **What to run:**
+   folder in the GitOps repo - and the web frontend's, if the manifest
+   has one - declares their Komodo Stacks, commits and pushes.
+5. **Publishing** (with Cloudflare): routes the services with
+   `public: true` through the platform's tunnel and points their DNS
+   records at it; a service no longer public loses its route and record.
+6. **What to run:**
    - a new **staging** follows `main`: `apply` builds `main`'s head and
      waits until staging runs it;
    - a new **prod** stays empty until `urbex promote` or `urbex deploy
@@ -316,7 +327,9 @@ Removes an environment of the project, in this order:
 
 1. Updates the GitOps repo from Gitea.
 2. Takes its Komodo Stacks down (`docker compose down`) and deletes them:
-   from here on nothing deploys the environment.
+   from here on nothing deploys the environment. With Cloudflare, removes
+   its public services' routes and DNS records, and its web frontend's
+   Worker and custom domain.
 3. `terraform destroy` for the services' LXCs (and their disks).
 4. Deletes their Komodo Servers.
 5. If the project has no environment left: deletes the project repo's
@@ -361,8 +374,10 @@ Destroys the platform `urbex bootstrap` created: the inverse of
    included - make sure they also live elsewhere), Komodo's, Keycloak's
    and Grafana's data, the generated credentials. Without `--yes` it
    stops here.
-4. `terraform destroy` in `terraform/base/` (LXCs already gone are
-   dropped from the state first).
+4. With Cloudflare: removes the platform's Access applications and
+   policy, DNS records, and the tunnel. Then `terraform destroy` in
+   `terraform/base/` (LXCs already gone are dropped from the state
+   first).
 5. Removes the credentials bootstrap generated from
    `~/.urbex/credentials.yaml`; the ones you provide (Proxmox token, age
    key, Cloudflare token) stay.

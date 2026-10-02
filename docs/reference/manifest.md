@@ -77,6 +77,7 @@ GitOps repo.
 | `name` | string | required | 2-40 characters, lowercase letters, digits, `-`, starting with a letter. Unique in the project. |
 | `runtime` | `go`, `java`, `python`, `docker` | required | How the image is built - see [runtimes](#runtimes). |
 | `dockerfile` | path | required with `docker` | Path of the Dockerfile from the repo root; its directory is the build context. Ignored for other runtimes. |
+| `public` | boolean | `false` | Publish the service on the internet through the platform's Cloudflare Tunnel, at `<service>-<project>-urbex.<domain>` (prod) and `<service>-staging-<project>-urbex.<domain>` (staging). Its own auth is its gate. Needs Cloudflare in the [platform config](platform-config.md#public-hostnames). |
 | `port` | 1-65535 | required | The port the service listens on. The container gets `PORT` set to it, and it is published on the LXC's IP at the same number. |
 | `healthcheck` | HTTP path | none | Path probed every 30 s from inside the container (`wget -q --spider http://localhost:<port><path>`); three failures mark the container unhealthy, and `urbex` waits for healthy. Without it, a running container counts. |
 | `resources.cpu` | integer ≥ 1 | `1` | Cores of the LXC. |
@@ -112,15 +113,32 @@ In every case:
 frontend:
   type: web                    # web | mobile
   provider: cloudflare-pages   # cloudflare-pages for web, firebase for mobile
-  buildCommand: npm run build
+  buildCommand: npm ci && npm run build
   outputDir: dist
 ```
 
 All four fields are required; `web` must use `cloudflare-pages` and
 `mobile` `firebase`.
 
-> ⚠️ Validated, not acted on: Urbex doesn't build or deploy frontends
-> yet. Deploy them with the provider's own tooling.
+A **web** frontend is deployed to Cloudflare Workers with static assets
+([ADR-0022](../decisions/0022-cloudflare-tunnel-access-workers.md)),
+alongside the services and with the same flow:
+
+- every push to `main` builds it once: in a `node:22` container on the
+  builder, at the repo root, `buildCommand` runs (install the
+  dependencies there), and `outputDir` becomes the site;
+- staging follows `main`, `urbex release` and `urbex promote` move the
+  same build to prod, `urbex deploy --version` rolls back;
+- each environment is a Worker, `urbex-<project>-web-<env>`, at
+  `<project>-urbex.<domain>` (prod) and `staging-<project>-urbex.<domain>`;
+  unknown paths serve `index.html` (single-page apps).
+
+It needs Cloudflare configured in the platform, and at least one service
+in the manifest (a frontend-only project isn't supported yet). In the
+GitOps repo it appears as a service called `web`.
+
+> ⚠️ `mobile` (Firebase) is validated, not acted on: deploy with
+> Firebase's tooling.
 
 ## Declared, not yet acted on
 
@@ -129,7 +147,7 @@ command uses them yet - see [`status.md`](../status.md):
 
 | Field | Meaning, once implemented |
 |---|---|
-| `domain.subdomain` | DNS name under the platform's domain, and ingress through Cloudflare Tunnel. |
+| `domain.subdomain` | A custom name for the project's public hostnames (today they are derived from the project's name). |
 | `observability.metrics`, `observability.logs` | Scraping by Prometheus, log shipping to Loki. |
 | `email.provider` (`brevo`), `email.fromAddress`, `email.fromName` | Transactional email; the provider key will be a secret. |
 | `services[].auth.keycloak`, `services[].auth.roles` | A Keycloak client for the service, and the roles it checks. |
@@ -143,5 +161,7 @@ command uses them yet - see [`status.md`](../status.md):
 | `runtime`, `dockerfile` | `urbex apply <env>` (it updates the Build), then the next push to `main`. |
 | `resources` | `urbex plan <env>`, then `urbex apply <env>`. |
 | A new service | `urbex apply <env>` in each environment. |
+| `public` | `urbex apply <env>` (it routes or unroutes the service). |
+| `frontend` added | `urbex apply <env>` in each environment. |
 | A removed service | Not handled: `urbex destroy <env>` and `apply` again, or remove its LXC, Stack, and folder by hand. |
 | `env` | Nothing, once the environment exists: edit its `config.env` in the GitOps repo. |

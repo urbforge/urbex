@@ -19,8 +19,11 @@ sets up Gitea and Komodo; projects are developed trunk-based, and every
 push to `main` is built by Komodo and deployed to staging; releases are
 tags, promoted to production; and each environment runs what its folder
 in the GitOps repo says - version, configuration, SOPS-encrypted
-secrets - deployed by Komodo on every change. Validated on a real Proxmox VE 9.2 node. Not wired up yet:
-DNS/ingress and Keycloak. See [`docs/status.md`](docs/status.md) for the full
+secrets - deployed by Komodo on every change. With Cloudflare, public
+APIs go out through a Cloudflare Tunnel, web frontends are deployed to
+Cloudflare Workers, Keycloak is public, and Gitea and Komodo sit behind
+Cloudflare Access. Validated on a real Proxmox VE 9.2 node and Cloudflare
+account. Not wired up yet: internal DNS and Keycloak realms/clients. See [`docs/status.md`](docs/status.md) for the full
 supported/not-supported breakdown and implementation priorities, and
 `docs/` more generally for architecture, decisions, and roadmap.
 

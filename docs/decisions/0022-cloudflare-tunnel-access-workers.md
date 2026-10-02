@@ -86,15 +86,17 @@ identity provider later.
 
 - `frontend.type: web` deploys to a Worker per environment,
   `urbex-<project>-web-<env>`, serving the build output as static
-  assets, on the environment's hostname as a custom domain.
-- Builds follow the services' trunk model: every push to `main` builds
-  the frontend once (Komodo, in a Node container on the builder), and
-  the result is uploaded as a Worker **version** tagged with the commit,
-  without deploying it.
-- Deploying an environment is making a version current, driven by the
-  same `version.env` in the GitOps repo: staging follows `main`,
-  promoting to prod deploys the version tagged with the release. A
-  rollback is deploying an older version: nothing is rebuilt.
+  assets, with the environment's hostname as its custom domain.
+- It follows the services' trunk model with the same machinery: every
+  push to `main` builds it once, as an image `<project>-web:<commit>`
+  holding the built site and `wrangler` (Komodo, in a Node container on
+  the builder). Releases retag that image.
+- Each environment has a Stack for it, on the builder rather than an
+  LXC, driven by the same `version.env`: the container uploads its site
+  to the environment's Worker, then stays up, healthy once the upload
+  worked. Staging follows `main`, promoting to prod deploys the release's
+  image, a rollback deploys an older one - the uploaded bytes are always
+  the ones built for that commit.
 - `provider: cloudflare-pages` in the manifest is kept as an alias
   meaning "Workers static assets".
 
@@ -103,11 +105,12 @@ identity provider later.
 The Cloudflare API token and account ID are credentials
 (`URBEX_CLOUDFLARE_TOKEN`, `URBEX_CLOUDFLARE_ACCOUNT_ID`). The token
 needs, on the account: Cloudflare Tunnel, Workers Scripts, Access: Apps
-and Policies (all Edit); on the zone: DNS and Workers Routes (Edit), Zone
-(Read). The tunnel's own connector token is fetched by bootstrap and
+and Policies, and - to enable the one-time PIN login if it isn't -
+Access: Organizations, Identity Providers, and Groups (all Edit); on the
+zone: DNS and Workers Routes (Edit), Zone (Read). The tunnel's own connector token is fetched by bootstrap and
 handed to `urbex-tunnel` by Ansible, never written to the GitOps repo.
-Komodo gets a Cloudflare token for uploading Worker versions as a secret
-variable.
+Komodo gets the Cloudflare token, as a secret variable, and the account
+ID, for the web frontends' Stacks.
 
 ## Rationale
 
@@ -117,10 +120,16 @@ variable.
   nicer, so they are one setting away for zones with ACM.
 - Access in front of the two admin UIs without running an identity
   provider: one-time PIN is enough for a handful of operators.
-- Worker versions give frontends the same build-once, promote-the-same-
-  bytes model the services have.
+- One image per commit gives frontends the same build-once,
+  promote-the-same-bytes model the services have, with no machinery of
+  their own.
 
 ## Consequences
+
+- Access is set up before anything is routed: a protected service must
+  never be reachable without it. (Found the hard way on the test account:
+  routes published before a failed Access setup left Gitea and Komodo
+  open for a few minutes.)
 
 - A sixth base-service LXC (`urbex-tunnel`, 1 core, 256 MiB).
 - Every Cloudflare object Urbex creates is named `urbex-...` and tagged

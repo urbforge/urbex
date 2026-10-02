@@ -209,8 +209,9 @@ git remote add origin http://192.168.1.200:3000/urbex/acme-app.git
 git fetch origin && git branch -u origin/main
 ```
 
-> ⚠️ No DNS or ingress yet: services are reached on their LAN IP and
-> port, and Gitea is plain HTTP.
+Without Cloudflare, services are reached on their LAN IP and port; see
+[Put it on the internet](cookbook.md#put-the-platform-on-the-internet)
+for public HTTPS endpoints.
 
 ## 4. Push, and it's on staging
 

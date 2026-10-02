@@ -11,7 +11,7 @@ for finding your way in the UIs, and for knowing what is safe to touch.
 
 | Resource | Name | Created by | Removed by |
 |---|---|---|---|
-| Base-service LXCs | `urbex-gitea`, `urbex-komodo`, `urbex-technitium`, `urbex-keycloak`, `urbex-observability` | `urbex bootstrap` | `urbex teardown` |
+| Base-service LXCs | `urbex-gitea`, `urbex-komodo`, `urbex-technitium`, `urbex-keycloak`, `urbex-observability`, and `urbex-tunnel` with Cloudflare | `urbex bootstrap` | `urbex teardown` |
 | Project LXCs | `<project>-<service>-<env>` | `urbex apply <env>` | `urbex destroy <env>` |
 
 All are unprivileged Debian 13 LXCs with `nesting` (and `keyctl`, unless
@@ -28,6 +28,7 @@ runs inside each.
 | `urbex-technitium` | Technitium DNS, web console on `:5380`. |
 | `urbex-keycloak` | Keycloak on `:8080`. |
 | `urbex-observability` | Prometheus `:9090`, Loki `:3100`, Grafana `:3000`. |
+| `urbex-tunnel` | `cloudflared`, the connector of the platform's Cloudflare Tunnel, with its token in `/opt/urbex/cloudflared.env`. |
 | each project LXC | Komodo Periphery; `sops` and the compose wrapper in `/opt/urbex/bin/`; the service's container. |
 
 The base services run as Docker Compose projects installed by Ansible;
@@ -58,13 +59,13 @@ them up in Gitea under the organization's *Packages* when they pile up.
 | API key | `urbex-cli` | `urbex bootstrap` | `urbex teardown` |
 | Onboarding key | `urbex-projects` | `urbex bootstrap` | `urbex teardown` |
 | Git account, registry account | `urbex-admin` on `<gitea>`, with the Gitea token | `urbex bootstrap` | `urbex teardown` |
-| Variables | `URBEX_GITEA_URL`, `URBEX_GITEA_USER`, `URBEX_GITEA_TOKEN` (secret), `URBEX_ORG` | `urbex bootstrap` | `urbex teardown` |
+| Variables | `URBEX_GITEA_URL`, `URBEX_GITEA_USER`, `URBEX_GITEA_TOKEN` (secret), `URBEX_ORG`; with Cloudflare `URBEX_CLOUDFLARE_TOKEN` (secret), `URBEX_CLOUDFLARE_ACCOUNT_ID` | `urbex bootstrap` | `urbex teardown` |
 | Server (builder) | `urbex-komodo` | `urbex bootstrap` | `urbex teardown` |
 | Action | `urbex-release` | `urbex bootstrap` | `urbex teardown` |
 | Procedure | `urbex-gitops` | `urbex bootstrap` | `urbex teardown` |
 | Builds | `<project>-<service>` | `urbex apply` | `urbex destroy` of the last environment |
 | Servers | `<project>-<service>-<env>` | the LXC's agent, with the onboarding key, during `urbex apply` | `urbex destroy <env>` |
-| Stacks | `<project>-<service>-<env>` | `urbex apply <env>` | `urbex destroy <env>` |
+| Stacks | `<project>-<service>-<env>`; a web frontend's `<project>-web-<env>` runs on the builder | `urbex apply <env>` | `urbex destroy <env>` |
 
 ### `urbex-release` (Action)
 
@@ -115,6 +116,27 @@ change to any of the three, or to `compose.yaml`, redeploys the Stack.
 Compose runs through `/opt/urbex/bin/urbex-compose`, which decrypts the
 secrets. Nothing in a Stack's definition depends on what it deploys:
 after `apply`, everything is a commit.
+
+## Cloudflare
+
+Only with Cloudflare configured ([ADR-0022](../decisions/0022-cloudflare-tunnel-access-workers.md)).
+Everything is named with the platform's `cloudflare.name` (`urbex`
+below); DNS records carry the comment `managed by urbex`. Nothing else
+on the account is ever changed: a DNS record of the same name that urbex
+didn't create makes it stop instead.
+
+| Resource | Name | Created by | Removed by |
+|---|---|---|---|
+| Tunnel (remotely managed) | `urbex-platform` | `urbex bootstrap` | `urbex teardown` |
+| Tunnel routes, DNS CNAMEs | `auth-`, `git-`, `komodo-`, `hooks-urbex.<domain>` | `urbex bootstrap` | `urbex teardown` |
+| Access login method | One-time PIN (if the organization had none) | `urbex bootstrap` | - |
+| Access policy | `urbex-operators`: the `cloudflare.access.emails` | `urbex bootstrap` | `urbex teardown` |
+| Access applications | `urbex-git`, `urbex-komodo` | `urbex bootstrap` | `urbex teardown` |
+| Tunnel routes, DNS CNAMEs of public services | `<service>[-staging]-<project>-urbex.<domain>` | `urbex apply <env>` | `urbex destroy <env>`, or `apply` once not public |
+| Workers, custom domains | `urbex-<project>-web-<env>` at `[staging-]<project>-urbex.<domain>` | the web Stack (`apply`, deploys) | `urbex destroy <env>` |
+
+Access is always set up before anything is routed: if it can't be,
+nothing is published.
 
 ## What is safe to change by hand
 

@@ -21,6 +21,13 @@ copy of the GitOps repo.
 - [Deploy a specific commit](#deploy-a-specific-commit)
 - [Gate production behind a pull request](#gate-production-behind-a-pull-request)
 
+**On the internet**
+
+- [Put the platform on the internet](#put-the-platform-on-the-internet)
+- [Publish a service](#publish-a-service)
+- [Deploy a web frontend](#deploy-a-web-frontend)
+- [Let someone else into Gitea and Komodo](#let-someone-else-into-gitea-and-komodo)
+
 **Configuration and secrets**
 
 - [Change configuration](#change-configuration)
@@ -189,6 +196,88 @@ repo. To have production changes reviewed instead:
    git commit -am "acme-app 0.4.0 to prod" && git push -u origin promote-0.4.0
    ```
 3. Merging it deploys: Komodo deploys what lands on `main`.
+
+## Put the platform on the internet
+
+With a domain on Cloudflare, add to `urbex.platform.yaml`:
+
+```yaml
+domain: example.com          # the Cloudflare zone
+cloudflare:
+  accountId: <account id>
+  zoneId: <zone id of example.com>
+  access:
+    emails: [you@example.com]
+```
+
+then, with a token with the [permissions it needs](reference/credentials.md#cloudflare-api-token):
+
+```sh
+export URBEX_CLOUDFLARE_TOKEN=...
+urbex bootstrap
+```
+
+```
+Published on Cloudflare: Keycloak https://auth-urbex.example.com, Gitea https://git-urbex.example.com and Komodo https://komodo-urbex.example.com (behind Access), webhooks https://hooks-urbex.example.com.
+```
+
+Bootstrap adds a small LXC running `cloudflared`, sets up Access first
+(the one-time PIN login if missing, a policy for the listed e-mails, an
+application per protected service), then routes and DNS. Nothing on the
+Proxmox side is opened to the internet. Names are one level under the
+zone (`auth-urbex`), which Cloudflare's free certificate covers; with
+Advanced Certificate Manager, `cloudflare.hostnames: nested` gives
+`auth.urbex.example.com` instead.
+
+## Publish a service
+
+```yaml
+# urbex.yaml
+services:
+  - name: api
+    runtime: go
+    port: 8080
+    public: true
+```
+
+```sh
+urbex apply staging     # https://api-staging-acme-app-urbex.example.com
+urbex apply prod        # https://api-acme-app-urbex.example.com
+```
+
+The service's own authentication is its gate (Keycloak, at
+`https://auth-urbex.example.com`, once realms are wired). Set `public:
+false` and apply again to take it off the internet.
+
+## Deploy a web frontend
+
+```yaml
+# urbex.yaml
+frontend:
+  type: web
+  provider: cloudflare-pages
+  buildCommand: npm ci && npm run build
+  outputDir: dist
+```
+
+```sh
+git commit -am "Add the frontend" && git push
+urbex apply staging
+```
+
+The frontend is built with every push to `main`, like the services, and
+staging serves it at `https://staging-acme-app-urbex.example.com`.
+`urbex release` and `urbex promote` put the same build on
+`https://acme-app-urbex.example.com`; `urbex deploy prod --version 0.3.0`
+rolls it back. Each environment is a Cloudflare Worker with static
+assets, `urbex-acme-app-web-<env>`; unknown paths serve `index.html`.
+
+## Let someone else into Gitea and Komodo
+
+Add their e-mail to `cloudflare.access.emails` and run `urbex bootstrap`.
+They open `https://git-urbex.example.com`, enter the address, and get a
+PIN by e-mail. That opens the door; Gitea and Komodo still ask for their
+own login (`urbex-admin`, or accounts you create in them).
 
 ## Change configuration
 
@@ -495,8 +584,9 @@ with priorities, is in [`status.md`](status.md).
 
 | Gap | Workaround today |
 |---|---|
-| No DNS, ingress, or TLS | Reach services by IP (printed by `apply` and `deploy`, and in `state/allocations.json`). Gitea and its registry are plain HTTP, trusted by the LXCs' Docker as an insecure registry. |
-| Frontends aren't deployed | `frontend` in `urbex.yaml` is validated only. Deploy with the provider's tooling (`wrangler pages deploy dist/`, a Cloudflare Pages Git integration, `firebase deploy`), pointing at the API's IP. |
+| No internal DNS | Reach services on the LAN by IP (printed by `apply` and `deploy`, and in `state/allocations.json`); Gitea and its registry are plain HTTP on the LAN. Publicly, use [Cloudflare](#put-the-platform-on-the-internet). |
+| Mobile frontends aren't deployed | `frontend.type: mobile` is validated only: deploy with `firebase deploy`. |
+| Git over HTTPS through Access | Gitea's public hostname is for browsers; `git` keeps using the LAN address. |
 | `promote` commits straight to the GitOps repo | [Gate production behind a pull request](#gate-production-behind-a-pull-request). |
 | Only `vX.Y.Z` tags are releases | No pre-releases: test on staging, which runs every commit, and release a patch version. |
 | Komodo can miss a push made seconds after another | The `urbex` commands handle it; by hand, see [A push didn't deploy](#a-push-didnt-deploy). |

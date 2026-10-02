@@ -11,12 +11,14 @@
 - LXC operating system: **Debian 13**.
 - Orchestrator: **Docker Compose** (one per LXC).
 - Provisioning: **Terraform/OpenTofu + Ansible**.
-- Frontend: **Cloudflare Pages** (web), **Firebase** (mobile).
+- Frontend: **Cloudflare Workers** with static assets (web, the successor
+  of Pages), **Firebase** (mobile).
 - Services: **Java, Python, Go**, or any **Docker image** with a ready
   Dockerfile.
 - Base services created on-demand: **Gitea, Komodo, Technitium, Keycloak,
   Prometheus + Grafana + Loki**.
-- Ingress: **Cloudflare Tunnel**.
+- Ingress: **Cloudflare Tunnel**, with **Cloudflare Access** in front of
+  the admin UIs ([ADR-0022](decisions/0022-cloudflare-tunnel-access-workers.md)).
 - Secrets: **SOPS + age**.
 - Topology: **one LXC per service per environment** (staging/prod
   separated).

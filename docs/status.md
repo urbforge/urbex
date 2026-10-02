@@ -8,7 +8,7 @@ the CLI, this document takes stock of the whole project at once, for
 planning purposes. Update it whenever a priority
 item below gets implemented, or a new gap is discovered.
 
-As of this writing: 21 ADRs, 11 `urbex` CLI commands, 137 unit tests
+As of this writing: 22 ADRs, 11 `urbex` CLI commands, 137 unit tests
 across 19 Go packages, and an end-to-end test (`e2e/run.sh`) in
 [`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli) that runs
 the real binary through a whole project lifecycle against Debian 13
@@ -38,6 +38,8 @@ Proxmox VE 9.2 node, see [What has been validated](#what-has-been-validated).
 | `urbex teardown` | Destroys the base-service LXCs (refusing while project environments exist), forgets the generated credentials, keeps the GitOps repo locally |
 | `urbex destroy` | Takes the environment's Stacks down, removes its folder, `terraform destroy`, clears the allocation ledger; the project's Builds go with its last environment |
 | `urbex status` | Proxmox container presence, allocation ledger and, per service, the version the GitOps repo asks for against what Komodo runs |
+| **Public endpoints (Cloudflare)** | One tunnel for the platform, `cloudflared` on `urbex-tunnel`; Keycloak public, Gitea and Komodo behind Cloudflare Access (one-time PIN for listed e-mails), Komodo's webhook listener public; services with `public: true` published per environment; flat or nested hostnames ([ADR-0022](decisions/0022-cloudflare-tunnel-access-workers.md)) |
+| **Web frontends** | Built once per commit of `main`, deployed to a Cloudflare Worker with static assets per environment by a Stack on the builder; staging follows `main`, release/promote/rollback as for services ([ADR-0022](decisions/0022-cloudflare-tunnel-access-workers.md)) |
 | Transactional email | Manifest field only (`email.provider: brevo`); no code path uses it yet - see [Not supported yet](#not-supported-yet) |
 
 ## Not supported yet
@@ -50,11 +52,12 @@ Proxmox VE 9.2 node, see [What has been validated](#what-has-been-validated).
 | Pre-releases | Only `vX.Y.Z` tags are releases; `-rc.1` and the like are ignored | [0020](decisions/0020-trunk-releases-gitops-environments.md) |
 | Pinned base-service images | Technitium, Prometheus, Loki, and Grafana still use `latest` | - |
 | DNS registration | Technitium LXC exists; nothing registers a record in it | [0007](decisions/0007-technitium-configurable-domain.md) |
-| Ingress (Cloudflare Tunnel) | Services are reachable only via their private LXC IP; Gitea and its registry are plain HTTP | [0005](decisions/0005-cloudflare-tunnel-ingress.md) |
+| Custom public names | Public hostnames are derived from the project's and services' names; `domain.subdomain` in the manifest isn't used, and `nested` names need ACM enabled by hand | [0022](decisions/0022-cloudflare-tunnel-access-workers.md) |
+| Frontend-only projects | A web frontend needs at least one service in the manifest | [0022](decisions/0022-cloudflare-tunnel-access-workers.md) |
 | Keycloak realm/client provisioning | Keycloak LXC exists; nothing creates the `platform` realm, per-project realms, or app OIDC clients/roles | [0008](decisions/0008-keycloak-scope.md), [0014](decisions/0014-keycloak-realm-per-project.md) |
 | Terraform state encryption | State is plain JSON in the (private) GitOps repo, not SOPS-encrypted as designed | [0013](decisions/0013-terraform-state-in-gitops-repo.md) |
 | Observability wiring | Prometheus/Grafana/Loki LXC exists; no project service is actually scraped or ships logs to it, despite `observability.metrics`/`logs` in the manifest | - |
-| Frontend deploy | `frontend` in the manifest is documentation only; no command builds/deploys to Cloudflare Pages or Firebase | - |
+| Mobile frontend deploy | `frontend.type: mobile` (Firebase) is validated, not deployed | - |
 | Fleet-wide status | `urbex status` is scoped to one project+environment at a time; Komodo's UI is the cross-project view | - |
 | Per-project Proxmox isolation | New projects should get their own resource pool, a group for their users with minimal permissions, and dedicated technical users; today every LXC goes in the platform-wide `proxmox.pool`, managed with the operator's token | [roadmap](roadmap.md) |
 | Cross-machine concurrency guard | Two machines applying against copies of the same GitOps repo can silently conflict | [0013](decisions/0013-terraform-state-in-gitops-repo.md) |
@@ -139,6 +142,22 @@ were destroyed (Terraform now runs two operations at a time and retries
 once); and SSH timed out while the network still had the old LXCs' MAC
 addresses (longer timeout, retries).
 
+**On a real Cloudflare account** (Free plan zone, 2026-10-02), with a
+pool-scoped Proxmox token: bootstrap published Keycloak
+(`auth-urbex.<domain>`, issuer public), Gitea and Komodo behind Access
+(redirect to the team's login, one-time PIN), and the webhook listener;
+a project with a public API and a web frontend then ran on staging
+(`api-staging-hello-urbex`, `staging-hello-urbex`), followed `main` -
+the frontend served a new version 91 seconds after the push - and was
+released and promoted to prod (`api-hello-urbex`, `hello-urbex`, the
+same build). `destroy` of both environments and `teardown` left nothing
+of urbex on the account - tunnel, routes, DNS records, Access objects,
+Workers and their domains - and everything else untouched. It surfaced:
+Access set up after routing (a failed Access setup left Gitea and Komodo
+exposed for a few minutes; now Access comes first and nothing is
+published without it), Access errors carried in a different field, and
+a Workers API answering 200 with no body.
+
 ## Priorities
 
 Roughly in the order that makes each subsequent item worth doing.
@@ -157,8 +176,9 @@ Roughly in the order that makes each subsequent item worth doing.
    ([ADR-0020](decisions/0020-trunk-releases-gitops-environments.md)).
 5. **DNS registration in Technitium.** Removes the "find the IP" step
    from every other workflow.
-6. **Cloudflare Tunnel ingress**, once there's a domain/DNS story to
-   attach it to.
+6. ~~**Cloudflare Tunnel ingress**~~ Done, with Access and web
+   frontends on Workers
+   ([ADR-0022](decisions/0022-cloudflare-tunnel-access-workers.md)).
 
 ### P2 - identity, secrets, observability
 
