@@ -551,7 +551,7 @@ credentials, the SSH and age keys, the GitOps repo and your projects.
 cd urbex-cli
 tools/operator/urbex-op build                     # the image, with urbex built from the checkout
 tools/operator/urbex-op -w ~/urbex-work init      # SSH key, age key, folders
-export URBEX_PROXMOX_TOKEN='urbex@pve!cli=...'     # tokens stay in your environment
+tools/operator/urbex-op -w ~/urbex-work set proxmoxToken   # stored in the workspace (or export URBEX_PROXMOX_TOKEN)
 tools/operator/urbex-op -w ~/urbex-work 'urbex bootstrap'
 tools/operator/urbex-op -w ~/urbex-work 'cd /work/projects/acme-app && urbex apply staging'
 tools/operator/urbex-op -w ~/urbex-work shell     # an interactive shell
