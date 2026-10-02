@@ -36,6 +36,7 @@ copy of the GitOps repo.
 - [Give a service more CPU, memory, or disk](#give-a-service-more-cpu-memory-or-disk)
 - [Several projects on one platform](#several-projects-on-one-platform)
 - [Decommission an environment or a project](#decommission-an-environment-or-a-project)
+- [Remove the whole platform](#remove-the-whole-platform)
 
 **Operating**
 
@@ -45,6 +46,7 @@ copy of the GitOps repo.
 - [A build or a deploy failed](#a-build-or-a-deploy-failed)
 - [An LXC was recreated](#an-lxc-was-recreated)
 - [Bootstrap was interrupted](#bootstrap-was-interrupted)
+- [Ansible refuses an LXC: host key changed](#ansible-refuses-an-lxc-host-key-changed)
 - [The LXCs can't resolve names](#the-lxcs-cant-resolve-names)
 - [Drive Urbex from an LLM agent](#drive-urbex-from-an-llm-agent)
 - [Known limitations and workarounds](#known-limitations-and-workarounds)
@@ -339,6 +341,23 @@ folders, destroys its LXCs, and frees their addresses. With the last
 environment gone, the project's Builds and webhook go too. The repo and
 its images stay on Gitea - delete them there if you want them gone.
 
+## Remove the whole platform
+
+First every project's environments, then the platform:
+
+```sh
+cd ~/src/acme-app && urbex destroy staging && urbex destroy prod   # each project
+urbex teardown            # says what it will destroy and lose
+urbex teardown --yes      # destroys the base-service LXCs
+```
+
+`teardown` refuses while any project environment exists. It destroys
+Gitea's LXC, and with it every repository and image there: make sure
+project repos are pushed somewhere else first. Afterwards the GitOps
+repo's working copy is the only copy left - keep it - and
+`~/.urbex/credentials.yaml` keeps only what you provided. `urbex
+bootstrap` builds a new platform from that working copy.
+
 ## See what runs where
 
 ```sh
@@ -418,6 +437,22 @@ with `found existing Proxmox container(s) ... not tracked`, it found
 `urbex-*` containers that the GitOps repo you pointed it at doesn't know
 about: point `--gitops-repo` at the right one, or remove the stray
 containers.
+
+## Ansible refuses an LXC: host key changed
+
+Symptom: `bootstrap` or `apply` fails with `REMOTE HOST IDENTIFICATION
+HAS CHANGED` for an LXC's address. The LXC at that address isn't the one
+whose key is recorded in the GitOps repo's `state/known_hosts`. `urbex`
+handles the LXCs it creates and destroys itself; this happens when one
+was replaced some other way (by hand in Proxmox, or by Terraform when a
+change forces it). If you know why it changed, forget the old key and
+run the command again:
+
+```sh
+ssh-keygen -f $URBEX_GITOPS_REPO/state/known_hosts -R 192.168.1.210
+```
+
+If you don't, find out first: that is what the check is for.
 
 ## The LXCs can't resolve names
 

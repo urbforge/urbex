@@ -11,7 +11,7 @@ for finding your way in the UIs, and for knowing what is safe to touch.
 
 | Resource | Name | Created by | Removed by |
 |---|---|---|---|
-| Base-service LXCs | `urbex-gitea`, `urbex-komodo`, `urbex-technitium`, `urbex-keycloak`, `urbex-observability` | `urbex bootstrap` | - (by hand) |
+| Base-service LXCs | `urbex-gitea`, `urbex-komodo`, `urbex-technitium`, `urbex-keycloak`, `urbex-observability` | `urbex bootstrap` | `urbex teardown` |
 | Project LXCs | `<project>-<service>-<env>` | `urbex apply <env>` | `urbex destroy <env>` |
 
 All are unprivileged Debian 13 LXCs with `nesting` (and `keyctl`, unless
@@ -37,12 +37,12 @@ their data is in Docker volumes on the LXC.
 
 | Resource | Name | Created by | Removed by |
 |---|---|---|---|
-| Admin user | `urbex-admin` | `urbex bootstrap` | - |
-| API token | `urbex-cli` (of `urbex-admin`) | `urbex bootstrap` | - |
-| Organization | `<org>` | `urbex bootstrap` | - |
-| GitOps repo | `<org>/gitops` | `urbex bootstrap` | - |
-| GitOps webhook | on `<org>/gitops`, branch `main` → the `urbex-gitops` Procedure | `urbex bootstrap` | - |
-| Project repo | `<org>/<project>` | `urbex apply` (if missing) | - (by hand) |
+| Admin user | `urbex-admin` | `urbex bootstrap` | `urbex teardown` |
+| API token | `urbex-cli` (of `urbex-admin`) | `urbex bootstrap` | `urbex teardown` |
+| Organization | `<org>` | `urbex bootstrap` | `urbex teardown` |
+| GitOps repo | `<org>/gitops` | `urbex bootstrap` | `urbex teardown` |
+| GitOps webhook | on `<org>/gitops`, branch `main` → the `urbex-gitops` Procedure | `urbex bootstrap` | `urbex teardown` |
+| Project repo | `<org>/<project>` | `urbex apply` (if missing) | by hand, or with Gitea by `urbex teardown` |
 | Project webhook | on `<org>/<project>`, every push → the `urbex-release` Action | `urbex apply` | `urbex destroy` of the last environment |
 | Release tags | `vX.Y.Z` on `<org>/<project>` | `urbex release`, or you | - |
 | Images | packages `<project>-<service>`, tags `<short hash>` and `<X.Y.Z>`: `<gitea>/<org>/<project>-<service>:<tag>` | the `urbex-release` Action | - (by hand) |
@@ -54,14 +54,14 @@ them up in Gitea under the organization's *Packages* when they pile up.
 
 | Resource | Name | Created by | Removed by |
 |---|---|---|---|
-| Admin user | `urbex-admin` | `urbex bootstrap` | - |
-| API key | `urbex-cli` | `urbex bootstrap` | - |
-| Onboarding key | `urbex-projects` | `urbex bootstrap` | - |
-| Git account, registry account | `urbex-admin` on `<gitea>`, with the Gitea token | `urbex bootstrap` | - |
-| Variables | `URBEX_GITEA_URL`, `URBEX_GITEA_USER`, `URBEX_GITEA_TOKEN` (secret), `URBEX_ORG` | `urbex bootstrap` | - |
-| Server (builder) | `urbex-komodo` | `urbex bootstrap` | - |
-| Action | `urbex-release` | `urbex bootstrap` | - |
-| Procedure | `urbex-gitops` | `urbex bootstrap` | - |
+| Admin user | `urbex-admin` | `urbex bootstrap` | `urbex teardown` |
+| API key | `urbex-cli` | `urbex bootstrap` | `urbex teardown` |
+| Onboarding key | `urbex-projects` | `urbex bootstrap` | `urbex teardown` |
+| Git account, registry account | `urbex-admin` on `<gitea>`, with the Gitea token | `urbex bootstrap` | `urbex teardown` |
+| Variables | `URBEX_GITEA_URL`, `URBEX_GITEA_USER`, `URBEX_GITEA_TOKEN` (secret), `URBEX_ORG` | `urbex bootstrap` | `urbex teardown` |
+| Server (builder) | `urbex-komodo` | `urbex bootstrap` | `urbex teardown` |
+| Action | `urbex-release` | `urbex bootstrap` | `urbex teardown` |
+| Procedure | `urbex-gitops` | `urbex bootstrap` | `urbex teardown` |
 | Builds | `<project>-<service>` | `urbex apply` | `urbex destroy` of the last environment |
 | Servers | `<project>-<service>-<env>` | the LXC's agent, with the onboarding key, during `urbex apply` | `urbex destroy <env>` |
 | Stacks | `<project>-<service>-<env>` | `urbex apply <env>` | `urbex destroy <env>` |

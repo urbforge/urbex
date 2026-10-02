@@ -8,8 +8,8 @@ the CLI, this document takes stock of the whole project at once, for
 planning purposes. Update it whenever a priority
 item below gets implemented, or a new gap is discovered.
 
-As of this writing: 21 ADRs, 10 `urbex` CLI commands, 122 unit tests
-across 17 Go packages, and an end-to-end test (`e2e/run.sh`) in
+As of this writing: 21 ADRs, 11 `urbex` CLI commands, 137 unit tests
+across 19 Go packages, and an end-to-end test (`e2e/run.sh`) in
 [`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli) that runs
 the real binary through a whole project lifecycle against Debian 13
 machines standing in for LXCs, with only Terraform and the Proxmox API
@@ -35,6 +35,7 @@ Proxmox VE 9.2 node, see [What has been validated](#what-has-been-validated).
 | `urbex release` | Tags the next release on the commit staging runs (or `main`, or `--ref`) and waits for its images |
 | `urbex deploy` | Sets an environment's version in the GitOps repo (latest release, `--version` with a release or commit - also how to roll back - or `--follow-main`), pushes, waits for Komodo to run it |
 | `urbex promote` | Sets prod to the release staging runs: prod runs the very images staging ran; refuses an unreleased commit |
+| `urbex teardown` | Destroys the base-service LXCs (refusing while project environments exist), forgets the generated credentials, keeps the GitOps repo locally |
 | `urbex destroy` | Takes the environment's Stacks down, removes its folder, `terraform destroy`, clears the allocation ledger; the project's Builds go with its last environment |
 | `urbex status` | Proxmox container presence, allocation ledger and, per service, the version the GitOps repo asks for against what Komodo runs |
 | Transactional email | Manifest field only (`email.provider: brevo`); no code path uses it yet - see [Not supported yet](#not-supported-yet) |
@@ -124,6 +125,19 @@ Terraform fails on an LXC that no longer exists (403 instead of 404), so
 a destroy interrupted halfway couldn't be resumed (now such LXCs are
 dropped from the state first). A destroy with a push to `main` racing it,
 and a destroy resumed after a failure, both ended clean.
+
+Removing the platform (`urbex teardown --yes`, new) destroyed the five
+base-service LXCs and their disks, left the resource pool with only its
+storages, forgot the generated credentials, and kept the GitOps repo as
+a local commit; `urbex bootstrap` then rebuilt the platform from that
+working copy. Reusing the same addresses for new LXCs surfaced three
+more problems, fixed: Ansible refused the new LXCs' host keys (host keys
+now live in the GitOps repo's `state/known_hosts`, and urbex forgets an
+address's key when it creates or destroys the LXC there); Proxmox's
+storage lock timed out with five LXCs created at once right after five
+were destroyed (Terraform now runs two operations at a time and retries
+once); and SSH timed out while the network still had the old LXCs' MAC
+addresses (longer timeout, retries).
 
 ## Priorities
 

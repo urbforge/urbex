@@ -33,6 +33,7 @@ gitops/
 │   └── prod/
 │       └── acme-app/ ...
 ├── state/allocations.json         VMID/IP of every project LXC
+├── state/known_hosts              SSH host keys of the LXCs
 ├── terraform/
 │   ├── base/                      the base services' LXCs, and their state
 │   ├── modules/lxc/               the LXC module everything uses
@@ -187,6 +188,7 @@ Only `main` is deployed: other branches are for pull requests.
 | `…/secrets.sops.env` | `urbex apply` (placeholder), `urbex secret`, `sops` | When secrets change. |
 | `…/compose.yaml` | `urbex apply`, `urbex deploy` | When `urbex.yaml` changes. |
 | `state/allocations.json` | `urbex plan`, `apply`, `destroy` | New and removed LXCs. |
+| `state/known_hosts` | Ansible (through `bootstrap`, `apply`), `urbex` | New and removed LXCs. |
 | `terraform/`, `ansible/` | `urbex bootstrap`, `plan`, `apply`, `destroy` | Every run. |
 
 Since `urbex` and Komodo both push, pull before you edit by hand
@@ -215,6 +217,15 @@ before every change.
     "nextIpOffset": 211
   }
   ```
+
+- **`state/known_hosts`** - the SSH host keys of the LXCs, which Ansible
+  connects to with this file only. An LXC seen for the first time is
+  trusted and recorded; one whose key changes is refused. When `urbex`
+  creates an LXC that wasn't there (`bootstrap`, `apply`) or destroys one
+  (`destroy`, `teardown`), it forgets the key recorded for its address
+  first - the address may have belonged to another LXC. Being in the
+  repo, the trust is the same on every machine that runs `urbex`. Host
+  keys are public: nothing secret here.
 
 The Terraform state and inputs hold no secrets: the LXCs get only the
 SSH public key from Terraform; passwords are set by Ansible.
