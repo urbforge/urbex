@@ -579,19 +579,5 @@ to production.
 
 ## Known limitations and workarounds
 
-What Urbex doesn't do yet, and what to do meanwhile. The full list,
-with priorities, is in [`status.md`](status.md).
-
-| Gap | Workaround today |
-|---|---|
-| No internal DNS | Reach services on the LAN by IP (printed by `apply` and `deploy`, and in `state/allocations.json`); Gitea and its registry are plain HTTP on the LAN. Publicly, use [Cloudflare](#put-the-platform-on-the-internet). |
-| Mobile frontends aren't deployed | `frontend.type: mobile` is validated only: deploy with `firebase deploy`. |
-| Git over HTTPS through Access | Gitea's public hostname is for browsers; `git` keeps using the LAN address. |
-| `promote` commits straight to the GitOps repo | [Gate production behind a pull request](#gate-production-behind-a-pull-request). |
-| Only `vX.Y.Z` tags are releases | No pre-releases: test on staging, which runs every commit, and release a patch version. |
-| Komodo can miss a push made seconds after another | The `urbex` commands handle it; by hand, see [A push didn't deploy](#a-push-didnt-deploy). |
-| Old images aren't pruned | Delete them in Gitea, under the organization's *Packages*; keep the ones environments run and your releases. |
-| Removing a service from `urbex.yaml` leaves it running | `urbex destroy <env>` and `apply` again, or remove its Stack (Komodo), LXC (Proxmox), and folder (GitOps repo) by hand. |
-| No fleet-wide status | `grep -r '^VERSION' environments/` in the GitOps repo, `urbex status <env>` per project, or Komodo's UI. |
-| Terraform state isn't encrypted | It holds no secrets, but keep the GitOps repo private. |
-| No concurrency guard across machines | Don't run `plan`, `apply`, or `destroy` from two machines at once; `urbex` pulls before and pushes after every change. |
+They are all in [`known-limitations.md`](known-limitations.md), each
+with what to do meanwhile.

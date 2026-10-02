@@ -50,9 +50,11 @@ domain (`domain`). The platform config picks how they are joined
 | API `api`, prod | `api-hello-urbex.cubotto.net` | `api.hello.urbex.cubotto.net` |
 | API `api`, staging | `api-staging-hello-urbex.cubotto.net` | `api.staging.hello.urbex.cubotto.net` |
 
-With `nested`, Urbex orders an ACM certificate for the wildcards it uses
-(`*.urbex.<domain>`, `*.<project>.urbex.<domain>`, ...); ACM itself is
-enabled on the zone by the operator.
+With `nested`, the zone needs certificates for every level used
+(`*.urbex.<domain>`, `*.<project>.urbex.<domain>`, ...): ACM is enabled
+on the zone and the certificates ordered by the operator - ordering them
+from Urbex is not implemented (see
+[known limitations](../known-limitations.md#public-endpoints-cloudflare)).
 
 ### One tunnel for the platform
 

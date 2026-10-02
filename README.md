@@ -23,7 +23,9 @@ secrets - deployed by Komodo on every change. With Cloudflare, public
 APIs go out through a Cloudflare Tunnel, web frontends are deployed to
 Cloudflare Workers, Keycloak is public, and Gitea and Komodo sit behind
 Cloudflare Access. Validated on a real Proxmox VE 9.2 node and Cloudflare
-account. Not wired up yet: internal DNS and Keycloak realms/clients. See [`docs/status.md`](docs/status.md) for the full
+account. Not wired up yet: internal DNS, Keycloak realms/clients, log
+shipping - see [`docs/known-limitations.md`](docs/known-limitations.md).
+See [`docs/status.md`](docs/status.md) for the full
 supported/not-supported breakdown and implementation priorities, and
 `docs/` more generally for architecture, decisions, and roadmap.
 
@@ -93,4 +95,6 @@ Design and planning:
 - [`docs/decisions/`](docs/decisions/) — Architecture Decision Records.
 - [`docs/status.md`](docs/status.md) — what's supported today vs. not
   yet, and priorities.
+- [`docs/known-limitations.md`](docs/known-limitations.md) — every known
+  limitation, with what to do meanwhile.
 - [`docs/roadmap.md`](docs/roadmap.md) — v1 vs v2+ scope.

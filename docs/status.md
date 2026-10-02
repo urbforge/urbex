@@ -5,11 +5,13 @@ A snapshot of what Urbex actually does today versus the v1 vision in
 build next. Where the [getting started](getting-started.md) and
 [cookbook](cookbook.md) call out gaps from the perspective of *using*
 the CLI, this document takes stock of the whole project at once, for
-planning purposes. Update it whenever a priority
-item below gets implemented, or a new gap is discovered.
+planning purposes. Every known limitation, with what to do meanwhile, is
+in [`known-limitations.md`](known-limitations.md); the table below keeps
+only the gaps that matter for planning. Update both whenever a priority
+item gets implemented, or a new gap is discovered.
 
-As of this writing: 22 ADRs, 11 `urbex` CLI commands, 137 unit tests
-across 19 Go packages, and an end-to-end test (`e2e/run.sh`) in
+As of this writing: 22 ADRs, 11 `urbex` CLI commands, 156 unit tests
+across 20 Go packages, and an end-to-end test (`e2e/run.sh`) in
 [`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli) that runs
 the real binary through a whole project lifecycle against Debian 13
 machines standing in for LXCs, with only Terraform and the Proxmox API
@@ -183,12 +185,14 @@ Roughly in the order that makes each subsequent item worth doing.
 ### P2 - identity, secrets, observability
 
 7. **Keycloak realm/client provisioning** - unblocks `auth.keycloak`/
-   `auth.roles` in the manifest, currently inert.
+   `auth.roles` in the manifest, currently inert, and registers every
+   frontend as a client automatically (next, see [roadmap](roadmap.md)).
 8. ~~**Secret encryption (SOPS+age)**~~ Done for application secrets
    ([ADR-0020](decisions/0020-trunk-releases-gitops-environments.md));
    Terraform state is still stored unencrypted.
-9. **Observability wiring** - connect project services to
-   Prometheus/Loki so `observability.metrics`/`logs` in the manifest do
+9. **Observability wiring** - ship every service's logs to Loki
+   automatically (next, see [roadmap](roadmap.md)), then metrics to
+   Prometheus, so `observability.metrics`/`logs` in the manifest do
    something.
 
 ### P3 - operability polish

@@ -1,5 +1,9 @@
 # Roadmap
 
+What Urbex covers (v1), what comes next, and later evolutions. For what
+works today and its limits, see [`status.md`](status.md) and
+[`known-limitations.md`](known-limitations.md).
+
 ## v1 — scope
 
 - Infrastructure target: **Proxmox only** (an already-running server).
@@ -38,6 +42,25 @@
   `urbex.platform.yaml` (`proxmox.pool`), managed with the operator's
   token.
 - Interface: **CLI** (`urbex`), usable by Claude Code, Codex, or a human.
+
+## Next — planned additions
+
+Building on what v1 already runs:
+
+- **Several frontends per project**, web and mobile together (e.g. a
+  web app, an admin console and a mobile app), each with its own build,
+  hostname and deploy.
+- **Frontends registered as Keycloak clients automatically**: each web
+  and mobile frontend gets its OIDC client (redirect URIs from its
+  hostnames, per environment) in the project's realm.
+- **Service logs shipped to the observability stack automatically**:
+  every service's container logs reach Loki, labelled with project,
+  service and environment, and are searchable in Grafana with no setup
+  in the project.
+- **Per-project Proxmox isolation** (pool, group, technical users - see
+  v1 scope above).
+- **Keycloak realms and clients per project** (ADR-0014), Keycloak in
+  production mode, and internal DNS registration in Technitium.
 
 ## v2+ — future evolutions
 
