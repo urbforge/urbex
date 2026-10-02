@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed. Implements [ADR-0005](0005-cloudflare-tunnel-ingress.md)
+Accepted. Implements [ADR-0005](0005-cloudflare-tunnel-ingress.md)
 (ingress through Cloudflare Tunnel) and replaces its "one `cloudflared`
 per LXC/project/environment"; refines the hostname scheme of
 [ADR-0007](0007-technitium-configurable-domain.md); replaces Cloudflare
