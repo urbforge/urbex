@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted
+Superseded by [ADR-0020](0020-trunk-releases-gitops-environments.md):
+a Git tag is a release, and what an environment runs is a version
+written in the GitOps repo.
 
 ## Context
 

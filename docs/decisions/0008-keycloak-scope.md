@@ -35,7 +35,7 @@ admin SSO.
   project vs multiple clients in a shared realm) and the application
   roles declared in the manifest (`urbex.yaml`).
 - The app manifest schema must include a section to declare the roles
-  required by a service (see [`manifest-spec.md`](../manifest-spec.md)).
+  required by a service (see [the manifest reference](../reference/manifest.md)).
 - Bootstrap must create a working administrative Keycloak with at least
   one "platform" realm for the SSO of base tools, separate from the
   application realms/clients of individual projects.

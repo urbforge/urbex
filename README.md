@@ -13,20 +13,27 @@ infrastructure in every environment.
 
 ## Status
 
-🚧 Early scaffold. All 8 `urbex` CLI subcommands (`init`, `bootstrap`,
-`plan`, `apply`, `deploy`, `status`, `promote`, `destroy`) have a real
-implementation in [`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli),
-but several pieces of the v1 vision below aren't wired up yet (image
-build/push, DNS/ingress, Komodo integration). See
-[`docs/status.md`](docs/status.md) for the full supported/not-supported
-breakdown and implementation priorities, and `docs/` more generally for
-architecture, decisions, and roadmap.
+🚧 Early stage. The `urbex` CLI is implemented in
+[`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli): bootstrap
+sets up Gitea and Komodo; projects are developed trunk-based, and every
+push to `main` is built by Komodo and deployed to staging; releases are
+tags, promoted to production; and each environment runs what its folder
+in the GitOps repo says - version, configuration, SOPS-encrypted
+secrets - deployed by Komodo on every change. With Cloudflare, public
+APIs go out through a Cloudflare Tunnel, web frontends are deployed to
+Cloudflare Workers, Keycloak is public, and Gitea and Komodo sit behind
+Cloudflare Access. Validated on a real Proxmox VE 9.2 node and Cloudflare
+account. Not wired up yet: internal DNS, Keycloak realms/clients, log
+shipping - see [`docs/known-limitations.md`](docs/known-limitations.md).
+See [`docs/status.md`](docs/status.md) for the full
+supported/not-supported breakdown and implementation priorities, and
+`docs/` more generally for architecture, decisions, and roadmap.
 
 ## v1 — goal
 
 - Infrastructure target: an already-running **Proxmox** server.
-- Every project service runs in a dedicated **LXC**, with its own
-  `docker compose`, cloned from a Git repo.
+- Every project service runs in a dedicated **LXC** (Debian 13), as a
+  container Komodo builds from the project's Git repo and rolls out.
 - Platform services (created on-demand if missing):
   - **Gitea** — self-hosted Git server (app repos + GitOps repo).
   - **Komodo** — build/update pipeline and LXC management.
@@ -34,7 +41,9 @@ architecture, decisions, and roadmap.
   - **Keycloak** — identity provider (SSO for admin tools and OIDC for
     apps).
   - **Prometheus + Grafana + Loki** — metrics, logs, and observability.
-- All infrastructure is declared and versioned in a **GitOps repo**.
+- All infrastructure is declared and versioned in a **GitOps repo**,
+  which also says, per environment, what each project runs: version,
+  configuration, secrets.
 - Main interface: a **CLI** (`urbex`), designed to be driven by an LLM in a
   terminal, but also usable by a human.
 - The public domain is **configurable**, not hardcoded: Urbex must be
@@ -58,16 +67,34 @@ architecture, decisions, and roadmap.
 
 ## Documentation
 
-- [`docs/status.md`](docs/status.md) — what's supported today vs. not
-  yet, and priorities for what to implement next.
-- [`docs/guide.md`](docs/guide.md) — real-world, step-by-step walkthrough
-  (bootstrap → deploy → test → promote → iterate → fleet status) using
-  the actual CLI, with known gaps called out inline.
-- [`docs/credentials.md`](docs/credentials.md) — every credential Urbex
-  reads, what it's for, and exactly how to get it.
-- [`docs/architecture.md`](docs/architecture.md) — components, flows, CLI.
-- [`docs/manifest-spec.md`](docs/manifest-spec.md) — schema of the app
-  manifest (`urbex.yaml`); formal schema in
-  [`schemas/urbex.schema.json`](schemas/urbex.schema.json).
-- [`docs/roadmap.md`](docs/roadmap.md) — v1 vs v2+ scope.
+Start here:
+
+- [**Getting started**](docs/getting-started.md) — from an empty Proxmox
+  server to a service in production, every command and its output.
+- [**Cookbook**](docs/cookbook.md) — recipes: releasing, rolling back,
+  pinning staging, secrets, adding services, troubleshooting, driving
+  Urbex from an LLM agent.
+
+Reference ([index](docs/reference/)):
+
+- [CLI](docs/reference/cli.md) — every command and flag.
+- [Manifest](docs/reference/manifest.md) — `urbex.yaml`, field by field;
+  formal schema in [`schemas/urbex.schema.json`](schemas/urbex.schema.json).
+- [Platform config](docs/reference/platform-config.md) —
+  `urbex.platform.yaml`.
+- [GitOps repo](docs/reference/gitops-repo.md) — layout, version,
+  configuration and secrets files, how a commit is deployed.
+- [Credentials](docs/reference/credentials.md) — every credential and how
+  to get it.
+- [Platform resources](docs/reference/platform-resources.md) — what Urbex
+  creates on Proxmox, Gitea, and Komodo.
+
+Design and planning:
+
+- [`docs/architecture.md`](docs/architecture.md) — components and flows.
 - [`docs/decisions/`](docs/decisions/) — Architecture Decision Records.
+- [`docs/status.md`](docs/status.md) — what's supported today vs. not
+  yet, and priorities.
+- [`docs/known-limitations.md`](docs/known-limitations.md) — every known
+  limitation, with what to do meanwhile.
+- [`docs/roadmap.md`](docs/roadmap.md) — v1 vs v2+ scope.

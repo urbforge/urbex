@@ -32,7 +32,7 @@ through an interactive wizard.
 ## Consequences
 
 - A clear, versioned schema for `urbex.yaml` is needed (see
-  [`manifest-spec.md`](../manifest-spec.md)), with explicit validation
+  [the manifest reference](../reference/manifest.md)), with explicit validation
   (`urbex init` / `urbex plan` must reject malformed manifests with
   errors an LLM can understand).
 - Urbex must be able to read a manifest from an external repo
