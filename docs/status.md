@@ -41,6 +41,7 @@ Proxmox VE 9.2 node, see [What has been validated](#what-has-been-validated).
 | `urbex destroy` | Takes the environment's Stacks down, removes its folder, `terraform destroy`, clears the allocation ledger; the project's Builds go with its last environment |
 | `urbex status` | Proxmox container presence, allocation ledger and, per service, the version the GitOps repo asks for against what Komodo runs |
 | **Public endpoints (Cloudflare)** | One tunnel for the platform, `cloudflared` on `urbex-tunnel`; Keycloak public, Gitea and Komodo behind Cloudflare Access (one-time PIN for listed e-mails), Komodo's webhook listener public; services with `public: true` published per environment; flat or nested hostnames ([ADR-0022](decisions/0022-cloudflare-tunnel-access-workers.md)) |
+| **Cloudflare Quick Tunnel** | `cloudflare.quickTunnel: true`, without an account, exposes every `public: true` service on its own `https://*.trycloudflare.com` hostname: a `cloudflared` sidecar on the service's LXC, `urbex apply`/`urbex status` reading the hostname live from it. Not a production substitute for ADR-0022 ([ADR-0025](decisions/0025-cloudflare-quick-tunnel.md)) |
 | **Logs and resource monitoring** | A Grafana Alloy agent on every LXC - base services and project services - sends its service's logs to Loki and the LXC's CPU, memory, disk and network to Prometheus, labelled `kind` (`platform`/`app`), `service`, `host`, and `project`/`env` for apps; Grafana comes with both data sources and the *Urbex logs* and *Urbex resources* dashboards; `observability.logs: false` stops a project's logs ([ADR-0023](decisions/0023-service-logs-to-loki.md)) |
 | **Identity (Keycloak)** | A realm per project environment (`<project>-<env>`) with the services' roles and a public OIDC client per frontend; in staging a test user per role (`urbex users staging`) and a password-login client for tests; services with `auth.keycloak` get the issuer and keys ([ADR-0024](decisions/0024-keycloak-realm-per-environment.md)) |
 | **Komodo** | Every LXC is a Komodo Server - the base services' too, for monitoring their containers - and Komodo's resources are tagged like Grafana: `platform`, or `app` + project (+ environment) |
@@ -148,6 +149,21 @@ storage lock timed out with five LXCs created at once right after five
 were destroyed (Terraform now runs two operations at a time and retries
 once); and SSH timed out while the network still had the old LXCs' MAC
 addresses (longer timeout, retries).
+
+**Cloudflare Quick Tunnel, on the same real Proxmox node** (2026-10-04),
+without any Cloudflare account configured: with `cloudflare.quickTunnel:
+true` and a service marked `public: true`, `urbex apply` ran the
+`quicktunnel` role, printed a `https://*.trycloudflare.com` hostname,
+and the deployed service (a Go API behind a small web UI) answered
+through it from outside the LAN. A second, unmodified `urbex apply` run
+immediately after was checked specifically for the hostname's stability:
+the role's `docker compose up -d` reported no change, the sidecar
+container was not recreated, and the same hostname kept answering - a
+plain re-apply does not disrupt an already-running Quick Tunnel, unlike
+what an initial reading of [ADR-0025](decisions/0025-cloudflare-quick-tunnel.md)
+assumed (corrected there). Not exercised there: recovery after an actual
+network interruption, and the hostname change expected from an LXC
+reboot or a config change that recreates the sidecar.
 
 **On a real Cloudflare account** (Free plan zone, 2026-10-02), with a
 pool-scoped Proxmox token: bootstrap published Keycloak
