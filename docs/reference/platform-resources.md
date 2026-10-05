@@ -139,6 +139,19 @@ Compose runs through `/opt/urbex/bin/urbex-compose`, which decrypts the
 secrets. Nothing in a Stack's definition depends on what it deploys:
 after `apply`, everything is a commit.
 
+## Technitium
+
+Unlike Cloudflare, these exist regardless of `cloudflare.accountId`/
+`zoneId` - Technitium is part of the base platform
+([ADR-0007](../decisions/0007-technitium-configurable-domain.md)). See
+[ADR-0026](../decisions/0026-technitium-internal-dns-records.md).
+
+| Resource | Name | Created by | Removed by |
+|---|---|---|---|
+| Admin API token | `urbex-cli` (of Technitium's admin user) | `urbex bootstrap` | `urbex teardown` (the LXC itself) |
+| Zone (Primary) | `domain` from `urbex.platform.yaml` | `urbex bootstrap` | `urbex teardown` (the LXC itself) |
+| A records | same hostname `cloudflare.hostnames` would publish, e.g. `<service>[-staging]-<project>-urbex.<domain>` - every declared service, whether or not it's `public: true` | `urbex apply <env>` | `urbex destroy <env>` only - removing a service from `urbex.yaml` leaves its record behind, like its LXC and Stack (see [known limitations](../known-limitations.md#projects-and-deploys)) |
+
 ## Cloudflare
 
 Only with Cloudflare configured ([ADR-0022](../decisions/0022-cloudflare-tunnel-access-workers.md)).

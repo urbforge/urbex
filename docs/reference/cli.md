@@ -87,13 +87,17 @@ the base services are updated.
    `ansible-playbook` with `ansible/playbook.yml`: Docker on every LXC,
    then Gitea, Komodo (Core, database, Periphery), Technitium, Keycloak,
    Prometheus/Loki/Grafana.
-6. Platform setup: a Gitea token, the org and its `gitops` repo; a Komodo
+6. Mints a Technitium API token (with the generated
+   `URBEX_TECHNITIUM_ADMIN_PASSWORD`, which Ansible also set as
+   Technitium's own admin password) and creates a zone named after
+   `domain` - see [ADR-0026](../decisions/0026-technitium-internal-dns-records.md).
+7. Platform setup: a Gitea token, the org and its `gitops` repo; a Komodo
    API key, the onboarding key, Komodo's Gitea git and registry accounts,
    the `URBEX_*` Komodo variables, the `urbex-release` Action, the
    `urbex-gitops` Procedure; `.sops.yaml`; commits and pushes the GitOps
    repo, and adds its webhook. Tokens and keys already in the credentials
    file are reused, not rotated.
-7. With Cloudflare configured
+8. With Cloudflare configured
    ([ADR-0022](../decisions/0022-cloudflare-tunnel-access-workers.md)):
    before Ansible, the tunnel `urbex-platform` and the token its
    connector on `urbex-tunnel` runs with; at the end, Access first - the
@@ -156,9 +160,12 @@ there is something to run, waits until it runs.
    the services' roles, a client per frontend; in staging a test user per
    role and the `urbex-test` client, the passwords kept encrypted in the
    GitOps repo ([ADR-0024](../decisions/0024-keycloak-realm-per-environment.md)).
-6. **Publishing** (with Cloudflare): routes the services with
-   `public: true` through the platform's tunnel and points their DNS
-   records at it; a service no longer public loses its route and record.
+6. **Publishing**: registers every declared service's internal DNS name
+   in Technitium, at its LAN IP, regardless of Cloudflare
+   ([ADR-0026](../decisions/0026-technitium-internal-dns-records.md));
+   with Cloudflare, also routes the services with `public: true` through
+   the platform's tunnel and points their public DNS records at it - a
+   service no longer public loses its route and public record.
 7. **What to run:**
    - a new **staging** follows `main`: `apply` builds `main`'s head and
      waits until staging runs it;
@@ -366,7 +373,9 @@ Removes an environment of the project, in this order:
 2. Takes its Komodo Stacks down (`docker compose down`) and deletes them:
    from here on nothing deploys the environment. With Cloudflare, removes
    its public services' routes and DNS records, and its web frontend's
-   Worker and custom domain. Deletes its Keycloak realm, users included.
+   Worker and custom domain. Removes each service's internal DNS record
+   from Technitium ([ADR-0026](../decisions/0026-technitium-internal-dns-records.md)).
+   Deletes its Keycloak realm, users included.
 3. `terraform destroy` for the services' LXCs (and their disks).
 4. Deletes their Komodo Servers.
 5. If the project has no environment left: deletes the project repo's

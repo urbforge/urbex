@@ -75,7 +75,7 @@ cloudflare:
 | `cloudflare.tunnelName` | `<name>-platform` | The Cloudflare Tunnel Urbex creates and routes through. |
 | `cloudflare.access.emails` | required with Cloudflare | Who may open Gitea and Komodo through Cloudflare Access (one-time PIN sent to the address). |
 | `cloudflare.quickTunnel` | `false` | Alternative to `cloudflare.accountId`/`zoneId` (mutually exclusive with them): a Cloudflare Quick Tunnel per `public: true` service, no account needed - see [ADR-0025](../decisions/0025-cloudflare-quick-tunnel.md) and its [known limitations](../known-limitations.md#public-endpoints-cloudflare). Doesn't apply to `frontend.type: web`. |
-| `dns.technitiumUrl` | | ⚠️ Not used yet (DNS records). |
+| `dns.technitiumUrl` | | ⚠️ Not used: `urbex` finds Technitium itself from the allocated LAN IP. Internal DNS registration itself is implemented and doesn't read this field - see [ADR-0026](../decisions/0026-technitium-internal-dns-records.md). |
 | `keycloak.baseUrl`, `keycloak.platformRealm` (`platform`) | | ⚠️ Not used yet (SSO). |
 
 ## Public hostnames

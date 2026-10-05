@@ -3,8 +3,11 @@
 Everything Urbex doesn't do yet, or does with a catch, in one place - with
 what to do meanwhile. What *is* supported, and the priorities, are in
 [`status.md`](status.md); planned work is in [`roadmap.md`](roadmap.md).
-Last reviewed: 2026-10-04, after the validation on a real Proxmox VE 9.2
-node and Cloudflare account, and of Cloudflare Quick Tunnel
+Last reviewed: 2026-10-05, after internal DNS registration in Technitium
+([ADR-0026](decisions/0026-technitium-internal-dns-records.md)) was
+validated against a real Proxmox node; before that, after the
+validation on a real Proxmox VE 9.2 node and Cloudflare account, and of
+Cloudflare Quick Tunnel
 ([ADR-0025](decisions/0025-cloudflare-quick-tunnel.md)) on the same node.
 
 - [Platform](#platform)
@@ -36,7 +39,7 @@ node and Cloudflare account, and of Cloudflare Quick Tunnel
 | **`urbex promote` commits straight to the GitOps repo.** | [Gate production behind a pull request](cookbook.md#gate-production-behind-a-pull-request) with Gitea's protected file patterns. |
 | **Komodo can miss a push** made within ~5 seconds of the previous one (it caches the repo); the scheduled run catches up within 15 minutes. | The `urbex` commands handle it; by hand, run the `urbex-gitops` Procedure. |
 | **Every push to `main` is built**, documentation-only ones included, and **images are never pruned.** | Delete old ones in Gitea, under the organization's *Packages*. |
-| **Removing a service from `urbex.yaml`** leaves its LXC, Stack, folder and routes. | `urbex destroy <env>` before removing it, or remove them by hand. |
+| **Removing a service from `urbex.yaml`** leaves its LXC, Stack, folder, routes and internal DNS record. | `urbex destroy <env>` before removing it, or remove them by hand. |
 | **Changing a port or healthcheck** needs `urbex deploy <env>` (it regenerates the compose files); configuration in `urbex.yaml`'s `env` only seeds `config.env` once. | Edit `config.env` in the GitOps repo afterwards. |
 | **No concurrency guard across machines** on the Terraform state and the address ledger. | Don't run `plan`, `apply`, `destroy` from two machines at once. |
 | **Terraform state isn't encrypted** (it holds no secrets). | Keep the GitOps repo private. |
@@ -69,7 +72,8 @@ node and Cloudflare account, and of Cloudflare Quick Tunnel
 | Limitation | Workaround / consequence |
 |---|---|
 | **Keycloak covers the projects' users only** ([ADR-0024](decisions/0024-keycloak-realm-per-environment.md)): no admin SSO for Gitea/Komodo/Grafana, no confidential clients for services calling each other, one client per frontend (and one frontend per project); destroying an environment deletes its realm's users. | Add what's missing in Keycloak's console: urbex keeps what it doesn't manage (extra redirect URIs, users, clients). |
-| **No internal DNS**: Technitium runs, nothing registers names in it. | Reach services by IP on the LAN. |
+| **A platform bootstrapped before internal DNS registration existed keeps Technitium's original admin password**: `DNS_SERVER_ADMIN_PASSWORD` only takes effect while Technitium has no configuration yet, so re-running `urbex bootstrap` on an already-configured instance doesn't rotate it, and minting the API token fails ([ADR-0026](decisions/0026-technitium-internal-dns-records.md)). | Seed the real password into `~/.urbex/credentials.yaml`'s `technitiumAdminPassword` before bootstrapping. |
+| **Base-service LXCs have no internal DNS record** - only project services, registered by `urbex apply` ([ADR-0026](decisions/0026-technitium-internal-dns-records.md)). | Reach base services by the LAN IP `urbex status` prints. |
 | **Logs and LXC resource metrics only** ([ADR-0023](decisions/0023-service-logs-to-loki.md)): the services' own metrics (`observability.metrics`) aren't scraped, there is no per-container resource usage, no alerting, and web frontends' logs are on Cloudflare. | Cloudflare's Workers logs for frontends. |
 | **Loki keeps logs forever**: default single-node configuration, no retention set; the observability LXC's disk fills up over time. | Grow its disk (`terraform/base`), or clean Loki's volume. |
 | **Grafana's admin password** is the only login (no Keycloak SSO), and Grafana is reachable on the LAN only. | `admin` / `grafanaAdminPassword` from `~/.urbex/credentials.yaml`, on `http://<observability IP>:3000`. |

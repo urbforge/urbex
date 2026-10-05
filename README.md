@@ -22,9 +22,11 @@ in the GitOps repo says - version, configuration, SOPS-encrypted
 secrets - deployed by Komodo on every change. With Cloudflare, public
 APIs go out through a Cloudflare Tunnel, web frontends are deployed to
 Cloudflare Workers, Keycloak is public, and Gitea and Komodo sit behind
-Cloudflare Access. Validated on a real Proxmox VE 9.2 node and Cloudflare
-account. Not wired up yet: internal DNS, Keycloak realms/clients, log
-shipping - see [`docs/known-limitations.md`](docs/known-limitations.md).
+Cloudflare Access; every service also gets an internal DNS name in
+Technitium, independently of Cloudflare. Validated on a real Proxmox
+VE 9.2 node and Cloudflare account - see
+[`docs/known-limitations.md`](docs/known-limitations.md) for what's
+still missing.
 See [`docs/status.md`](docs/status.md) for the full
 supported/not-supported breakdown and implementation priorities, and
 `docs/` more generally for architecture, decisions, and roadmap.

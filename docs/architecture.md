@@ -85,12 +85,12 @@ command and flag is in the [CLI reference](reference/cli.md).
 | `urbex bootstrap` | Provisions the base services on a fresh Proxmox (Gitea, Komodo, Technitium, Keycloak, Prometheus/Grafana/Loki) and initializes the GitOps repo. See [ADR-0006](decisions/0006-bootstrap-command.md). |
 | `urbex init` | Generates/validates `urbex.yaml` in the app repo, typically run by the LLM after analyzing the project code. |
 | `urbex plan <env>` | Computes the infrastructure changes needed (Terraform diff + Ansible config) for an environment, without applying them. |
-| `urbex apply <env>` | Applies the planned changes: creates/updates LXCs, connects them to Komodo, declares the project's builds and the environment's folder and stacks; a new staging starts following `main`. Still to come: DNS, ingress, Keycloak/Grafana registration. |
+| `urbex apply <env>` | Applies the planned changes: creates/updates LXCs, connects them to Komodo, declares the project's builds and the environment's folder and stacks, registers each service's internal DNS name in Technitium and, with Cloudflare, its public route; a new staging starts following `main`. |
 | `urbex release` | Tags the next release on the commit staging runs; Komodo gives that commit's images the version. |
 | `urbex deploy <env>` | Sets what an environment runs (a release, a commit, or "follow `main`"), in the GitOps repo; Komodo deploys it. |
 | `urbex promote` | Sets production to the release staging runs. |
 | `urbex secret` | Manages an environment's SOPS-encrypted secrets in the GitOps repo. |
-| `urbex status` | Current status of a project/environment (LXCs, wanted and running versions; later DNS and certificates). |
+| `urbex status` | Current status of a project/environment (LXCs, wanted and running versions; later certificates). |
 | `urbex destroy <env>` | Removes an environment's infrastructure. |
 
 ### App manifest (`urbex.yaml`)
@@ -139,10 +139,20 @@ Consistent with using Cloudflare Pages for the web frontend. See
 ### Internal DNS: Technitium
 
 A dedicated LXC running Technitium DNS resolves names between services on
-the Proxmox network (e.g. `api.staging.<project>.internal`). The public
-domain used for exposed endpoints is **configurable per deployment**, not
-hardcoded in the Urbex project. See
+the Proxmox network. The public domain used for exposed endpoints is
+**configurable per deployment**, not hardcoded in the Urbex project. See
 [ADR-0007](decisions/0007-technitium-configurable-domain.md).
+
+`urbex bootstrap` creates one zone in Technitium, named after the
+platform's domain, and `urbex apply <env>` registers an A record per
+declared service there, at its LAN IP - the same hostname Cloudflare
+would publish for it (`api-staging-acme-app-urbex.<domain>`, say), not
+a separate internal-only naming scheme: the same name resolves
+differently on the LAN than on the internet (split-horizon DNS), rather
+than needing two names to remember. Registration doesn't depend on
+Cloudflare being configured - it's the only way most LAN-only
+deployments resolve a service by name instead of its IP. See
+[ADR-0026](decisions/0026-technitium-internal-dns-records.md).
 
 ### Identity: Keycloak
 
