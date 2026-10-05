@@ -3,8 +3,9 @@
 Everything Urbex doesn't do yet, or does with a catch, in one place - with
 what to do meanwhile. What *is* supported, and the priorities, are in
 [`status.md`](status.md); planned work is in [`roadmap.md`](roadmap.md).
-Last reviewed: 2026-10-02, after the validation on a real Proxmox VE 9.2
-node and Cloudflare account.
+Last reviewed: 2026-10-04, after the validation on a real Proxmox VE 9.2
+node and Cloudflare account, and of Cloudflare Quick Tunnel
+([ADR-0025](decisions/0025-cloudflare-quick-tunnel.md)) on the same node.
 
 - [Platform](#platform)
 - [Projects and deploys](#projects-and-deploys)
@@ -50,6 +51,8 @@ node and Cloudflare account.
 | **Access allows a list of e-mail addresses** with a one-time PIN; no identity provider, no groups. | Keycloak as Access's identity provider is a possible next step. |
 | **The Cloudflare token is broad and stored in Komodo** (secret variable) for the web deploys. | Use a token scoped to the one zone and account, as in [credentials](reference/credentials.md#cloudflare-api-token). |
 | **Only HTTP services are published**; no TCP/UDP, no per-path routing within a service. | - |
+| **Cloudflare Quick Tunnel (`cloudflare.quickTunnel`) has no authentication whatsoever** and the hostname is not stable across a sidecar recreation (LXC reboot, manual restart, a change to the compose file `quicktunnel` renders); recovery after an actual network interruption to the connector isn't guaranteed. A plain `urbex apply` re-application, by itself, does not recreate the sidecar and so does not change the hostname ([ADR-0025](decisions/0025-cloudflare-quick-tunnel.md)). | For evaluation, demos and local development only; never the only public endpoint of a real deployment. `cloudflare.accountId`/`zoneId` ([ADR-0022](decisions/0022-cloudflare-tunnel-access-workers.md)) for anything else. |
+| **Quick Tunnel doesn't apply to web frontends.** `frontend.type: web` keeps needing `cloudflare.accountId`/`zoneId` regardless of `quickTunnel`. | - |
 
 ## Frontends
 

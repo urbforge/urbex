@@ -38,6 +38,16 @@ cloudflare:                       # optional: public endpoints
     emails: [you@example.com, them@example.com]
 ```
 
+Without a Cloudflare account, `cloudflare.quickTunnel: true` is an
+alternative that publishes `public: true` services on
+`https://*.trycloudflare.com` instead - see
+[ADR-0025](../decisions/0025-cloudflare-quick-tunnel.md):
+
+```yaml
+cloudflare:
+  quickTunnel: true    # alternative to accountId/zoneId, not both
+```
+
 ## Fields
 
 | Field | Default | Meaning |
@@ -64,6 +74,7 @@ cloudflare:                       # optional: public endpoints
 | `cloudflare.hostnames` | `flat` | How labels are joined - see [public hostnames](#public-hostnames). |
 | `cloudflare.tunnelName` | `<name>-platform` | The Cloudflare Tunnel Urbex creates and routes through. |
 | `cloudflare.access.emails` | required with Cloudflare | Who may open Gitea and Komodo through Cloudflare Access (one-time PIN sent to the address). |
+| `cloudflare.quickTunnel` | `false` | Alternative to `cloudflare.accountId`/`zoneId` (mutually exclusive with them): a Cloudflare Quick Tunnel per `public: true` service, no account needed - see [ADR-0025](../decisions/0025-cloudflare-quick-tunnel.md) and its [known limitations](../known-limitations.md#public-endpoints-cloudflare). Doesn't apply to `frontend.type: web`. |
 | `dns.technitiumUrl` | | ⚠️ Not used yet (DNS records). |
 | `keycloak.baseUrl`, `keycloak.platformRealm` (`platform`) | | ⚠️ Not used yet (SSO). |
 
