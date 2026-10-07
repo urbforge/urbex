@@ -10,7 +10,7 @@ in [`known-limitations.md`](known-limitations.md); the table below keeps
 only the gaps that matter for planning. Update both whenever a priority
 item gets implemented, or a new gap is discovered.
 
-As of this writing: 24 ADRs, 12 `urbex` CLI commands, 156 unit tests
+As of this writing: 26 ADRs, 12 `urbex` CLI commands, 156 unit tests
 across 20 Go packages, and an end-to-end test (`e2e/run.sh`) in
 [`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli) that runs
 the real binary through a whole project lifecycle against Debian 13
@@ -44,6 +44,7 @@ Proxmox VE 9.2 node, see [What has been validated](#what-has-been-validated).
 | **Cloudflare Quick Tunnel** | `cloudflare.quickTunnel: true`, without an account, exposes every `public: true` service on its own `https://*.trycloudflare.com` hostname: a `cloudflared` sidecar on the service's LXC, `urbex apply`/`urbex status` reading the hostname live from it. Not a production substitute for ADR-0022 ([ADR-0025](decisions/0025-cloudflare-quick-tunnel.md)) |
 | **Logs and resource monitoring** | A Grafana Alloy agent on every LXC - base services and project services - sends its service's logs to Loki and the LXC's CPU, memory, disk and network to Prometheus, labelled `kind` (`platform`/`app`), `service`, `host`, and `project`/`env` for apps; Grafana comes with both data sources and the *Urbex logs* and *Urbex resources* dashboards; `observability.logs: false` stops a project's logs ([ADR-0023](decisions/0023-service-logs-to-loki.md)) |
 | **Identity (Keycloak)** | A realm per project environment (`<project>-<env>`) with the services' roles and a public OIDC client per frontend; in staging a test user per role (`urbex users staging`) and a password-login client for tests; services with `auth.keycloak` get the issuer and keys ([ADR-0024](decisions/0024-keycloak-realm-per-environment.md)) |
+| **Internal DNS (Technitium)** | A zone named after the platform's domain, created by `urbex bootstrap`; `urbex apply <env>` sets an A record per declared service at its LAN IP (the same hostname Cloudflare would publish), `urbex destroy <env>` removes them; independent of Cloudflare being configured ([ADR-0026](decisions/0026-technitium-internal-dns-records.md)) |
 | **Komodo** | Every LXC is a Komodo Server - the base services' too, for monitoring their containers - and Komodo's resources are tagged like Grafana: `platform`, or `app` + project (+ environment) |
 | **Endpoints** | `urbex status` lists every platform address (LAN and public) and where the logins are; `urbex status <env>` each service's |
 | **Running from a container** | `tools/operator/urbex-op` in urbex-cli: an image with urbex and its tools, run against a workspace folder |
@@ -56,10 +57,9 @@ Proxmox VE 9.2 node, see [What has been validated](#what-has-been-validated).
 |---|---|---|
 | Promotion by pull request | `urbex promote` commits to the GitOps repo directly; a PR-gated production folder is a Gitea setting Urbex doesn't manage (see the [cookbook](cookbook.md#gate-production-behind-a-pull-request)) | [0020](decisions/0020-trunk-releases-gitops-environments.md) |
 | Image cleanup | Every push to `main` leaves an image in the registry; nothing prunes them | [0021](decisions/0021-staging-follows-main.md) |
-| Removing a service | Dropping a service from `urbex.yaml` leaves its LXC, Stack and folder behind | - |
+| Removing a service | Dropping a service from `urbex.yaml` leaves its LXC, Stack, folder and internal DNS record behind | - |
 | Pre-releases | Only `vX.Y.Z` tags are releases; `-rc.1` and the like are ignored | [0020](decisions/0020-trunk-releases-gitops-environments.md) |
 | Pinned base-service images | Technitium, Prometheus, Loki, and Grafana still use `latest` | - |
-| DNS registration | Technitium LXC exists; nothing registers a record in it | [0007](decisions/0007-technitium-configurable-domain.md) |
 | Custom public names | Public hostnames are derived from the project's and services' names; `domain.subdomain` in the manifest isn't used, and `nested` names need ACM enabled by hand | [0022](decisions/0022-cloudflare-tunnel-access-workers.md) |
 | Frontend-only projects | A web frontend needs at least one service in the manifest | [0022](decisions/0022-cloudflare-tunnel-access-workers.md) |
 | Keycloak beyond projects | No `platform` realm (admin SSO), no confidential clients for service-to-service calls; Keycloak in development mode | [0008](decisions/0008-keycloak-scope.md), [0024](decisions/0024-keycloak-realm-per-environment.md) |
@@ -165,6 +165,25 @@ assumed (corrected there). Not exercised there: recovery after an actual
 network interruption, and the hostname change expected from an LXC
 reboot or a config change that recreates the sidecar.
 
+**Internal DNS (Technitium), on the same real Proxmox node**
+(2026-10-05): `urbex bootstrap` set `DNS_SERVER_ADMIN_PASSWORD`, minted
+an API token with it, and created a zone named after the platform's
+domain - confirmed independently with a direct `GET /api/zones/list`
+call using the stored token. `urbex apply staging` then set an A record
+for the sample service's hostname at its allocated LAN IP; querying
+Technitium directly (`GET /api/zones/records/get`) returned exactly
+that record, resolving to the right address, with no Cloudflare account
+configured - confirming registration doesn't depend on it
+([ADR-0026](decisions/0026-technitium-internal-dns-records.md)). The
+one gap it surfaced isn't a code bug: the lab's Technitium instance had
+already been configured (by a previous bootstrap, before this feature
+existed) with a different admin password than the newly generated one,
+so bootstrap's token minting needed that real password seeded into
+`~/.urbex/credentials.yaml` by hand first - see
+[known limitations](known-limitations.md#platform). Not exercised
+there: `urbex destroy`'s record removal, and a from-scratch bootstrap
+where Technitium has no prior configuration at all.
+
 **On a real Cloudflare account** (Free plan zone, 2026-10-02), with a
 pool-scoped Proxmox token: bootstrap published Keycloak
 (`auth-urbex.<domain>`, issuer public), Gitea and Komodo behind Access
@@ -216,8 +235,9 @@ Roughly in the order that makes each subsequent item worth doing.
 3. ~~**Push the GitOps repo to Gitea.**~~ Done.
 4. ~~**Komodo-driven rollouts, from the GitOps repo.**~~ Done
    ([ADR-0020](decisions/0020-trunk-releases-gitops-environments.md)).
-5. **DNS registration in Technitium.** Removes the "find the IP" step
-   from every other workflow.
+5. ~~**DNS registration in Technitium.**~~ Done
+   ([ADR-0026](decisions/0026-technitium-internal-dns-records.md)):
+   removes the "find the IP" step from every other workflow.
 6. ~~**Cloudflare Tunnel ingress**~~ Done, with Access and web
    frontends on Workers
    ([ADR-0022](decisions/0022-cloudflare-tunnel-access-workers.md)).

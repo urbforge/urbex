@@ -59,8 +59,10 @@ Building on what v1 already runs:
   area: the services' own metrics, alerting, Loki retention.
 - **Per-project Proxmox isolation** (pool, group, technical users - see
   v1 scope above).
-- Keycloak in production mode, a `platform` realm for admin SSO, and
-  internal DNS registration in Technitium.
+- ~~**Internal DNS registration in Technitium**~~ - done, independent
+  of Cloudflare being configured
+  ([ADR-0026](decisions/0026-technitium-internal-dns-records.md)).
+- Keycloak in production mode, a `platform` realm for admin SSO.
 
 ## v2+ — future evolutions
 

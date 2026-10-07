@@ -49,6 +49,7 @@ copy of the GitOps repo.
 **Operating**
 
 - [Find every endpoint](#find-every-endpoint)
+- [Resolve a service by name on the LAN](#resolve-a-service-by-name-on-the-lan)
 - [See what runs where](#see-what-runs-where)
 - [Read logs, watch resources](#read-logs-watch-resources)
 - [Run urbex from a container](#run-urbex-from-a-container)
@@ -519,6 +520,24 @@ the default `flat` names under `example.com`,
 | An API, staging / prod | `https://api-staging-acme-app-urbex.example.com`, `https://api-acme-app-urbex.example.com` |
 | The web frontend, staging / prod | `https://staging-acme-app-urbex.example.com`, `https://acme-app-urbex.example.com` |
 | A service on the LAN | `http://<its LXC's IP>:<port>` - `state/allocations.json` in the GitOps repo |
+
+## Resolve a service by name on the LAN
+
+`urbex status`/`apply`/`deploy` print a service's LAN address as an IP,
+but the same hostname Cloudflare would publish for it also resolves on
+the LAN through Technitium, whether or not Cloudflare is configured
+([ADR-0026](decisions/0026-technitium-internal-dns-records.md)):
+
+```sh
+dig @<technitium ip> api-staging-acme-app-urbex.example.com +short   # or +tcp, see below
+```
+
+Point another service, or your own machine, at Technitium
+(`urbex.platform.yaml`'s `proxmox.network.dnsServers`, or your router)
+to resolve it without specifying `@<ip>` every time. Querying it through
+a tunnel that only proxies TCP (some userspace VPN/SSH proxies do) needs
+`+tcp`, since a plain DNS lookup is UDP by default - that's a property
+of the tunnel, not of Technitium.
 
 ## See what runs where
 

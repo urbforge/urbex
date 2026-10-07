@@ -2,7 +2,12 @@
 
 ## Status
 
-Accepted
+Accepted. Technitium and the configurable domain stand; the hostname
+scheme sketched below (`api.staging.<project>.internal`) was never
+implemented and is replaced by
+[ADR-0026](0026-technitium-internal-dns-records.md): one zone named
+after the platform's own domain, with the same hostnames Cloudflare
+would publish.
 
 ## Context
 
