@@ -114,7 +114,7 @@ proxmox:
     cidr: 192.168.1.0/24
     gateway: 192.168.1.1
     baseHostOffset: 200           # base services at .200-.204, projects from .210
-    dnsServers: [192.168.1.1]     # if the Proxmox host resolves via Tailscale or a local stub
+    dnsServers: [192.168.1.1]     # your LAN's resolver; default: the gateway
 ```
 
 Then provide the two credentials Urbex can't generate, and run it again:
