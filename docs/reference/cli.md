@@ -338,11 +338,11 @@ Endpoints:
   Gitea (web, git, registry)   http://git.urbex.example.com:3000            http://192.168.1.200:3000              https://git-urbex.example.com  (public: behind Cloudflare Access)
   Komodo                       http://komodo.urbex.example.com:9120         http://192.168.1.201:9120              https://komodo-urbex.example.com  (public: behind Cloudflare Access)
   Komodo webhooks              http://hooks.urbex.example.com:9120/listener/ http://192.168.1.201:9120/listener/    https://hooks-urbex.example.com/listener/  (signed calls only)
-  Keycloak                     http://auth.urbex.example.com:8080           http://192.168.1.203:8080              https://auth-urbex.example.com
-  Technitium DNS console       http://dns.urbex.example.com:5380            http://192.168.1.202:5380
-  Grafana                      http://grafana.urbex.example.com:3000        http://192.168.1.204:3000                (dashboards Urbex logs, Urbex resources)
-  Prometheus                   http://prometheus.urbex.example.com:9090     http://192.168.1.204:9090
-  Loki                         http://loki.urbex.example.com:3100           http://192.168.1.204:3100
+  Keycloak                     http://auth.urbex.example.com:8080           http://192.168.1.203:8080              https://auth-urbex.example.com  (realms public; admin console behind Cloudflare Access)
+  Technitium DNS console       http://dns.urbex.example.com:5380            http://192.168.1.202:5380              https://dns-urbex.example.com  (public: behind Cloudflare Access)
+  Grafana                      http://grafana.urbex.example.com:3000        http://192.168.1.204:3000              https://grafana-urbex.example.com  (public: behind Cloudflare Access; dashboards Urbex logs, Urbex resources)
+  Prometheus                   http://prometheus.urbex.example.com:9090     http://192.168.1.204:9090              https://prometheus-urbex.example.com  (public: behind Cloudflare Access; remote write internal only)
+  Loki                         http://loki.urbex.example.com:3100           http://192.168.1.204:3100              https://loki-urbex.example.com  (public: behind Cloudflare Access; push internal only)
 
 Logins: Gitea and Komodo urbex-admin, Grafana admin, Keycloak admin; passwords in ~/.urbex/credentials.yaml
 (giteaAdminPassword, komodoAdminPassword, grafanaAdminPassword, keycloakAdminPassword).

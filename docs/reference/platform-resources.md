@@ -166,10 +166,10 @@ didn't create makes it stop instead.
 | Resource | Name | Created by | Removed by |
 |---|---|---|---|
 | Tunnel (remotely managed) | `urbex-platform` | `urbex bootstrap` | `urbex teardown` |
-| Tunnel routes, DNS CNAMEs | `auth-`, `git-`, `komodo-`, `hooks-urbex.<domain>` | `urbex bootstrap` | `urbex teardown` |
+| Tunnel routes, DNS CNAMEs | `auth-`, `git-`, `komodo-`, `hooks-`, `dns-`, `grafana-`, `prometheus-`, `loki-urbex.<domain>` (Prometheus' remote write and Loki's push paths answer 404) | `urbex bootstrap` | `urbex teardown` |
 | Access login method | One-time PIN (if the organization had none) | `urbex bootstrap` | - |
 | Access policy | `urbex-operators`: the `cloudflare.access.emails` | `urbex bootstrap` | `urbex teardown` |
-| Access applications | `urbex-git`, `urbex-komodo` | `urbex bootstrap` | `urbex teardown` |
+| Access applications | `urbex-git`, `urbex-komodo`, `urbex-dns`, `urbex-grafana`, `urbex-prometheus`, `urbex-loki`, `urbex-auth-admin` (`/admin` of Keycloak's hostname), `urbex-auth-master` (`/realms/master`) | `urbex bootstrap` | `urbex teardown` |
 | Tunnel routes, DNS CNAMEs of public services | `<service>[-staging]-<project>-urbex.<domain>` | `urbex apply <env>` | `urbex destroy <env>`, or `apply` once not public |
 | Workers, custom domains | `urbex-<project>-web-<env>` at `[staging-]<project>-urbex.<domain>` | the web Stack (`apply`, deploys) | `urbex destroy <env>` |
 
