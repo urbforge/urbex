@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed. Refines [ADR-0022](0022-cloudflare-tunnel-access-workers.md)
+Accepted. Refines [ADR-0022](0022-cloudflare-tunnel-access-workers.md)
 (more services behind Access, tunnel routes by name),
 [ADR-0023](0023-service-logs-to-loki.md) (three kinds instead of two,
 the agents' own logs, per-container resources) and
@@ -67,7 +67,7 @@ Every service Urbex runs, platform or project, current or new:
      Gitea's SSH, the Loki and Prometheus write paths): by internal
      name only, with no public hostname.
 5. **Is tagged with one of three kinds**, the same on Komodo and in
-   Grafana: `platform`, `app` or `agent` (names still open, see below).
+   Grafana: `platform`, `app` or `agent`.
 
 They are part of the definition of done of any change that adds or
 changes a service. The service catalog of
@@ -162,9 +162,6 @@ where their compose files live and in who can repair them:
   platform's Stacks.
 
 ### Kinds and tags
-
-Three kinds. Their names are still open in review; this ADR uses the
-proposal `platform`, `app`, `agent`.
 
 | Kind | What | Komodo tag | Grafana label |
 |---|---|---|---|
