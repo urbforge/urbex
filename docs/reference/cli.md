@@ -29,6 +29,14 @@ the [cookbook](../cookbook.md).
   `urbex.yaml` is in the current directory (`--file` to point elsewhere),
   and on the GitOps repo working copy given by `--gitops-repo` or
   `URBEX_GITOPS_REPO`.
+- **Addresses**: from your machine the CLI reaches the platform at the
+  LAN addresses it computes from `urbex.platform.yaml`; the services
+  reach each other by internal name. Project commands first ask
+  Technitium for the platform services' names: if one points elsewhere
+  (an LXC recreated on another address, a config that no longer
+  matches), they stop with both addresses; if Technitium doesn't answer,
+  or a name has no record yet, they warn and go on
+  ([ADR-0027](../decisions/0027-service-conventions.md)).
 - **A version** is either a release (`1.4.2`, from the tag `v1.4.2`) or
   a commit of `main`, as its short hash (`a1b2c3d`) - the tag of the image
   built for that commit.
@@ -191,7 +199,7 @@ from bootstrap, `terraform`, `ansible-playbook`, `git`, the SSH agent.
 
 ```
 Deployed acme-app (staging):
-  api              http://192.168.1.210:8080  3f9c2e1 (192.168.1.200:3000/urbex/acme-app-api:3f9c2e1)
+  api              http://192.168.1.210:8080  3f9c2e1 (git.urbex.example.com:3000/urbex/acme-app-api:3f9c2e1)
 staging follows main: every push to main is deployed here.
 ```
 
@@ -222,7 +230,7 @@ equivalent.
 Releasing acme-app v0.4.0 from the commit staging runs (8d41b07).
 Tagged v0.4.0 on 8d41b07; Komodo is publishing its images...
 Released acme-app 0.4.0:
-  api              192.168.1.200:3000/urbex/acme-app-api:0.4.0
+  api              git.urbex.example.com:3000/urbex/acme-app-api:0.4.0
 Put it in production with 'urbex promote' (or 'urbex deploy prod').
 ```
 
@@ -354,7 +362,7 @@ With `<env>`, for each service of the project:
 
 ```
 acme-app (staging):
-  api   acme-app-api-staging   allocated=yes provisioned=yes version=8d41b07(follows-main) stack=running image=192.168.1.200:3000/urbex/acme-app-api:8d41b07
+  api   acme-app-api-staging   allocated=yes provisioned=yes version=8d41b07(follows-main) stack=running image=git.urbex.example.com:3000/urbex/acme-app-api:8d41b07
 ```
 
 | Field | Source |

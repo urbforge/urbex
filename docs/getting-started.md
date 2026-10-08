@@ -197,7 +197,7 @@ Created urbex/acme-app on Gitea with branch main from the local HEAD.
 Building acme-app main@3f9c2e1 on Komodo...
 Waiting for Komodo to deploy acme-app (staging) from the GitOps repo...
 Deployed acme-app (staging):
-  api              http://192.168.1.210:8080  3f9c2e1 (192.168.1.200:3000/urbex/acme-app-api:3f9c2e1)
+  api              http://192.168.1.210:8080  3f9c2e1 (git.urbex.example.com:3000/urbex/acme-app-api:3f9c2e1)
 staging follows main: every push to main is deployed here.
 ```
 
@@ -234,7 +234,7 @@ urbex status staging
 
 ```
 acme-app (staging):
-  api              acme-app-api-staging             allocated=yes provisioned=yes version=8d41b07(follows-main) stack=running image=192.168.1.200:3000/urbex/acme-app-api:8d41b07
+  api              acme-app-api-staging             allocated=yes provisioned=yes version=8d41b07(follows-main) stack=running image=git.urbex.example.com:3000/urbex/acme-app-api:8d41b07
 ```
 
 ## 5. Release and promote to production
@@ -251,13 +251,13 @@ urbex promote           # prod runs v0.1.0
 Releasing acme-app v0.1.0 from the commit staging runs (8d41b07).
 Tagged v0.1.0 on 8d41b07; Komodo is publishing its images...
 Released acme-app 0.1.0:
-  api              192.168.1.200:3000/urbex/acme-app-api:0.1.0
+  api              git.urbex.example.com:3000/urbex/acme-app-api:0.1.0
 Put it in production with 'urbex promote' (or 'urbex deploy prod').
 
 api: none -> 0.1.0
 Waiting for Komodo to deploy acme-app (prod) from the GitOps repo...
 Deployed acme-app (prod):
-  api              http://192.168.1.211:8080  0.1.0 (192.168.1.200:3000/urbex/acme-app-api:0.1.0)
+  api              http://192.168.1.211:8080  0.1.0 (git.urbex.example.com:3000/urbex/acme-app-api:0.1.0)
 ```
 
 The release is the image staging ran, under a second tag; promoting
