@@ -3,7 +3,9 @@
 Everything Urbex doesn't do yet, or does with a catch, in one place - with
 what to do meanwhile. What *is* supported, and the priorities, are in
 [`status.md`](status.md); planned work is in [`roadmap.md`](roadmap.md).
-Last reviewed: 2026-10-05, after internal DNS registration in Technitium
+Last reviewed: 2026-10-08, with the gaps the service conventions
+([ADR-0027](decisions/0027-service-conventions.md)) address; before
+that 2026-10-05, after internal DNS registration in Technitium
 ([ADR-0026](decisions/0026-technitium-internal-dns-records.md)) was
 validated against a real Proxmox node; before that, after the
 validation on a real Proxmox VE 9.2 node and Cloudflare account, and of
@@ -28,6 +30,7 @@ Cloudflare Quick Tunnel
 | **Per-project Proxmox isolation** (resource pool, user group, technical users per project) isn't implemented: every LXC goes in the platform's pool, managed with the operator's token. | Planned ([roadmap](roadmap.md)). |
 | **Keycloak runs in development mode** (embedded H2 database, rebuilt when its configuration changes): it becomes reachable ~4-6 minutes after `urbex bootstrap` reports "Platform ready", and a Keycloak upgrade has to keep the database's credentials (urbex pins those 26.0 used). | Wait; production mode (a real database) is planned with realm provisioning. |
 | **Base-service images** of Technitium, Prometheus, Loki and Grafana use `latest`. | - |
+| **The platform's services are deployed by Ansible**, not as Komodo Stacks: Komodo monitors their containers but has no history or rollback for them ([ADR-0027](decisions/0027-service-conventions.md) moves all but Technitium, Gitea and Komodo to Stacks). | Upgrade them by re-running `urbex bootstrap`. |
 | **`urbex teardown` destroys Gitea**, with every repository and image on it. | Keep project repos pushed elsewhere too. The GitOps repo survives as the local working copy: keep it. |
 | **Rotating generated credentials isn't supported**: bootstrap keeps every value in `~/.urbex/credentials.yaml`, and changing one by hand (the Komodo database password, say) can break the service. | Only by rebuilding the platform: `urbex teardown` then `urbex bootstrap`. |
 
@@ -51,6 +54,7 @@ Cloudflare Quick Tunnel
 | **`nested` hostnames need Advanced Certificate Manager**, which Urbex doesn't enable or order certificates for. | Use the default `flat` names, or enable ACM and order the wildcard certificates by hand. |
 | **Public names are derived** from the project's and services' names; `domain.subdomain` in the manifest isn't used. | - |
 | **Gitea and Komodo behind Access are for browsers.** `git` and the CLI keep using the LAN addresses, and the links Gitea and Komodo generate are LAN ones (Gitea's registry needs its LAN `ROOT_URL`). | Use the LAN, or a VPN, for git and the CLI. |
+| **Grafana, Technitium's console, Prometheus and Loki are LAN-only, and Keycloak's admin console (`/admin`) is public** with the realms ([ADR-0027](decisions/0027-service-conventions.md) puts them all behind Access). | Use the LAN, or a VPN, for the admin UIs; protect Keycloak's admin account with a strong password. |
 | **Access allows a list of e-mail addresses** with a one-time PIN; no identity provider, no groups. | Keycloak as Access's identity provider is a possible next step. |
 | **The Cloudflare token is broad and stored in Komodo** (secret variable) for the web deploys. | Use a token scoped to the one zone and account, as in [credentials](reference/credentials.md#cloudflare-api-token). |
 | **Only HTTP services are published**; no TCP/UDP, no per-path routing within a service. | - |
@@ -73,8 +77,9 @@ Cloudflare Quick Tunnel
 |---|---|
 | **Keycloak covers the projects' users only** ([ADR-0024](decisions/0024-keycloak-realm-per-environment.md)): no admin SSO for Gitea/Komodo/Grafana, no confidential clients for services calling each other, one client per frontend (and one frontend per project); destroying an environment deletes its realm's users. | Add what's missing in Keycloak's console: urbex keeps what it doesn't manage (extra redirect URIs, users, clients). |
 | **A platform bootstrapped before internal DNS registration existed keeps Technitium's original admin password**: `DNS_SERVER_ADMIN_PASSWORD` only takes effect while Technitium has no configuration yet, so re-running `urbex bootstrap` on an already-configured instance doesn't rotate it, and minting the API token fails ([ADR-0026](decisions/0026-technitium-internal-dns-records.md)). | Seed the real password into `~/.urbex/credentials.yaml`'s `technitiumAdminPassword` before bootstrapping. |
-| **Base-service LXCs have no internal DNS record** - only project services, registered by `urbex apply` ([ADR-0026](decisions/0026-technitium-internal-dns-records.md)). | Reach base services by the LAN IP `urbex status` prints. |
-| **Logs and LXC resource metrics only** ([ADR-0023](decisions/0023-service-logs-to-loki.md)): the services' own metrics (`observability.metrics`) aren't scraped, there is no per-container resource usage, no alerting, and web frontends' logs are on Cloudflare. | Cloudflare's Workers logs for frontends. |
+| **Base-service LXCs have no internal DNS record** - only project services, registered by `urbex apply` ([ADR-0026](decisions/0026-technitium-internal-dns-records.md)); planned in [ADR-0027](decisions/0027-service-conventions.md). | Reach base services by the LAN IP `urbex status` prints. |
+| **Services reach each other by IP, and the LXCs don't resolve through Technitium**: Gitea's and the registry's URLs (in image names too), Komodo's address, Loki's and Prometheus' write URLs, Keycloak's JWKS URL and the tunnel's routes hold LAN IPs; recreating a base-service LXC on another address breaks them. Technitium's zone is named after the public domain, so it can't be the LXCs' resolver without hiding the public records ([ADR-0027](decisions/0027-service-conventions.md) moves it to `int.<domain>`). | Keep the base services' addresses fixed (`baseHostOffset`). |
+| **Logs and LXC resource metrics only** ([ADR-0023](decisions/0023-service-logs-to-loki.md)): the services' own metrics (`observability.metrics`) aren't scraped, there is no per-container resource usage, Periphery's and Alloy's logs aren't shipped, only two kinds (`platform`, `app`) tell services apart (three planned: [ADR-0027](decisions/0027-service-conventions.md)), no alerting, and web frontends' logs are on Cloudflare. | Cloudflare's Workers logs for frontends. |
 | **Loki keeps logs forever**: default single-node configuration, no retention set; the observability LXC's disk fills up over time. | Grow its disk (`terraform/base`), or clean Loki's volume. |
 | **Grafana's admin password** is the only login (no Keycloak SSO), and Grafana is reachable on the LAN only. | `admin` / `grafanaAdminPassword` from `~/.urbex/credentials.yaml`, on `http://<observability IP>:3000`. |
 | **Transactional email** (`email.provider: brevo`) is validated only. | - |

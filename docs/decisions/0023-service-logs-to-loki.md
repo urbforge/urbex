@@ -5,6 +5,10 @@
 Accepted. Implements the logging of
 [ADR-0004](0004-gitops-gitea-komodo.md#logging-note), and resource
 monitoring, for the base services and the project services.
+Refined by [ADR-0027](0027-service-conventions.md):
+three kinds (`infra`, `app`, `support`) replace `platform` and `app`,
+Periphery's and Alloy's own logs are shipped as `support`, and
+resources are also collected per container.
 
 ## Context
 
