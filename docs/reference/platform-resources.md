@@ -144,13 +144,16 @@ after `apply`, everything is a commit.
 Unlike Cloudflare, these exist regardless of `cloudflare.accountId`/
 `zoneId` - Technitium is part of the base platform
 ([ADR-0007](../decisions/0007-technitium-configurable-domain.md)). See
-[ADR-0026](../decisions/0026-technitium-internal-dns-records.md).
+[ADR-0026](../decisions/0026-technitium-internal-dns-records.md) and
+[ADR-0027](../decisions/0027-service-conventions.md).
 
 | Resource | Name | Created by | Removed by |
 |---|---|---|---|
 | Admin API token | `urbex-cli` (of Technitium's admin user) | `urbex bootstrap` | `urbex teardown` (the LXC itself) |
-| Zone (Primary) | `domain` from `urbex.platform.yaml` | `urbex bootstrap` | `urbex teardown` (the LXC itself) |
-| A records | same hostname `cloudflare.hostnames` would publish, e.g. `<service>[-staging]-<project>-urbex.<domain>` - every declared service, whether or not it's `public: true` | `urbex apply <env>` | `urbex destroy <env>` only - removing a service from `urbex.yaml` leaves its record behind, like its LXC and Stack (see [known limitations](../known-limitations.md#projects-and-deploys)) |
+| Zone (Primary) | `dns.zone`, by default `<cloudflare.name>.<domain>` (a zone named after `domain`, from an older urbex, is moved and deleted) | `urbex bootstrap` | `urbex teardown` (the LXC itself) |
+| Forwarders (server setting) | `dns.forwarders`, by default `proxmox.network.dnsServers` or the gateway | `urbex bootstrap` | `urbex teardown` (the LXC itself) |
+| A records, platform | `git`, `komodo`, `hooks`, `auth`, `dns`, `grafana`, `prometheus`, `loki`, `tunnel` (with Cloudflare) under the zone | `urbex bootstrap` | `urbex teardown` (the LXC itself) |
+| A records, projects | `<service>.<env>.<project>.<zone>`, `<service>.<project>.<zone>` in prod - every declared service, whether or not it's `public: true` | `urbex apply <env>` | `urbex destroy <env>` only - removing a service from `urbex.yaml` leaves its record behind, like its LXC and Stack (see [known limitations](../known-limitations.md#projects-and-deploys)) |
 
 ## Cloudflare
 

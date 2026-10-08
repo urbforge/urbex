@@ -143,16 +143,16 @@ the Proxmox network. The public domain used for exposed endpoints is
 **configurable per deployment**, not hardcoded in the Urbex project. See
 [ADR-0007](decisions/0007-technitium-configurable-domain.md).
 
-`urbex bootstrap` creates one zone in Technitium, named after the
-platform's domain, and `urbex apply <env>` registers an A record per
-declared service there, at its LAN IP - the same hostname Cloudflare
-would publish for it (`api-staging-acme-app-urbex.<domain>`, say), not
-a separate internal-only naming scheme: the same name resolves
-differently on the LAN than on the internet (split-horizon DNS), rather
-than needing two names to remember. Registration doesn't depend on
-Cloudflare being configured - it's the only way most LAN-only
-deployments resolve a service by name instead of its IP. See
-[ADR-0026](decisions/0026-technitium-internal-dns-records.md).
+`urbex bootstrap` creates one zone in Technitium, the platform's own
+subdomain (`urbex.<domain>` by default), with a name per platform
+service (`git`, `komodo`, `auth`, `dns`, `grafana`, ...); `urbex apply
+<env>` adds one per declared service, at its LAN IP:
+`api.staging.acme-app.urbex.<domain>`, the nested form of its public
+hostname - with `nested` public hostnames, the same name inside and out.
+Technitium forwards every other name to the LAN's resolvers, and every
+LXC resolves through it, so services can reach each other by name.
+Registration doesn't depend on Cloudflare being configured. See
+[ADR-0027](decisions/0027-service-conventions.md).
 
 ### Identity: Keycloak
 

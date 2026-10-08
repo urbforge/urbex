@@ -85,12 +85,18 @@ the base services are updated.
    any missing platform secret into `~/.urbex/credentials.yaml`.
 5. `terraform init` and `terraform apply` in `terraform/base/`, then
    `ansible-playbook` with `ansible/playbook.yml`: Docker on every LXC,
-   then Gitea, Komodo (Core, database, Periphery), Technitium, Keycloak,
-   Prometheus/Loki/Grafana.
+   then Technitium, Gitea, Komodo (Core, database, Periphery), Keycloak,
+   Prometheus/Loki/Grafana. Every LXC resolves through Technitium, then
+   `dns.forwarders`.
 6. Mints a Technitium API token (with the generated
    `URBEX_TECHNITIUM_ADMIN_PASSWORD`, which Ansible also set as
-   Technitium's own admin password) and creates a zone named after
-   `domain` - see [ADR-0026](../decisions/0026-technitium-internal-dns-records.md).
+   Technitium's own admin password), creates the internal zone
+   (`dns.zone`, by default `<cloudflare.name>.<domain>`), sets its
+   forwarders and records every platform service by name (`git`,
+   `komodo`, `hooks`, `auth`, `dns`, `grafana`, `prometheus`, `loki`,
+   `tunnel`). On a platform set up with a zone named after `domain`, it
+   moves the project services' records to the new zone and deletes the
+   old one - see [ADR-0027](../decisions/0027-service-conventions.md).
 7. Platform setup: a Gitea token, the org and its `gitops` repo; a Komodo
    API key, the onboarding key, Komodo's Gitea git and registry accounts,
    the `URBEX_*` Komodo variables, the `urbex-release` Action, the
@@ -161,8 +167,10 @@ there is something to run, waits until it runs.
    role and the `urbex-test` client, the passwords kept encrypted in the
    GitOps repo ([ADR-0024](../decisions/0024-keycloak-realm-per-environment.md)).
 6. **Publishing**: registers every declared service's internal DNS name
-   in Technitium, at its LAN IP, regardless of Cloudflare
-   ([ADR-0026](../decisions/0026-technitium-internal-dns-records.md));
+   in Technitium - `<service>.<env>.<project>.<zone>`, `<service>.<project>.<zone>`
+   in prod - at its LAN IP, regardless of Cloudflare
+   ([ADR-0027](../decisions/0027-service-conventions.md)); a project
+   named like a platform service (`git`, `auth`, ...) is refused;
    with Cloudflare, also routes the services with `public: true` through
    the platform's tunnel and points their public DNS records at it - a
    service no longer public loses its route and public record.
@@ -304,11 +312,13 @@ urbex status [<env>] [--file urbex.yaml] [--gitops-repo <dir>]
 ```
 
 Without `<env>`: the platform and everything on it - which base-service
-LXCs exist on Proxmox, every address of the platform (on the LAN and,
-with Cloudflare, public), where the logins are, and every project
+LXCs exist on Proxmox, every address of the platform (by internal name,
+on the LAN and, with Cloudflare, public - a name whose record is missing
+or points elsewhere says so), where the logins are, and every project
 environment of the GitOps repo: per service its LAN address, its public
 address (the tunnel's route, or the web frontend's Worker), the version
-it is set to, and its Stack's state in Komodo. It runs from anywhere: no
+it is set to, its Stack's state in Komodo, and its internal name,
+checked against Technitium. It runs from anywhere: no
 `urbex.yaml` needed.
 
 ```
@@ -317,24 +327,24 @@ Base services:
   ...
 
 Endpoints:
-  Gitea (web, git, registry)   http://192.168.1.200:3000              https://git-urbex.example.com  (public: behind Cloudflare Access)
-  Komodo                       http://192.168.1.201:9120              https://komodo-urbex.example.com  (public: behind Cloudflare Access)
-  Komodo webhooks              http://192.168.1.201:9120/listener/    https://hooks-urbex.example.com/listener/  (signed calls only)
-  Keycloak                     http://192.168.1.203:8080              https://auth-urbex.example.com
-  Technitium DNS console       http://192.168.1.202:5380
-  Grafana                      http://192.168.1.204:3000                (dashboards Urbex logs, Urbex resources)
-  Prometheus                   http://192.168.1.204:9090
-  Loki                         http://192.168.1.204:3100
+  Gitea (web, git, registry)   http://git.urbex.example.com:3000            http://192.168.1.200:3000              https://git-urbex.example.com  (public: behind Cloudflare Access)
+  Komodo                       http://komodo.urbex.example.com:9120         http://192.168.1.201:9120              https://komodo-urbex.example.com  (public: behind Cloudflare Access)
+  Komodo webhooks              http://hooks.urbex.example.com:9120/listener/ http://192.168.1.201:9120/listener/    https://hooks-urbex.example.com/listener/  (signed calls only)
+  Keycloak                     http://auth.urbex.example.com:8080           http://192.168.1.203:8080              https://auth-urbex.example.com
+  Technitium DNS console       http://dns.urbex.example.com:5380            http://192.168.1.202:5380
+  Grafana                      http://grafana.urbex.example.com:3000        http://192.168.1.204:3000                (dashboards Urbex logs, Urbex resources)
+  Prometheus                   http://prometheus.urbex.example.com:9090     http://192.168.1.204:9090
+  Loki                         http://loki.urbex.example.com:3100           http://192.168.1.204:3100
 
 Logins: Gitea and Komodo urbex-admin, Grafana admin, Keycloak admin; passwords in ~/.urbex/credentials.yaml
 (giteaAdminPassword, komodoAdminPassword, grafanaAdminPassword, keycloakAdminPassword).
 
 Projects:
   acme-app (staging)
-    api            http://192.168.1.210:8080    https://api-staging-acme-app-urbex.example.com   version=8d41b07(follows-main) stack=running
+    api            http://192.168.1.210:8080    https://api-staging-acme-app-urbex.example.com   version=8d41b07(follows-main) stack=running dns=api.staging.acme-app.urbex.example.com
     web            -                            https://staging-acme-app-urbex.example.com       version=8d41b07(follows-main) stack=running
   acme-app (prod)
-    api            http://192.168.1.211:8080    https://api-acme-app-urbex.example.com           version=1.4.0 stack=running
+    api            http://192.168.1.211:8080    https://api-acme-app-urbex.example.com           version=1.4.0 stack=running dns=api.acme-app.urbex.example.com
 ```
 
 Both forms first update the GitOps repo from Gitea (the release Action
@@ -355,8 +365,11 @@ acme-app (staging):
 | `stack`, `image` | What Komodo reports: the Stack's state and the image it runs. |
 
 Then, under *Endpoints*, each service's address on the LAN
-(`http://<ip>:<port>`) and, for a public service or the web frontend,
-its HTTPS address.
+(`http://<ip>:<port>`), for a public service or the web frontend its
+HTTPS address, and its internal name (`dns=...`), checked against
+Technitium: `(missing)` without a record, `(points to ...)` when it
+isn't the allocated IP, `(not checked: no technitium token)` on a
+machine without the token.
 
 Needs: `URBEX_PROXMOX_TOKEN`; the platform credentials for the Komodo
 columns.
@@ -374,7 +387,7 @@ Removes an environment of the project, in this order:
    from here on nothing deploys the environment. With Cloudflare, removes
    its public services' routes and DNS records, and its web frontend's
    Worker and custom domain. Removes each service's internal DNS record
-   from Technitium ([ADR-0026](../decisions/0026-technitium-internal-dns-records.md)).
+   from Technitium ([ADR-0027](../decisions/0027-service-conventions.md)).
    Deletes its Keycloak realm, users included.
 3. `terraform destroy` for the services' LXCs (and their disks).
 4. Deletes their Komodo Servers.

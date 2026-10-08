@@ -68,14 +68,16 @@ cloudflare:
 | `proxmox.network.gateway` | required | Default gateway of the LXCs. |
 | `proxmox.network.baseHostOffset` | `200` | Host number of the first base service's IP (`.200` in a /24). Base services take 5 addresses from there; project LXCs start 10 after it (`.210`). |
 | `proxmox.network.bridge` | `vmbr0` | Proxmox bridge the LXCs attach to. The API token needs `SDN.Use` on it (see [credentials](credentials.md#proxmox-api-token)). |
-| `proxmox.network.dnsServers` | the host's | Nameservers of the LXCs. Unset, each LXC copies the Proxmox host's `resolv.conf` - which breaks when the host resolves through something the LXCs can't reach, such as Tailscale's MagicDNS (`100.100.100.100`): set your router or another LAN resolver. |
+| `proxmox.network.dnsServers` | the gateway | Your LAN's resolvers. Every LXC resolves through Technitium first, then these; they are also Technitium's default forwarders (`dns.forwarders`). Unset, the gateway. Don't use a resolver the LXCs can't reach, such as Tailscale's MagicDNS (`100.100.100.100`). |
 | `cloudflare.accountId`, `cloudflare.zoneId` | none | The Cloudflare account and the zone of `domain`. Set both to publish endpoints on Cloudflare ([ADR-0022](../decisions/0022-cloudflare-tunnel-access-workers.md)); leave both empty to keep everything on the LAN. Needs `URBEX_CLOUDFLARE_TOKEN`. |
 | `cloudflare.name` | `urbex` | Last label of every public hostname, telling Urbex's apart from the zone's others. |
 | `cloudflare.hostnames` | `flat` | How labels are joined - see [public hostnames](#public-hostnames). |
 | `cloudflare.tunnelName` | `<name>-platform` | The Cloudflare Tunnel Urbex creates and routes through. |
 | `cloudflare.access.emails` | required with Cloudflare | Who may open Gitea and Komodo through Cloudflare Access (one-time PIN sent to the address). |
 | `cloudflare.quickTunnel` | `false` | Alternative to `cloudflare.accountId`/`zoneId` (mutually exclusive with them): a Cloudflare Quick Tunnel per `public: true` service, no account needed - see [ADR-0025](../decisions/0025-cloudflare-quick-tunnel.md) and its [known limitations](../known-limitations.md#public-endpoints-cloudflare). Doesn't apply to `frontend.type: web`. |
-| `dns.technitiumUrl` | | ⚠️ Not used: `urbex` finds Technitium itself from the allocated LAN IP. Internal DNS registration itself is implemented and doesn't read this field - see [ADR-0026](../decisions/0026-technitium-internal-dns-records.md). |
+| `dns.zone` | `<cloudflare.name>.<domain>` | The zone Technitium serves the services' internal names in - `git.urbex.example.com`, `api.staging.acme-app.urbex.example.com` ([ADR-0027](../decisions/0027-service-conventions.md)). Technitium answers for the whole zone: keep nothing of yours under it on Cloudflare. |
+| `dns.forwarders` | `proxmox.network.dnsServers`, or the gateway | IP addresses Technitium forwards every name outside `dns.zone` to. |
+| `dns.technitiumUrl` | | ⚠️ Not used: `urbex` finds Technitium itself from the allocated LAN IP. |
 | `keycloak.baseUrl`, `keycloak.platformRealm` (`platform`) | | ⚠️ Not used yet (SSO). |
 
 ## Public hostnames

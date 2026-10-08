@@ -523,18 +523,19 @@ the default `flat` names under `example.com`,
 
 ## Resolve a service by name on the LAN
 
-`urbex status`/`apply`/`deploy` print a service's LAN address as an IP,
-but the same hostname Cloudflare would publish for it also resolves on
-the LAN through Technitium, whether or not Cloudflare is configured
-([ADR-0026](decisions/0026-technitium-internal-dns-records.md)):
+Every service has an internal name in Technitium, whether or not
+Cloudflare is configured: `api.staging.acme-app.urbex.example.com` for
+a project service, `git.urbex.example.com` for Gitea - `urbex status`
+lists them ([ADR-0027](decisions/0027-service-conventions.md)). The
+LXCs resolve through Technitium already; from your own machine:
 
 ```sh
-dig @<technitium ip> api-staging-acme-app-urbex.example.com +short   # or +tcp, see below
+dig @<technitium ip> api.staging.acme-app.urbex.example.com +short   # or +tcp, see below
 ```
 
-Point another service, or your own machine, at Technitium
-(`urbex.platform.yaml`'s `proxmox.network.dnsServers`, or your router)
-to resolve it without specifying `@<ip>` every time. Querying it through
+To resolve them without `@<ip>`, have your router forward the zone
+(`urbex.example.com`) to Technitium (conditional forwarding), or use
+Technitium as your machine's resolver. Querying it through
 a tunnel that only proxies TCP (some userspace VPN/SSH proxies do) needs
 `+tcp`, since a plain DNS lookup is UDP by default - that's a property
 of the tunnel, not of Technitium.
@@ -733,9 +734,11 @@ If you don't, find out first: that is what the check is for.
 ## The LXCs can't resolve names
 
 Symptom: `bootstrap` or `apply` fails in Ansible with `Failed to update
-apt cache`, while the LXCs can ping the internet. They copied the
-Proxmox host's `resolv.conf`, and the host resolves through something
-they can't reach - typically Tailscale's MagicDNS (`100.100.100.100`).
+apt cache`, while the LXCs can ping the internet. The LXCs resolve
+through Technitium, then `proxmox.network.dnsServers` - the gateway when
+unset - and Technitium forwards to the same servers: if the gateway
+doesn't answer DNS, or the servers listed aren't reachable from the LXCs
+(Tailscale's MagicDNS, `100.100.100.100`, say), nothing resolves.
 Give them a resolver on the LAN in `urbex.platform.yaml`:
 
 ```yaml
