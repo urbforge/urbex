@@ -5,6 +5,12 @@
 Accepted. Replaces the hostname scheme sketched in
 [ADR-0007](0007-technitium-configurable-domain.md) (Technitium itself
 and the configurable domain stand).
+Partly replaced by
+[ADR-0027](0027-service-conventions.md): the zone is the platform's
+subdomain (`<name>.<domain>`) instead of the whole domain, so the split
+horizon only covers Urbex's own names; the base services get records
+too, and
+Technitium becomes the LXCs' resolver.
 
 ## Context
 

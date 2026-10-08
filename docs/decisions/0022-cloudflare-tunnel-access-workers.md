@@ -7,6 +7,10 @@ Accepted. Implements [ADR-0005](0005-cloudflare-tunnel-ingress.md)
 per LXC/project/environment"; refines the hostname scheme of
 [ADR-0007](0007-technitium-configurable-domain.md); replaces Cloudflare
 Pages with Workers static assets for web frontends.
+Refined by [ADR-0027](0027-service-conventions.md):
+internal and admin UIs (Grafana, Technitium, Prometheus, Loki,
+Keycloak's `/admin`) go behind Access too, and the tunnel's routes
+point at internal names instead of IPs.
 
 ## Context
 

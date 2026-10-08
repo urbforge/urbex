@@ -5,6 +5,10 @@
 Accepted. Implements the logging of
 [ADR-0004](0004-gitops-gitea-komodo.md#logging-note), and resource
 monitoring, for the base services and the project services.
+Refined by [ADR-0027](0027-service-conventions.md):
+a third kind, `agent`, joins `platform` and `app`, Periphery's and
+Alloy's own logs are shipped as `agent`, and
+resources are also collected per container.
 
 ## Context
 

@@ -10,7 +10,7 @@ in [`known-limitations.md`](known-limitations.md); the table below keeps
 only the gaps that matter for planning. Update both whenever a priority
 item gets implemented, or a new gap is discovered.
 
-As of this writing: 26 ADRs, 12 `urbex` CLI commands, 156 unit tests
+As of this writing: 27 ADRs, 12 `urbex` CLI commands, 156 unit tests
 across 20 Go packages, and an end-to-end test (`e2e/run.sh`) in
 [`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli) that runs
 the real binary through a whole project lifecycle against Debian 13
@@ -57,6 +57,7 @@ Proxmox VE 9.2 node, see [What has been validated](#what-has-been-validated).
 |---|---|---|
 | Promotion by pull request | `urbex promote` commits to the GitOps repo directly; a PR-gated production folder is a Gitea setting Urbex doesn't manage (see the [cookbook](cookbook.md#gate-production-behind-a-pull-request)) | [0020](decisions/0020-trunk-releases-gitops-environments.md) |
 | Image cleanup | Every push to `main` leaves an image in the registry; nothing prunes them | [0021](decisions/0021-staging-follows-main.md) |
+| Service conventions | Every service should be deployed by Komodo, reached by internal name, tagged by kind (`platform`/`app`/`agent`) and exposed by its kind of endpoint; today services reach each other by IP, the LXCs don't resolve through Technitium, base services have no DNS record, the platform's services are deployed by Ansible, Grafana/Technitium/Prometheus/Loki are LAN-only and Keycloak's `/admin` is public | [0027](decisions/0027-service-conventions.md) |
 | Removing a service | Dropping a service from `urbex.yaml` leaves its LXC, Stack, folder and internal DNS record behind | - |
 | Pre-releases | Only `vX.Y.Z` tags are releases; `-rc.1` and the like are ignored | [0020](decisions/0020-trunk-releases-gitops-environments.md) |
 | Pinned base-service images | Technitium, Prometheus, Loki, and Grafana still use `latest` | - |
@@ -242,32 +243,39 @@ Roughly in the order that makes each subsequent item worth doing.
    frontends on Workers
    ([ADR-0022](decisions/0022-cloudflare-tunnel-access-workers.md)).
 
+7. **Service conventions**
+   ([ADR-0027](decisions/0027-service-conventions.md)): internal DNS
+   zone and Technitium as resolver, references by name, three kinds,
+   admin UIs behind Access, platform services as Komodo Stacks, a
+   service catalog that enforces them. New services (databases) wait
+   for it.
+
 ### P2 - identity, secrets, observability
 
-7. ~~**Keycloak realm/client provisioning**~~ Done for projects
+8. ~~**Keycloak realm/client provisioning**~~ Done for projects
    ([ADR-0024](decisions/0024-keycloak-realm-per-environment.md)); next:
    the `platform` realm for admin SSO, production mode.
-8. ~~**Secret encryption (SOPS+age)**~~ Done for application secrets
+9. ~~**Secret encryption (SOPS+age)**~~ Done for application secrets
    ([ADR-0020](decisions/0020-trunk-releases-gitops-environments.md));
    Terraform state is still stored unencrypted.
-9. **Observability wiring** - ~~logs and resource metrics of every LXC~~
+10. **Observability wiring** - ~~logs and resource metrics of every LXC~~
    done ([ADR-0023](decisions/0023-service-logs-to-loki.md)); next: the
    services' own metrics (`observability.metrics`), alerting, Loki
    retention.
 
 ### P3 - operability polish
 
-10. ~~**Continuous deployment to staging.**~~ Done
+11. ~~**Continuous deployment to staging.**~~ Done
     ([ADR-0021](decisions/0021-staging-follows-main.md)). Still open:
     **promotion by pull request** on the GitOps repo, and pruning old
     images.
-11. **Fleet-wide status** across projects/environments.
-12. **Cross-machine concurrency guard** on the shared Terraform state
+12. **Fleet-wide status** across projects/environments.
+13. **Cross-machine concurrency guard** on the shared Terraform state
     and allocation ledger.
 
 ### P4 - v2+ scope (deliberately deferred)
 
-13. Cloud providers beyond Proxmox, Git servers beyond Gitea (and
+14. Cloud providers beyond Proxmox, Git servers beyond Gitea (and
     ghcr.io as registry), CI/CD beyond Komodo (GitHub Actions, ArgoCD),
     Kubernetes as orchestrator, Vault -
     already scoped for later in [`roadmap.md`](roadmap.md); no urgency
