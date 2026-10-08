@@ -138,7 +138,7 @@ it.
 ```yaml
 services:
   app:
-    image: 192.168.1.200:3000/urbex/acme-app-api:${VERSION}
+    image: git.urbex.example.com:3000/urbex/acme-app-api:${VERSION}
     restart: unless-stopped
     env_file:
       - config.env
