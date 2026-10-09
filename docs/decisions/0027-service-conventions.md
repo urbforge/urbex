@@ -71,9 +71,12 @@ Every service Urbex runs, platform or project, current or new:
 
 They are part of the definition of done of any change that adds or
 changes a service. The service catalog of
-[urbex-cli#15](https://github.com/urbforge/urbex-cli/issues/15) makes
-each service declare its kind, name and exposure, and a test fails when
-one is missing.
+[urbex-cli#15](https://github.com/urbforge/urbex-cli/issues/15)
+(`internal/platform/catalog.go` in `urbex-cli`) makes each service
+declare its kind, where it runs, how Komodo deploys it, what it provides
+and, for each endpoint, its internal name and exposure; internal names,
+tunnel routes and Access applications are generated from it, and a test
+fails when an entry - or a container in any compose file - lacks them.
 
 ### Internal DNS: the platform's subdomain, Technitium as resolver
 
