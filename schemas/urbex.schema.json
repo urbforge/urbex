@@ -82,6 +82,11 @@
           "type": "string"
         }
       }
+    },
+    "databases": {
+      "type": "array",
+      "description": "PostgreSQL databases of the project; each runs in its own LXC per environment. See docs/decisions/0028-postgresql-databases.md.",
+      "items": { "$ref": "#/$defs/database" }
     }
   },
   "$defs": {
@@ -141,6 +146,12 @@
               "uniqueItems": true
             }
           }
+        },
+        "databases": {
+          "type": "array",
+          "description": "Names of the project's databases this service uses: it gets DATABASE_URL and the PG* variables for each. See docs/decisions/0028-postgresql-databases.md.",
+          "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,38}[a-z0-9]$" },
+          "uniqueItems": true
         }
       },
       "allOf": [
@@ -149,6 +160,33 @@
           "then": { "required": ["dockerfile"] }
         }
       ]
+    },
+    "database": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "engine", "version"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Unique in the project, and not a service's name.",
+          "pattern": "^[a-z][a-z0-9-]{0,38}[a-z0-9]$"
+        },
+        "engine": { "enum": ["postgres"] },
+        "version": {
+          "type": "string",
+          "description": "PostgreSQL's major version, e.g. \"17\".",
+          "pattern": "^[0-9]+$"
+        },
+        "resources": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "cpu": { "type": "integer", "minimum": 1, "default": 1 },
+            "memory": { "type": "string", "pattern": "^[0-9]+(Mi|Gi)$", "default": "1Gi" },
+            "disk": { "type": "string", "pattern": "^[0-9]+(Mi|Gi)$", "default": "10Gi" }
+          }
+        }
+      }
     }
   }
 }

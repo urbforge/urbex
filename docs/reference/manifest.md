@@ -158,6 +158,7 @@ command uses them yet - see [`status.md`](../status.md):
 | `domain.subdomain` | A custom name for the project's public hostnames (today they are derived from the project's name). |
 | `observability.metrics` | Scraping of the services' metrics by Prometheus. |
 | `email.provider` (`brevo`), `email.fromAddress`, `email.fromName` | Transactional email; the provider key will be a secret. |
+| `databases[]` (`name`, `engine: postgres`, `version`, `resources`), `services[].databases` | PostgreSQL databases, each in its own LXC per environment, and the services that use them, which get `DATABASE_URL` and `PG*` variables ([ADR-0028](../decisions/0028-postgresql-databases.md), being implemented in [urbex-cli#9](https://github.com/urbforge/urbex-cli/issues/9)). |
 
 ## What changes take effect how
 
