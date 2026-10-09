@@ -47,6 +47,12 @@ works today and its limits, see [`status.md`](status.md) and
 
 Building on what v1 already runs:
 
+- **PostgreSQL databases for projects** - each in its own LXC per
+  environment, declared in `urbex.yaml`, with generated credentials and
+  `DATABASE_URL` for the services that use it
+  ([ADR-0028](decisions/0028-postgresql-databases.md),
+  [urbex-cli#9](https://github.com/urbforge/urbex-cli/issues/9)); backups
+  next.
 - **Several frontends per project**, web and mobile together (e.g. a
   web app, an admin console and a mobile app), each with its own build,
   hostname and deploy.
