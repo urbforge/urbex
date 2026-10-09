@@ -76,7 +76,8 @@ them up in Gitea under the organization's *Packages* when they pile up.
 | Git account, registry account | `urbex-admin` on `<gitea>`, with the Gitea token | `urbex bootstrap` | `urbex teardown` |
 | Variables | `URBEX_GITEA_URL`, `URBEX_GITEA_USER`, `URBEX_GITEA_TOKEN` (secret), `URBEX_ORG`; with Cloudflare `URBEX_CLOUDFLARE_TOKEN` (secret), `URBEX_CLOUDFLARE_ACCOUNT_ID` | `urbex bootstrap` | `urbex teardown` |
 | Server (builder) | `urbex-komodo` | `urbex bootstrap` | `urbex teardown` |
-| Servers of the base services | `urbex-gitea`, `urbex-technitium`, `urbex-keycloak`, `urbex-observability`, `urbex-tunnel`: Periphery in `/opt/urbex/periphery` on their LXCs, for monitoring their containers | `urbex bootstrap` | `urbex teardown` |
+| Servers of the base services | `urbex-gitea`, `urbex-technitium`, `urbex-keycloak`, `urbex-observability`, `urbex-tunnel`: Periphery in `/opt/urbex/periphery` on their LXCs, with `/opt/urbex` mounted | `urbex bootstrap` | `urbex teardown` |
+| Stacks of the bootstrap services | `urbex-technitium`, `urbex-gitea`, `urbex-komodo`: files on the server (`/opt/urbex/docker-compose.yml`, compose project `urbex`), adopted from Ansible; copies in the GitOps repo's `platform/<service>/` | `urbex bootstrap` | `urbex teardown` |
 | Tags | `platform`, `app`, each project's name, `staging`, `prod` | `urbex bootstrap`, `urbex apply` | - |
 | Action | `urbex-release` | `urbex bootstrap` | `urbex teardown` |
 | Procedure | `urbex-gitops` | `urbex bootstrap` | `urbex teardown` |
