@@ -189,7 +189,7 @@ where their compose files live and in who can repair them:
 | Technitium (DNS) | `urbex-technitium` | `dns.<zone>` | console behind Access; DNS internal | platform |
 | Gitea (web, git, registry) | `urbex-gitea` | `git.<zone>` | web behind Access; git and registry internal | platform |
 | Komodo | `urbex-komodo` | `komodo.<zone>` | UI behind Access; `/listener/` public (signed calls), also as `hooks.<zone>` | platform |
-| Keycloak | `urbex-keycloak` | `auth.<zone>` | realms public; `/admin` behind Access | platform |
+| Keycloak | `urbex-keycloak` | `auth.<zone>` | the projects' realms public; `/admin` and the `master` realm behind Access | platform |
 | Grafana | `urbex-observability` | `grafana.<zone>` | behind Access | platform |
 | Prometheus | `urbex-observability` | `prometheus.<zone>` | UI behind Access; remote write internal | platform |
 | Loki | `urbex-observability` | `loki.<zone>` | API behind Access; push internal | platform |
@@ -208,7 +208,10 @@ On a platform named `urbex` under `example.com`, Gitea is
 `api.staging.hello.urbex.example.com`. The new
 public hostnames follow ADR-0022's scheme (`grafana-urbex.<domain>` flat,
 `grafana.urbex.<domain>` nested, ...); Keycloak's admin console is an Access
-application on the `/admin` path of Keycloak's hostname.
+application on the `/admin` path of Keycloak's hostname, and its admin
+realm one on `/realms/master`: the admin login and token endpoints
+aren't public either, only the projects' realms are (refined while
+implementing [urbex-cli#13](https://github.com/urbforge/urbex-cli/issues/13)).
 
 ## Rationale
 
@@ -248,7 +251,7 @@ application on the `/admin` path of Keycloak's hostname.
 - The platform's own subdomain belongs to Urbex: records under it on
   Cloudflare that Urbex didn't create are shadowed on the LAN.
 - More Access applications (Grafana, Technitium, Prometheus, Loki,
-  Keycloak's `/admin`): the e-mail list of `cloudflare.access.emails`
+  Keycloak's `/admin` and `master` realm): the e-mail list of `cloudflare.access.emails`
   applies to all of them. Without Cloudflare, these stay on the LAN.
 - The platform's Stacks need their secrets (Keycloak's and Grafana's
   admin passwords, the tunnel's token) in the GitOps repo, encrypted

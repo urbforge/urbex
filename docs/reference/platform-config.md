@@ -86,10 +86,14 @@ With Cloudflare configured, Urbex publishes, under `domain`:
 
 | | `flat` (default) | `nested` |
 |---|---|---|
-| Keycloak | `auth-urbex.<domain>` | `auth.urbex.<domain>` |
+| Keycloak (`/admin` and the `master` realm behind Access) | `auth-urbex.<domain>` | `auth.urbex.<domain>` |
 | Gitea (behind Access) | `git-urbex.<domain>` | `git.urbex.<domain>` |
 | Komodo (behind Access) | `komodo-urbex.<domain>` | `komodo.urbex.<domain>` |
 | Komodo webhooks (`/listener/` only) | `hooks-urbex.<domain>` | `hooks.urbex.<domain>` |
+| Technitium's console (behind Access) | `dns-urbex.<domain>` | `dns.urbex.<domain>` |
+| Grafana (behind Access) | `grafana-urbex.<domain>` | `grafana.urbex.<domain>` |
+| Prometheus (behind Access; remote write not published) | `prometheus-urbex.<domain>` | `prometheus.urbex.<domain>` |
+| Loki (behind Access; push not published) | `loki-urbex.<domain>` | `loki.urbex.<domain>` |
 | Web frontend, prod / staging | `<project>-urbex`, `staging-<project>-urbex` | `<project>.urbex`, `staging.<project>.urbex` |
 | Public service, prod / staging | `<service>-<project>-urbex`, `<service>-staging-<project>-urbex` | `<service>.<project>.urbex`, `<service>.staging.<project>.urbex` |
 

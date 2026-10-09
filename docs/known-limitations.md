@@ -54,7 +54,7 @@ Cloudflare Quick Tunnel
 | **`nested` hostnames need Advanced Certificate Manager**, which Urbex doesn't enable or order certificates for. | Use the default `flat` names, or enable ACM and order the wildcard certificates by hand. |
 | **Public names are derived** from the project's and services' names; `domain.subdomain` in the manifest isn't used. | - |
 | **Gitea and Komodo behind Access are for browsers.** `git` and the CLI keep using the LAN addresses, and the links Gitea and Komodo generate use their internal names (Gitea's registry needs `ROOT_URL` reachable from every LXC). | Use the LAN, or a VPN, for git and the CLI. |
-| **Grafana, Technitium's console, Prometheus and Loki are LAN-only, and Keycloak's admin console (`/admin`) is public** with the realms ([ADR-0027](decisions/0027-service-conventions.md) puts them all behind Access). | Use the LAN, or a VPN, for the admin UIs; protect Keycloak's admin account with a strong password. |
+| **Prometheus' and Loki's APIs behind Access are for browsers.** A script or tool calling them from outside needs a Cloudflare Access service token, which Urbex doesn't create. | Create a service token in Zero Trust and add it to the `urbex-operators` policy, or use the LAN. |
 | **Access allows a list of e-mail addresses** with a one-time PIN; no identity provider, no groups. | Keycloak as Access's identity provider is a possible next step. |
 | **The Cloudflare token is broad and stored in Komodo** (secret variable) for the web deploys. | Use a token scoped to the one zone and account, as in [credentials](reference/credentials.md#cloudflare-api-token). |
 | **Only HTTP services are published**; no TCP/UDP, no per-path routing within a service. | - |
@@ -83,7 +83,7 @@ Cloudflare Quick Tunnel
 | **The internal names don't resolve on your machine** unless it asks Technitium: images (`git.<zone>:3000/...`), the links Gitea and Komodo generate, and the URLs services are configured with use the internal names ([ADR-0027](decisions/0027-service-conventions.md)). The CLI uses the LAN addresses, after checking them against Technitium. | Have your router forward the zone to Technitium ([cookbook](cookbook.md#resolve-a-service-by-name-on-the-lan)). |
 | **Logs and LXC resource metrics only** ([ADR-0023](decisions/0023-service-logs-to-loki.md)): the services' own metrics (`observability.metrics`) aren't scraped, there is no per-container resource usage, Periphery's and Alloy's logs aren't shipped, only two kinds (`platform`, `app`) tell services apart, agents taking their host's (a third, `agent`, planned: [ADR-0027](decisions/0027-service-conventions.md)), no alerting, and web frontends' logs are on Cloudflare. | Cloudflare's Workers logs for frontends. |
 | **Loki keeps logs forever**: default single-node configuration, no retention set; the observability LXC's disk fills up over time. | Grow its disk (`terraform/base`), or clean Loki's volume. |
-| **Grafana's admin password** is the only login (no Keycloak SSO), and Grafana is reachable on the LAN only. | `admin` / `grafanaAdminPassword` from `~/.urbex/credentials.yaml`, on `http://<observability IP>:3000`. |
+| **Grafana's admin password** is the only login (no Keycloak SSO), after Cloudflare Access when reached from outside. | `admin` / `grafanaAdminPassword` from `~/.urbex/credentials.yaml`. |
 | **Transactional email** (`email.provider: brevo`) is validated only. | - |
 
 ## Operations and security

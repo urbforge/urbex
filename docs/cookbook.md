@@ -223,7 +223,8 @@ urbex bootstrap
 ```
 
 ```
-Published on Cloudflare: Keycloak https://auth-urbex.example.com, Gitea https://git-urbex.example.com and Komodo https://komodo-urbex.example.com (behind Access), webhooks https://hooks-urbex.example.com.
+Published on Cloudflare: Keycloak https://auth-urbex.example.com (its admin console behind Access), webhooks https://hooks-urbex.example.com;
+behind Access: Gitea https://git-urbex.example.com, Komodo https://komodo-urbex.example.com, Technitium https://dns-urbex.example.com, Grafana https://grafana-urbex.example.com, Prometheus https://prometheus-urbex.example.com, Loki https://loki-urbex.example.com.
 ```
 
 Bootstrap adds a small LXC running `cloudflared`, sets up Access first
