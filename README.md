@@ -1,10 +1,10 @@
 # Urbex
 
-**Urbex - the Application OS for your own infrastructure.**
+**Urbex - a self-hosted app platform: everything your apps need, on infrastructure you own.**
 
 Write the app; Urbex gives it everything else - repositories, builds, deploys, login, networking, logs, backups. On your server, not someone else's cloud.
 
-Every environment, from a homelab to the cloud, should give applications the same fundamental services, the same way. Urbex is that operating system.
+Every environment, from a homelab to the cloud, should give applications the same fundamental services, the same way. Urbex is that platform.
 
 ## Why
 
@@ -17,9 +17,9 @@ and differently in every environment. Urbex is one standard ecosystem
 you install once - on your homelab or your cloud - and from then on each
 application declares what it needs in `urbex.yaml`, and gets it.
 
-## The Application OS
+## An operating system for your apps
 
-What an operating system gives a program, Urbex gives an application:
+Think of it as an operating system for applications: what an OS gives a program, Urbex gives an application.
 
 | An OS gives a program | Urbex gives an application | Today |
 | --- | --- | --- |
