@@ -32,9 +32,19 @@ runs inside each.
 | each project LXC | Komodo Periphery; `sops` and the compose wrapper in `/opt/urbex/bin/`; the service's container. |
 
 Every LXC - base and project - also runs the telemetry agent, Grafana
-Alloy in `/opt/urbex/telemetry`: its service's logs to Loki and the
-LXC's CPU, memory, disk and network to Prometheus, labelled
-`kind="platform"` or `kind="app"` ([ADR-0023](../decisions/0023-service-logs-to-loki.md)).
+Alloy in `/opt/urbex/telemetry`: every container's logs to Loki, and the
+LXC's CPU, memory, disk and network and each container's CPU and memory
+(cAdvisor) to Prometheus ([ADR-0023](../decisions/0023-service-logs-to-loki.md)).
+Every container carries the Docker labels `urbex.kind` - `platform` (the
+base services), `app` (a project's services and its web frontend's
+deploy container, which runs on the builder) or `agent` (Periphery,
+Alloy, the Quick Tunnel sidecar) - and `urbex.service`, plus
+`urbex.project` and `urbex.env` for a project's; logs and metrics take
+their `kind`, `service`, `project` and `env` from them, and the LXC's
+own metrics its main service's ([ADR-0027](../decisions/0027-service-conventions.md)).
+On Komodo the same kinds are tags: base servers, the builder, urbex's
+Action and Procedure `platform`; a project's servers, Stacks and Builds
+`app`, with the project and environment.
 
 The base services run as Docker Compose projects installed by Ansible;
 their data is in Docker volumes on the LXC.
