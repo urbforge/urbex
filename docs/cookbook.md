@@ -553,11 +553,17 @@ Komodo's UI shows every Stack, Build, and their logs, across projects.
 
 ## Read logs, watch resources
 
-Every LXC sends its service's logs to Loki and its CPU, memory, disk and
-network to Prometheus ([ADR-0023](decisions/0023-service-logs-to-loki.md)),
-labelled `kind="platform"` for the base services (Gitea, Komodo,
-Keycloak, Technitium, observability, tunnel) and `kind="app"` for the
-projects' services, which also carry `project` and `env`.
+Every LXC sends its containers' logs to Loki, and its CPU, memory, disk
+and network and each container's CPU and memory to Prometheus
+([ADR-0023](decisions/0023-service-logs-to-loki.md)), each labelled with
+one kind ([ADR-0027](decisions/0027-service-conventions.md)):
+
+- `kind="platform"`: the base services - `service` is `gitea`, `komodo`,
+  `keycloak`, `technitium`, `grafana`, `prometheus`, `loki`, `tunnel`;
+- `kind="app"`: the projects' services and web frontends, which also
+  carry `project` and `env`;
+- `kind="agent"`: the agents next to them - `periphery`, `alloy`,
+  `quicktunnel`.
 
 In Grafana - its address and login are in `urbex status` - open
 *Dashboards → Urbex*:
@@ -565,7 +571,9 @@ In Grafana - its address and login are in `urbex status` - open
 - **Urbex logs**: pick the kind, project, environment and service, or
   search a text;
 - **Urbex resources**: a table of every LXC's current CPU, memory and
-  disk, and their history, with the same filters.
+  disk, and their history, then the same per container (CPU and
+  memory), with the same filters - choose `agent` to see what Periphery
+  and Alloy cost.
 
 ![The Urbex resources dashboard: a table of every LXC's current CPU and
 memory, labelled by kind (platform or app), service, environment and
@@ -591,12 +599,16 @@ In *Explore*, LogQL and PromQL work on the same labels:
 ```logql
 {kind="app", project="acme-app", env="prod"} |= "error"
 {kind="platform", service="komodo"}
+{kind="agent", service="periphery", host="acme-app-api-prod"}
 ```
 
 ```promql
 100 * (1 - node_memory_MemAvailable_bytes{kind="app", project="acme-app"} / node_memory_MemTotal_bytes{kind="app", project="acme-app"})
 # CPU %: busy time over the CPUs (the idle counter is unreliable in an LXC)
 100 * sum by (host) (rate(node_cpu_seconds_total{mode!~"idle|iowait|steal", kind="platform"}[5m])) / count by (host) (node_cpu_seconds_total{mode="idle", kind="platform"})
+# a container's memory, and the agents' CPU (% of a core)
+container_memory_working_set_bytes{kind="app", project="acme-app", service="api"}
+100 * sum by (host, service) (rate(container_cpu_usage_seconds_total{kind="agent"}[5m]))
 ```
 
 From a terminal, Loki's API:
