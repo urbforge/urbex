@@ -120,6 +120,11 @@ the base services are updated.
    in `platform/<service>/compose.yaml` for review. If a redeploy breaks
    one of them, re-running `urbex bootstrap` restores it from Ansible
    ([ADR-0027](../decisions/0027-service-conventions.md)).
+   Keycloak, the observability stack and, with Cloudflare, the tunnel
+   are written to the GitOps repo's `platform/<service>/` - their admin
+   passwords and the tunnel's token encrypted with SOPS - and deployed
+   by Komodo as the Stacks `urbex-keycloak`, `urbex-observability` and
+   `urbex-tunnel`, like a project service.
 8. With Cloudflare configured
    ([ADR-0022](../decisions/0022-cloudflare-tunnel-access-workers.md)):
    before Ansible, the tunnel `urbex-platform` and the token its
