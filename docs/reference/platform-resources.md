@@ -11,6 +11,7 @@ for finding your way in the UIs, and for knowing what is safe to touch.
 
 | Resource | Name | Created by | Removed by |
 |---|---|---|---|
+| LXC template | `urbex-template`, VMID `vmIdBase+90` to `+99`: the Debian template with Docker, sops and the compose wrapper and the Periphery and Alloy images; every new LXC is a linked clone of it. Rebuilt, at another VMID, when what builds it changes; an older one is removed once no LXC is a clone of it | `urbex bootstrap` | `urbex teardown` |
 | Base-service LXCs | `urbex-gitea`, `urbex-komodo`, `urbex-technitium`, `urbex-keycloak`, `urbex-observability`, and `urbex-tunnel` with Cloudflare | `urbex bootstrap` | `urbex teardown` |
 | Project LXCs | `<project>-<service>-<env>` | `urbex apply <env>` | `urbex destroy <env>` |
 
