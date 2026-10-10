@@ -1,15 +1,54 @@
 # Urbex
 
-Urbex is a project to automate the creation and management of the
-infrastructure needed to build, deploy, and publish (staging/production)
-personal apps and projects, so that whoever develops them — manually or
-through an LLM agent (Claude Code, Codex) — can focus solely on the
-application itself.
+**Urbex - a self-hosted app platform: everything your apps need, on infrastructure you own.**
 
-Given a project with a frontend part (mobile → Firebase, web → Cloudflare
-Pages) and/or a services part (Java, Python, Go, or any Docker image with a
-ready Dockerfile), Urbex automatically creates and maintains the necessary
-infrastructure in every environment.
+Write the app; Urbex gives it everything else - repositories, builds, deploys, login, networking, logs, backups. On your server, not someone else's cloud.
+
+Every environment, from a homelab to the cloud, should give applications the same fundamental services, the same way. Urbex is that platform.
+
+## Why
+
+Every serious application needs the same things: a repository, a CI
+pipeline that builds its images, a CD pipeline that takes them to
+staging and production, an identity provider, an address people can
+reach, logs and monitoring, storage and backups, disaster recovery, high
+availability. Today whoever writes the app wires each of them by hand,
+and differently in every environment. Urbex is one standard ecosystem
+you install once - on your homelab or your cloud - and from then on each
+application declares what it needs in `urbex.yaml`, and gets it.
+
+## An operating system for your apps
+
+Think of it as an operating system for applications: what an OS gives a program, Urbex gives an application.
+
+| An OS gives a program | Urbex gives an application | Today |
+| --- | --- | --- |
+| `exec` | build and deploy: CI builds the image, CD takes it to staging and production | available |
+| processes | an isolated environment per service (LXC), staging and production | available |
+| users and permissions | an identity provider (Keycloak): login, roles, a client per frontend | available |
+| network and DNS | internal DNS, a public tunnel, protected access (Cloudflare) | available |
+| filesystem | storage, databases, backups | roadmap |
+| system logs and monitor | logs and resources in Grafana, every container in Komodo | available |
+| package manager | the platform's standard services, the same in every environment | available |
+| system restore | disaster recovery and high availability | roadmap |
+
+In short: like Heroku or Vercel, but on your server and with everything
+included; like Coolify or Dokploy, with identity, observability - and,
+next, backups and disaster recovery - built in. And built to be driven
+by an AI agent as well as by a person: its interface is a CLI an agent
+like Claude Code or Codex can use
+([ADR-0001](docs/decisions/0001-cli-first-interface.md)).
+
+## How it works
+
+Urbex runs on a server you already have - a Proxmox node today - and
+installs the platform's services there: Gitea for the repositories,
+Komodo for builds and deploys, Technitium for internal DNS, Keycloak for
+identity, Prometheus, Loki and Grafana for monitoring, and Cloudflare for
+public access. A project - web frontends deployed to Cloudflare Workers,
+mobile apps registered with Keycloak, services in Java, Python, Go or any
+Docker image - describes itself in `urbex.yaml`, and the `urbex` CLI
+creates and keeps what it needs in every environment.
 
 ## Status
 
