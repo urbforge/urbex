@@ -111,6 +111,15 @@ the base services are updated.
    `urbex-gitops` Procedure; `.sops.yaml`; commits and pushes the GitOps
    repo, and adds its webhook. Tokens and keys already in the credentials
    file are reused, not rotated.
+   Then connects the other base LXCs to Komodo and has Komodo adopt
+   Technitium, Gitea and Komodo as Stacks (`urbex-technitium`,
+   `urbex-gitea`, `urbex-komodo`) whose compose files stay on their
+   servers, in `/opt/urbex`: Komodo takes over the running containers
+   without redeploying them, and from then on can redeploy them; a copy
+   of each compose file, without secrets, is committed to the GitOps repo
+   in `platform/<service>/compose.yaml` for review. If a redeploy breaks
+   one of them, re-running `urbex bootstrap` restores it from Ansible
+   ([ADR-0027](../decisions/0027-service-conventions.md)).
 8. With Cloudflare configured
    ([ADR-0022](../decisions/0022-cloudflare-tunnel-access-workers.md)):
    before Ansible, the tunnel `urbex-platform` and the token its
