@@ -37,6 +37,7 @@ gitops/
 │   ├── keycloak/                  deployed from here: compose.yaml,
 │   ├── observability/             config.env, secrets.sops.env, and
 │   ├── tunnel/                    their configuration files
+│   ├── telemetry/<lxc>/           every LXC's telemetry agent: compose.yaml, config.alloy
 │   └── technitium/, gitea/, komodo/   copies, for review: deployed from
 │                                      the files on their servers
 ├── state/allocations.json         VMID/IP of every project LXC
@@ -182,6 +183,12 @@ services:
   that changes them is deployed by the GitOps Procedure. Bootstrap
   rewrites them: change the CLI's files, or the values in
   `~/.urbex/credentials.yaml`, rather than these.
+- `telemetry/<lxc>/` is the telemetry agent (Grafana Alloy) of each LXC
+  - the platform's, written by bootstrap, and every project
+  environment's, written by `urbex apply` and removed by `urbex
+  destroy` - deployed by the Stack `urbex-telemetry-<lxc>`, tagged
+  `agent`: `compose.yaml` and `config.alloy`, which says how the LXC's
+  logs and metrics are labelled.
 - `technitium/`, `gitea/`, `komodo/` hold **copies** of the compose
   files their Stacks deploy from their servers (`/opt/urbex`): Komodo
   can't depend on Gitea or Technitium to deploy them, and `urbex
