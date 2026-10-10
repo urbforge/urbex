@@ -11,6 +11,7 @@ writes to it; people can too - every change is a commit.
   - [`config.env`](#configenv)
   - [`secrets.sops.env`](#secretssopsenv)
   - [`compose.yaml`](#composeyaml)
+- [The platform's folders](#the-platforms-folders)
 - [How a change is deployed](#how-a-change-is-deployed)
 - [Who writes what](#who-writes-what)
 - [Infrastructure files](#infrastructure-files)
@@ -32,6 +33,12 @@ gitops/
 │   │       └── worker/ ...
 │   └── prod/
 │       └── acme-app/ ...
+├── platform/                      the platform's services (ADR-0027)
+│   ├── keycloak/                  deployed from here: compose.yaml,
+│   ├── observability/             config.env, secrets.sops.env, and
+│   ├── tunnel/                    their configuration files
+│   └── technitium/, gitea/, komodo/   copies, for review: deployed from
+│                                      the files on their servers
 ├── state/allocations.json         VMID/IP of every project LXC
 ├── state/known_hosts              SSH host keys of the LXCs
 ├── terraform/
@@ -46,7 +53,8 @@ gitops/
     └── roles/                             gitea, komodo, periphery, ...
 ```
 
-Only `environments/` is meant to be edited by hand. `terraform/` and
+Only `environments/` is meant to be edited by hand (and the `config.env`
+and secrets of `platform/`'s Stacks, with care). `terraform/` and
 `ansible/` are written by `urbex` from files embedded in the CLI, so a
 newer CLI updates them on its next `bootstrap`, `plan` or `apply`.
 
@@ -157,6 +165,28 @@ services:
 
 `VERSION` comes from `version.env`; the image is
 `<gitea>/<org>/<project>-<service>`.
+
+## The platform's folders
+
+`platform/` holds the platform's own services
+([ADR-0027](../decisions/0027-service-conventions.md)), written by
+`urbex bootstrap`:
+
+- `keycloak/`, `observability/` (Prometheus, Loki, Grafana - with
+  `prometheus.yml` and Grafana's provisioning and dashboards) and, with
+  Cloudflare, `tunnel/` are **deployed from here** by the Komodo Stacks
+  `urbex-keycloak`, `urbex-observability`, `urbex-tunnel`, like a
+  project service: `compose.yaml`, `config.env`, and `secrets.sops.env`
+  - Keycloak's and Grafana's admin passwords, the tunnel's token -
+  encrypted with SOPS and decrypted on the LXC at deploy time. A push
+  that changes them is deployed by the GitOps Procedure. Bootstrap
+  rewrites them: change the CLI's files, or the values in
+  `~/.urbex/credentials.yaml`, rather than these.
+- `technitium/`, `gitea/`, `komodo/` hold **copies** of the compose
+  files their Stacks deploy from their servers (`/opt/urbex`): Komodo
+  can't depend on Gitea or Technitium to deploy them, and `urbex
+  bootstrap` restores them if a redeploy breaks one. The copies are for
+  review; no secret is in them.
 
 ## How a change is deployed
 
