@@ -6,6 +6,46 @@ Write the app; Urbex gives it everything else - repositories, builds, deploys, l
 
 Every environment, from a homelab to the cloud, should give applications the same fundamental services, the same way. Urbex is that platform.
 
+> **Status: working prototype, not released yet.** The whole flow - from an
+> empty Proxmox node to an app in staging and production - runs end to end
+> and has been validated on a real server. The CLI's repository isn't
+> public yet: it will be, as open source, with the first release. Watch
+> this repository to hear about it.
+
+## Who it's for - today
+
+**You have a Proxmox node** - a homelab, a server at home or in a rack -
+and **a domain**, and you want your apps on it the way a company would
+run them: staging and production, builds on every push, releases you
+promote, login, logs and metrics, secrets that are never in plain text,
+admin tools that aren't open to the internet. Without wiring all of it by
+hand, and with an AI agent able to drive it: "deploy to staging",
+"promote to production".
+
+**Not yet for you if** you don't want to own a server: if "deploy" should
+just work, on a cloud you don't manage, wait for cloud VM support - it's
+on the [roadmap](docs/roadmap.md), and it's what opens Urbex to anyone
+who builds apps, vibe coders included.
+
+## What it looks like
+
+```sh
+urbex bootstrap            # once: the platform's services on your Proxmox node
+urbex init                 # in your app's repo: describe it in urbex.yaml
+urbex apply staging        # its staging environment; every push to main lands there
+urbex apply prod           # once: its production environment
+urbex release              # tag what staging runs
+urbex promote              # production runs the very images staging ran
+```
+
+Each of these is a single command an agent like Claude Code or Codex can
+run for you. A short video of the whole flow is coming; meanwhile,
+[Getting started](docs/getting-started.md) shows every command and what
+it prints. And this is what you see in Grafana - the logs of every
+service, the platform's and your apps':
+
+![Logs of an app's services in Grafana](docs/images/grafana-urbex-logs.png)
+
 ## Why
 
 Every serious application needs the same things: a repository, a CI
@@ -50,10 +90,9 @@ mobile apps registered with Keycloak, services in Java, Python, Go or any
 Docker image - describes itself in `urbex.yaml`, and the `urbex` CLI
 creates and keeps what it needs in every environment.
 
-## Status
+## What works today
 
-🚧 Early stage. The `urbex` CLI is implemented in
-[`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli): bootstrap
+The `urbex` CLI implements it: bootstrap
 sets up Gitea and Komodo; projects are developed trunk-based, and every
 push to `main` is built by Komodo and deployed to staging; releases are
 tags, promoted to production; and each environment runs what its folder
@@ -98,12 +137,22 @@ supported/not-supported breakdown and implementation priorities, and
 - Git servers beyond Gitea: GitHub, GitLab.
 - Secrets management: optional HashiCorp Vault support alongside SOPS+age.
 
+## Try it early, tell us what's missing
+
+Urbex is meant to be free and open source, for everyone - it isn't a
+product we sell. What we need most now are the people it's for: if you
+run a homelab and would try it on yours, or if you help people take their
+apps to production and see what's missing, open an
+[issue](https://github.com/urbforge/urbex/issues) - what you would
+deploy, what stops you, what you'd expect it to do. It shapes the
+roadmap.
+
 ## Repositories
 
 - [`urbforge/urbex`](https://github.com/urbforge/urbex) (this repo) —
   architecture, ADRs, manifest spec/schema, roadmap.
-- [`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli) — the
-  `urbex` CLI implementation (Go). See
+- `urbforge/urbex-cli` — the `urbex` CLI implementation (Go); not public
+  yet, published with the first release. See
   [ADR-0016](docs/decisions/0016-cli-repo-split.md).
 
 ## Documentation
