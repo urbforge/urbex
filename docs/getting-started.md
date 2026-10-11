@@ -66,9 +66,9 @@ On the machine that runs `urbex` (yours, or an agent's) - or, with only
 podman or docker installed, in a container: see
 [Run urbex from a container](cookbook.md#run-urbex-from-a-container):
 
-- the `urbex` binary, built from a checkout of
-  [`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli):
-  `go build -o ~/bin/urbex ./cmd/urbex`;
+- the `urbex` binary, built from a checkout of `urbforge/urbex-cli`:
+  `go build -o ~/bin/urbex ./cmd/urbex` (the repository isn't public yet:
+  it will be with the first release);
 - `terraform` (or `tofu`), `ansible-playbook`, `git`, `ssh`, and - for
   secrets - [`sops`](https://github.com/getsops/sops);
 - an SSH key in an agent; Ansible connects to the LXCs with it:
