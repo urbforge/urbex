@@ -76,8 +76,12 @@ Building on what v1 already runs:
   Brevo (e.g. Resend, Postmark, Amazon SES).
 - **Promotion by pull request** on the GitOps repo, with protection on
   the production folder.
-- **Topology**: a "lightweight" profile with multiple services sharing a
-  single LXC, for more resource-constrained hardware.
+- **Applications from published images, stacks, declared requirements**
+  ([ADR-0028](decisions/0028-application-model.md), proposed): images
+  pinned by digest, linked applications (`uses`/`provides`), volumes
+  and NAS shares, `access` exposure, OIDC clients, single-environment
+  stacks, and one LXC per stack (`placement: stack`) for more
+  resource-constrained hardware.
 - Optional layers on top of the CLI: a dedicated Claude Code skill/plugin,
   an MCP server.
 - **Schema sync automation**: a CI check (or codegen step) so the
