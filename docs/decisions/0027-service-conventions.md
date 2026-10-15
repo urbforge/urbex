@@ -10,6 +10,9 @@ the agents' own logs, per-container resources) and
 subdomain as internal zone, base services registered, Technitium as the
 LXCs' resolver). Tracked by
 [urbforge/redemptor#23](https://github.com/urbforge/redemptor/issues/23).
+Refined by [ADR-0028](0028-application-model.md) (proposed): a project's
+database is an application in its stack; applications can also be
+exposed behind Access.
 
 ## Context
 
