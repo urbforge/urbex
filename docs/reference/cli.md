@@ -102,7 +102,8 @@ the base services are updated.
    (skipped on clones of the template), then Technitium, then Gitea,
    Komodo (Core, database, Periphery) and the others in parallel - while
    they install, the LXCs of Keycloak, the observability stack and the
-   tunnel pull the images of the Stacks Komodo deploys on them later.
+   tunnel pull, one at a time, the images of the Stacks Komodo deploys
+   on them later.
    Every LXC resolves through Technitium, then `dns.forwarders`.
 6. Mints a Technitium API token (with the generated
    `URBEX_TECHNITIUM_ADMIN_PASSWORD`, which Ansible also set as
