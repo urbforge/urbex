@@ -138,7 +138,7 @@ servers over SSH) will reuse the same choice.
 services:
   - name: server
     image: ghcr.io/immich-app/immich-server   # or runtime: go | java | python | docker
-    version: v1.135.3
+    version: v3
     endpoints:                     # what it serves
       - port: 2283
         protocol: http             # http (default) | tcp | udp
@@ -264,7 +264,7 @@ placement: stack
 services:
   - name: server
     image: ghcr.io/immich-app/immich-server
-    version: v1.135.3
+    version: v3                        # Immich's major: --update takes v3.x
     endpoints:
       - port: 2283
         exposure: public
@@ -282,11 +282,9 @@ services:
         size: 500Gi
     auth:
       oidc: true                       # issuer and client printed by urbex status
-    healthcheck:
-      http: /api/server/ping
   - name: ml
     image: ghcr.io/immich-app/immich-machine-learning
-    version: v1.135.3
+    version: v3
     endpoints:
       - port: 3003                     # internal
     volumes:
@@ -303,7 +301,7 @@ services:
         size: 20Gi
   - name: redis
     image: docker.io/valkey/valkey
-    version: "8"
+    version: "9"
     provides: redis
 ```
 
@@ -389,7 +387,9 @@ services:
         size: 20Gi
 ```
 
-Image versions in these examples are illustrative.
+The Immich stack follows Immich's own compose file (images, ports,
+paths, variable names; healthchecks are the images' own). Versions in
+these examples are illustrative.
 
 ## Rationale
 
