@@ -91,10 +91,16 @@ the base services are updated.
 4. Writes the embedded Terraform and Ansible files into the GitOps repo,
    allocates the base services' IPs (`baseHostOffset` to `+4`), generates
    any missing platform secret into `~/.urbex/credentials.yaml`.
-5. `terraform init` and `terraform apply` in `terraform/base/`, then
-   `ansible-playbook` with `ansible/playbook.yml`: Docker on every LXC,
-   then Technitium, Gitea, Komodo (Core, database, Periphery), Keycloak,
-   Prometheus/Loki/Grafana. Every LXC resolves through Technitium, then
+5. Prepares urbex's LXC template when it is missing or outdated
+   (`urbex-template`, in the pool): Docker, sops and the agents' images
+   already installed, so that the LXCs - the platform's now, the
+   projects' on `urbex apply` - are linked clones of it, created in
+   seconds, with nothing to download. Where Proxmox doesn't allow it, the
+   LXCs come from the Debian template as before, with a warning.
+   Then `terraform init` and `terraform apply` in `terraform/base/`, then
+   `ansible-playbook` with `ansible/playbook.yml`: Docker on every LXC
+   (skipped on clones of the template), then Technitium, then Gitea,
+   Komodo (Core, database, Periphery) and the others in parallel. Every LXC resolves through Technitium, then
    `dns.forwarders`.
 6. Mints a Technitium API token (with the generated
    `URBEX_TECHNITIUM_ADMIN_PASSWORD`, which Ansible also set as
