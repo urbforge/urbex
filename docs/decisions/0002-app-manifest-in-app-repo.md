@@ -4,7 +4,8 @@
 
 Accepted. Refined by [ADR-0028](0028-application-model.md) (proposed):
 a stack of published images, with no code, still has its repository
-and its manifest.
+and its manifest; a repository can hold several stacks, one manifest
+each.
 
 ## Context
 

@@ -4,7 +4,7 @@
 
 Proposed. Tracked by [urbforge/urbex#26](https://github.com/urbforge/urbex/issues/26).
 Refines [ADR-0002](0002-app-manifest-in-app-repo.md) (a manifest
-without code), [ADR-0009](0009-one-lxc-per-service-per-env.md) (one LXC
+without code, several stacks in one repository), [ADR-0009](0009-one-lxc-per-service-per-env.md) (one LXC
 per stack as a choice), [ADR-0020](0020-trunk-releases-gitops-environments.md)
 (versions of public images, single-environment stacks) and
 [ADR-0027](0027-service-conventions.md) (what a project's application is,
@@ -43,12 +43,12 @@ its own rules, for what is just another image.
 An **application** is one container Urbex runs: the user's own code,
 built from source, or an image someone else publishes - PostgreSQL,
 Redis and Immich alike. A **stack** is the applications deployed and
-versioned together, linked to each other; a project's `urbex.yaml`
-describes one stack.
+versioned together, linked to each other; an `urbex.yaml` describes
+one stack.
 
 - In the manifest the applications stay the entries of `services` - as
-  in a compose file, where a service is one container. A project is a
-  stack; `project` keeps naming it.
+  in a compose file, where a service is one container. Today's project
+  is a stack: `project` keeps naming it (see *Many stacks*).
 - Every application is of kind **`app`** (ADR-0027) on Komodo and in
   Grafana, whatever its image: PostgreSQL in a stack is an `app`, like
   the API that uses it. `platform` stays for the services Urbex itself
@@ -224,12 +224,52 @@ A stack declares its environments:
   itself - its Immich, its media stack. `release` and `promote` don't
   apply and say so; versions change with `urbex deploy prod`.
 
-### A stack without code still has a repository
+### Many stacks: on a platform, and in a repository
 
-ADR-0002 keeps holding: the manifest lives in the stack's repository on
-Gitea, versioned. A stack of published images has a repository with
-just `urbex.yaml` (and whatever configuration files its applications
-need); nothing is built from it.
+**A platform runs many stacks**, as it runs many projects today: a home
+lab's `photos`, `media` and `vault`, next to the `acme-app` its owner
+develops. Each stack is independent:
+
+- its **name** (`project`) is unique on the platform and names its
+  LXCs, images, internal names (`<app>.<stack>.<zone>`), Komodo tags and
+  GitOps folders (`environments/<env>/<stack>/<app>/`), as a project's
+  do today;
+- it has **its own environments, versions and lifecycle**: applying,
+  updating, promoting or destroying one stack never touches another;
+  `urbex status` lists them all, each with its environments.
+
+**A repository holds one stack or several** (refining ADR-0002: the
+manifest lives in a repository on Gitea, versioned, but no longer one
+per stack):
+
+- **One stack**: `urbex.yaml` at the root, as today - the usual case
+  for an application someone develops.
+- **Several stacks**: one folder per stack, each with its `urbex.yaml`,
+  and at the root an `urbex.yaml` that lists them - the usual case for
+  a home lab that keeps all its stacks in one `homelab` repository:
+
+  ```
+  homelab/
+  ├── urbex.yaml           apiVersion: urbex/v1
+  │                        stacks: [photos, media, vault]
+  ├── photos/urbex.yaml    the Immich stack
+  ├── media/urbex.yaml     the *arr stack
+  └── vault/urbex.yaml     Vaultwarden
+  ```
+
+  The list is explicit - Urbex doesn't scan the repository - and a
+  folder's name is the stack's path, not its name: each manifest still
+  says its `project`. Paths in a stack's manifest (`dockerfile`,
+  configuration files) are relative to its folder.
+- **Commands** act on the stack of the folder they run in; at the root
+  of a repository with several stacks, on all of them in the listed
+  order, or on one with `--stack <name>`: `urbex apply prod --stack
+  media`. A push builds the applications built from source of every
+  stack in the repository.
+- The Gitea repository's name is its own (given by `urbex init`), no
+  longer necessarily a stack's.
+- A stack of published images has nothing to build: its folder holds
+  `urbex.yaml` and whatever configuration files its applications need.
 
 ## Examples
 
@@ -405,6 +445,10 @@ these examples are illustrative.
   need one.
 - **Digests in the GitOps repo** keep ADR-0020's promise - the repo says
   exactly what runs - for images Urbex didn't build.
+- **Many stacks per repository** lets a home lab keep its whole setup
+  in one versioned place, as it would keep its compose files, while each
+  stack keeps its own lifecycle; the explicit list keeps commands
+  predictable.
 - **Placement as a choice** keeps ADR-0009's isolation where it matters
   (a project's API and its database in production) and gives home labs
   the one-LXC stack they expect, without a second deploy model.
@@ -437,6 +481,8 @@ these examples are illustrative.
   compose file** (`urbex import compose.yaml`).
 - **More than two environments**, or names other than `staging` and
   `prod`.
+- **Moving a stack between repositories** without recreating it, and a
+  stack whose manifest lives in more than one repository.
 
 ## Consequences
 
@@ -447,7 +493,9 @@ these examples are illustrative.
   `healthcheck` forms. `urbex.platform.yaml` gets `storage.shares`.
 - Follow-up issues in `urbex-cli`, to open once this is accepted:
   1. the manifest schema and its validation (references, ports per LXC,
-     one public endpoint per application);
+     one public endpoint per application), and repositories with
+     several stacks (the root `stacks` list, `--stack`, paths relative
+     to a stack's folder, builds of every stack on a push);
   2. applications from images: no Build, `version.env` with tag and
      digest, `deploy --update` / `--version` / `--allow-major`, `promote`
      of a whole stack, single-environment stacks;
