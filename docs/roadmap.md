@@ -43,30 +43,57 @@ works today and its limits, see [`status.md`](status.md) and
   token.
 - Interface: **CLI** (`urbex`), usable by Claude Code, Codex, or a human.
 
-## Next — planned additions
+## Milestones
 
-Building on what v1 already runs:
+The roadmap agreed in
+[urbforge/redemptor#24](https://github.com/urbforge/redemptor/pull/24)
+(`redemptor/docs/roadmap-proposal.md`): six milestones, each with its
+epics. Every epic is an issue in `urbforge/redemptor`, its tasks are
+sub-issues there or in `urbex` / `urbex-cli`, and the same milestones
+exist in the three repos. A milestone opens when the previous one
+closes, and closes when every task of its epics is done. No dates yet.
 
-- **Several frontends per project**, web and mobile together (e.g. a
-  web app, an admin console and a mobile app), each with its own build,
-  hostname and deploy.
+| Milestone | Goal | Epics |
+| --- | --- | --- |
+| M1 · v1.0 Platform conventions (done) | Every service operated the same way | E1 Service conventions ([redemptor#23](https://github.com/urbforge/redemptor/issues/23), [ADR-0027](decisions/0027-service-conventions.md)) |
+| M2 · v1.1 Data | Projects that store data, safely - and a platform that runs without a homelab | E2 Databases ([redemptor#17](https://github.com/urbforge/redemptor/issues/17)) · E3 Backups and restore ([redemptor#31](https://github.com/urbforge/redemptor/issues/31)) · E3-bis VPS support ([redemptor#32](https://github.com/urbforge/redemptor/issues/32)) |
+| M3 · v1.2 Production-ready | Run real apps and sleep at night | E4 Observability, next step ([redemptor#33](https://github.com/urbforge/redemptor/issues/33)) · E5 Security and isolation ([redemptor#34](https://github.com/urbforge/redemptor/issues/34)) · E6 Transactional email ([redemptor#13](https://github.com/urbforge/redemptor/issues/13)) |
+| M4 · v1.3 Team operations | Several people on one platform | E7 Operators and identity ([redemptor#35](https://github.com/urbforge/redemptor/issues/35)) · E8 Bootstrap performance ([redemptor#18](https://github.com/urbforge/redemptor/issues/18)) |
+| M5 · v1.4 Richer projects | More of what an app needs | E9 Frontends ([redemptor#36](https://github.com/urbforge/redemptor/issues/36)) · E10 Project lifecycle ([redemptor#37](https://github.com/urbforge/redemptor/issues/37)) |
+| M6 · v2 Beyond the homelab | Other people, other stacks | E11 Modular architecture ([redemptor#16](https://github.com/urbforge/redemptor/issues/16)) · E12 End-user docs site ([redemptor#15](https://github.com/urbforge/redemptor/issues/15)) |
+
+Alongside the milestones, **E13 First users**
+([redemptor#38](https://github.com/urbforge/redemptor/issues/38)): a
+demo of the full flow and the first ~20 self-hosters from homelab
+communities, whose feedback reorders the milestones.
+
+What the planned additions of v1 became:
+
+- **Several frontends per project**, web and mobile together - E9 (M5).
 - ~~**Frontends registered as Keycloak clients automatically**~~ - done,
   with a realm per environment, the services' roles and staging test
   users ([ADR-0024](decisions/0024-keycloak-realm-per-environment.md)).
 - ~~**Service logs shipped to the observability stack automatically**~~
   - done, with the base services' logs and every LXC's resource metrics
-  ([ADR-0023](decisions/0023-service-logs-to-loki.md)). Next in the same
-  area: the services' own metrics, alerting, Loki retention.
+  ([ADR-0023](decisions/0023-service-logs-to-loki.md)). The services'
+  own metrics, alerting and Loki retention - E4 (M3).
 - **Per-project Proxmox isolation** (pool, group, technical users - see
-  v1 scope above).
+  v1 scope above) - E5 (M3).
 - ~~**Internal DNS registration in Technitium**~~ - done, independent
   of Cloudflare being configured
   ([ADR-0026](decisions/0026-technitium-internal-dns-records.md)).
-- Keycloak in production mode, a `platform` realm for admin SSO.
+- Keycloak in production mode, a `platform` realm for admin SSO - E7
+  (M4).
+- **Hosts beyond Proxmox**: a server you bring over SSH, then Hetzner
+  Cloud, then DigitalOcean (ADR in
+  [urbex#24](https://github.com/urbforge/urbex/issues/24)) - E3-bis (M2).
+- **Backups and restore** of Gitea, Komodo, Keycloak, databases and
+  volumes - E3 (M2).
 
 ## v2+ — future evolutions
 
-- **Cloud providers** beyond Proxmox: Azure, GCP, AWS.
+- **Cloud providers** beyond Proxmox: Azure, GCP, AWS (VPS hosts come
+  first, in E3-bis).
 - **Git servers** beyond Gitea: GitHub, GitLab.
 - **Container registries** beyond Gitea: ghcr.io (paired with GitHub).
 - **CI/CD** beyond Komodo: GitHub Actions, ArgoCD.
@@ -75,7 +102,7 @@ Building on what v1 already runs:
 - **Email providers**: additional transactional email providers beyond
   Brevo (e.g. Resend, Postmark, Amazon SES).
 - **Promotion by pull request** on the GitOps repo, with protection on
-  the production folder.
+  the production folder - planned in E10 (M5).
 - **Applications from published images, stacks, declared requirements**
   ([ADR-0028](decisions/0028-application-model.md), proposed): images
   pinned by digest, linked applications (`uses`/`provides`), volumes
