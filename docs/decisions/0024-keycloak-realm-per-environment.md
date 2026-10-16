@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted. Refines [ADR-0014](0014-keycloak-realm-per-project.md) (a
+Accepted. Keycloak runs on PostgreSQL since
+[ADR-0029](0029-keycloak-production-postgresql.md). Refines [ADR-0014](0014-keycloak-realm-per-project.md) (a
 realm per project) into a realm per project **environment**, and
 implements the Keycloak part of [ADR-0008](0008-keycloak-scope.md) for
 projects.
@@ -59,6 +60,9 @@ production - and so the staging test users would work in production.
 - Destroying an environment deletes its realm's users.
 - Keycloak still runs in development mode (embedded database): realms
   survive restarts and upgrades, but production mode is still to do.
+  Done in [ADR-0029](0029-keycloak-production-postgresql.md): production
+  mode on PostgreSQL; the realms of a platform that ran on H2 are
+  re-created by each environment's next `urbex apply`.
 - Not yet: confidential clients for services calling each other, the
   realm's login theme and e-mail settings, social logins, several
   frontends per project.

@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted
+Accepted. Keycloak runs in production mode on its own PostgreSQL since
+[ADR-0029](0029-keycloak-production-postgresql.md).
 
 ## Context
 

@@ -63,7 +63,7 @@ Proxmox VE 9.2 node, see [What has been validated](#what-has-been-validated).
 | Pinned base-service images | Technitium, Prometheus, Loki, and Grafana still use `latest` | - |
 | Custom public names | Public hostnames are derived from the project's and services' names; `domain.subdomain` in the manifest isn't used, and `nested` names need ACM enabled by hand | [0022](decisions/0022-cloudflare-tunnel-access-workers.md) |
 | Frontend-only projects | A web frontend needs at least one service in the manifest | [0022](decisions/0022-cloudflare-tunnel-access-workers.md) |
-| Keycloak beyond projects | No `platform` realm (admin SSO), no confidential clients for service-to-service calls; Keycloak in development mode | [0008](decisions/0008-keycloak-scope.md), [0024](decisions/0024-keycloak-realm-per-environment.md) |
+| Keycloak beyond projects | No `platform` realm (admin SSO), no confidential clients for service-to-service calls | [0008](decisions/0008-keycloak-scope.md), [0024](decisions/0024-keycloak-realm-per-environment.md) |
 | Terraform state encryption | State is plain JSON in the (private) GitOps repo, not SOPS-encrypted as designed | [0013](decisions/0013-terraform-state-in-gitops-repo.md) |
 | Service metrics, alerting | LXC resource metrics are collected, but not the services' own metrics (`observability.metrics` is ignored); no alerting; Loki has no retention | [0023](decisions/0023-service-logs-to-loki.md) |
 | Mobile frontend deploy | `frontend.type: mobile` (Firebase) is validated, not deployed | - |
