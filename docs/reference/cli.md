@@ -100,8 +100,11 @@ the base services are updated.
    Then `terraform init` and `terraform apply` in `terraform/base/`, then
    `ansible-playbook` with `ansible/playbook.yml`: Docker on every LXC
    (skipped on clones of the template), then Technitium, then Gitea,
-   Komodo (Core, database, Periphery) and the others in parallel. Every LXC resolves through Technitium, then
-   `dns.forwarders`.
+   Komodo (Core, database, Periphery) and the others in parallel - while
+   they install, the LXCs of Keycloak, the observability stack and the
+   tunnel pull, one at a time, the images of the Stacks Komodo deploys
+   on them later.
+   Every LXC resolves through Technitium, then `dns.forwarders`.
 6. Mints a Technitium API token (with the generated
    `URBEX_TECHNITIUM_ADMIN_PASSWORD`, which Ansible also set as
    Technitium's own admin password), creates the internal zone
@@ -130,7 +133,10 @@ the base services are updated.
    are written to the GitOps repo's `platform/<service>/` - their admin
    passwords and the tunnel's token encrypted with SOPS - and deployed
    by Komodo as the Stacks `urbex-keycloak`, `urbex-observability` and
-   `urbex-tunnel`, like a project service.
+   `urbex-tunnel`, like a project service. These and every LXC's
+   telemetry agent (`urbex-telemetry-<lxc>`) are deployed all at once;
+   if any fails, bootstrap stops naming each Stack that failed, after the
+   others have finished.
 8. With Cloudflare configured
    ([ADR-0022](../decisions/0022-cloudflare-tunnel-access-workers.md)):
    before Ansible, the tunnel `urbex-platform` and the token its
