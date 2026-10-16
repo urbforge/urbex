@@ -205,7 +205,7 @@ where their compose files live and in who can repair them:
 | Quick Tunnel sidecar | a project service's LXC | - | the service's public endpoint | agent |
 | Project service | `<project>-<service>-<env>` | `<service>.<project>.<zone>` (prod), `<service>.staging.<project>.<zone>` | public with `public: true`, otherwise internal | app |
 | Project web frontend | none (Cloudflare Worker, deployed by a Stack on the builder) | - (served by Cloudflare) | public | app |
-| Project database ([redemptor#17](https://github.com/urbforge/redemptor/issues/17)) | its own LXC | `<database>.<project>.<zone>` (prod), `<database>.staging.<project>.<zone>` | internal | app |
+| Project PostgreSQL - an application with `provides: postgres` ([ADR-0030](0030-postgresql-application.md), [redemptor#17](https://github.com/urbforge/redemptor/issues/17)) | `<project>-<app>-<env>`, or the stack's LXC with `placement: stack` | `<app>.<project>.<zone>` (prod), `<app>.staging.<project>.<zone>` | internal (5432, `tcp`) | app |
 
 Agents with no listener of their own (Periphery, Alloy) and services
 that live on Cloudflare (web frontends) have no internal name.

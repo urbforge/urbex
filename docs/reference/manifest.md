@@ -76,10 +76,10 @@ GitOps repo.
 | Field | Type | Default | Meaning |
 |---|---|---|---|
 | `name` | string | required | 2-40 characters, lowercase letters, digits, `-`, starting with a letter. Unique in the project. |
-| `runtime` | `go`, `java`, `python`, `docker` | required | How the image is built - see [runtimes](#runtimes). |
+| `runtime` | `go`, `java`, `python`, `docker` | required (without `image`) | How the image is built - see [runtimes](#runtimes). |
 | `dockerfile` | path | required with `docker` | Path of the Dockerfile from the repo root; its directory is the build context. Ignored for other runtimes. |
 | `public` | boolean | `false` | Publish the service on the internet through the platform's Cloudflare Tunnel, at `<service>-<project>-urbex.<domain>` (prod) and `<service>-staging-<project>-urbex.<domain>` (staging). Its own auth is its gate. Needs Cloudflare in the [platform config](platform-config.md#public-hostnames). |
-| `port` | 1-65535 | required | The port the service listens on. The container gets `PORT` set to it, and it is published on the LXC's IP at the same number. |
+| `port` | 1-65535 | required with `runtime` | The port the service listens on. The container gets `PORT` set to it, and it is published on the LXC's IP at the same number. |
 | `healthcheck` | HTTP path | none | Path probed every 30 s from inside the container (`wget -q --spider http://localhost:<port><path>`); three failures mark the container unhealthy, and `urbex` waits for healthy. Without it, a running container counts. |
 | `resources.cpu` | integer ≥ 1 | `1` | Cores of the LXC. |
 | `resources.memory` | `<n>Mi` or `<n>Gi` | `1Gi` | Memory of the LXC. |
@@ -158,6 +158,13 @@ command uses them yet - see [`status.md`](../status.md):
 | `domain.subdomain` | A custom name for the project's public hostnames (today they are derived from the project's name). |
 | `observability.metrics` | Scraping of the services' metrics by Prometheus. |
 | `email.provider` (`brevo`), `email.fromAddress`, `email.fromName` | Transactional email; the provider key will be a secret. |
+| `services[].image`, `version` | An application from a published image instead of `runtime`, pinned by digest per environment ([ADR-0028](../decisions/0028-application-model.md)). |
+| `services[].provides: postgres`, `services[].uses` | A PostgreSQL in the stack - its own LXC per environment, its data on a named volume - and the applications that use it, which get `DATABASE_URL` and `PG*` ([ADR-0030](../decisions/0030-postgresql-application.md)). A provider needs a volume, and has no `port` and no `public`. |
+| `services[].volumes[]` (`name`, `path`, `size`, default `10Gi`) | Named volumes: data kept across redeploys and updates, deleted only by `urbex destroy <env> --delete-data`. |
+
+The rows from `image` on are in this repository's schema; the CLI
+accepts them once its copy is updated, with
+[urbex-cli#9](https://github.com/urbforge/urbex-cli/issues/9).
 
 ## What changes take effect how
 
