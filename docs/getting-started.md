@@ -128,7 +128,16 @@ urbex bootstrap
 ```
 
 It creates the five LXCs with Terraform, configures them with Ansible,
-then wires Gitea and Komodo together:
+then wires Gitea and Komodo together. From an empty node it takes about
+twenty minutes, a third of it waiting for Keycloak's first start - the
+phases and their times are in [startup sequence](reference/startup.md). To see where it
+is from another terminal:
+
+```sh
+urbex status --progress --watch
+```
+
+When it ends:
 
 ```
 Base services to provision: [urbex-gitea urbex-komodo urbex-technitium urbex-keycloak urbex-observability]

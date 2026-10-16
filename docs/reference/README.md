@@ -11,6 +11,7 @@ and the [cookbook](../cookbook.md).
 | [Platform config (`urbex.platform.yaml`)](platform-config.md) | Every platform setting, its default, and how addresses are allocated. |
 | [GitOps repo](gitops-repo.md) | The repo's layout; `version.env`, `config.env`, `secrets.sops.env`, `compose.yaml`; how a commit becomes a deploy. |
 | [Credentials](credentials.md) | Every credential, where it's read from, and how to obtain it. |
+| [Startup sequence](startup.md) | What `urbex bootstrap` and `urbex apply` do, in order and in parallel, and how long each phase takes; followed live by `urbex status --progress`. |
 | [Platform resources](platform-resources.md) | Everything created on Proxmox, Gitea, and Komodo, and what's safe to change by hand. |
 
 The formal manifest schema is
