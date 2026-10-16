@@ -79,7 +79,9 @@ urbex bootstrap [--gitops-repo <dir>] [--dry-run]
 
 Creates the platform: the base-service LXCs, and Gitea and Komodo wired
 together. Run it once per platform; running it again is safe and is how
-the base services are updated.
+the base services are updated. Its phases, what runs at the same time
+and how long each takes are drawn in [startup sequence](startup.md);
+`urbex status --progress` follows them live.
 
 1. If `<dir>/urbex.platform.yaml` doesn't exist, writes a starter one and
    stops: edit it ([reference](platform-config.md)) and run again.
@@ -186,7 +188,9 @@ urbex apply <env> [--file urbex.yaml] [--gitops-repo <dir>] [--repo-dir .]
 
 Creates or updates an environment of the project - its infrastructure,
 the project's build setup, and the environment's deploy setup - and, if
-there is something to run, waits until it runs.
+there is something to run, waits until it runs. Its phases and their
+usual times: [startup sequence](startup.md#urbex-apply-env);
+`urbex status --progress` follows them live.
 
 1. Everything `plan` does, then `terraform apply`: one LXC per service.
 2. `ansible-playbook` with `ansible/project-playbook.yml`: Docker, the
@@ -348,6 +352,7 @@ credentials.
 
 ```
 urbex status [<env>] [--file urbex.yaml] [--gitops-repo <dir>]
+urbex status --progress [--watch]
 ```
 
 Without `<env>`: the platform and everything on it - which base-service
@@ -388,6 +393,34 @@ Projects:
 
 Both forms first update the GitOps repo from Gitea (the release Action
 commits there too), and say so if they can't.
+
+With `--progress`: how the latest `urbex bootstrap` or `urbex apply` run
+on this machine is getting on - from another terminal while it runs, or
+afterwards - phase by phase ([startup sequence](startup.md)): each
+finished phase with the time it took, the one running with its time so
+far and what is usually left, those not begun with their estimate,
+those skipped and why, and the time left in all. `--watch` refreshes it
+every 2 seconds until the run ends.
+
+```
+urbex bootstrap: running for 7m12s, about 3m05s left (started 14:02)
+  ✓ Check Proxmox, write the GitOps repo's files     1s
+  - Build the LXC template                            skipped: the current one is there
+  ✓ Create the LXCs (Terraform)                       56s
+  ✓ Configure every LXC (Ansible)                     21s
+  ✓ Install Technitium (DNS)                          26s
+  ▶ Install Gitea and Komodo, pull the other images   4m29s so far, about 21s left
+  · Prepare the telemetry agents                      about 5s
+  ...
+```
+
+The estimates are the average of the same phase in the last three
+successful runs of that command on this machine, or - before there are
+any - the times of the startup sequence's tables. The runs are recorded
+in `~/.urbex/progress/` (the last ten of each command, never in the
+GitOps repo); a run that stopped without finishing - killed, a lost
+terminal - shows as such after 2 minutes without news. `--progress`
+needs no platform, credentials or GitOps repo, and takes no `<env>`.
 
 With `<env>`, for each service of the project:
 
