@@ -137,6 +137,8 @@ Base services provisioned.
 Gitea ready at http://192.168.1.200:3000 (org urbex).
 Komodo ready at http://192.168.1.201:9120 (builder urbex-komodo).
 GitOps repo pushed to http://192.168.1.200:3000/urbex/gitops.git.
+...
+Waiting for Keycloak to start - its first start takes a few minutes...
 Platform ready. Gitea/Komodo admin user: urbex-admin; generated passwords and tokens are in /home/you/.urbex/credentials.yaml.
 ```
 

@@ -139,6 +139,9 @@ the base services are updated.
    applications for Gitea and Komodo - then the routes and DNS records of
    Keycloak, Gitea, Komodo and the webhook listener. If Access can't be set
    up, nothing is published.
+9. Waits for Keycloak to answer before reporting the platform ready: its
+   first start takes a few minutes (it says so while waiting), and stops
+   with an error after 15 minutes.
 
 | Flag | Meaning |
 |---|---|
@@ -190,7 +193,9 @@ there is something to run, waits until it runs.
    (accepting the new key of a recreated LXC), writes each service's
    folder in the GitOps repo - and the web frontend's, if the manifest
    has one - declares their Komodo Stacks, commits and pushes.
-5. **Identity**: the environment's Keycloak realm (`<project>-<env>`),
+5. **Identity**: once Keycloak answers (right after a bootstrap its first
+   start can take minutes; `apply` waits up to 15, and says so), the
+   environment's Keycloak realm (`<project>-<env>`),
    the services' roles, a client per frontend; in staging a test user per
    role and the `urbex-test` client, the passwords kept encrypted in the
    GitOps repo ([ADR-0024](../decisions/0024-keycloak-realm-per-environment.md)).
