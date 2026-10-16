@@ -42,7 +42,7 @@ flowchart TD
   end
   CF{"Cloudflare<br/>configured?"}
   PUB["<b>cloudflare</b><br/>Access, then routes and DNS records<br/><i>~30 s</i>"]
-  KW["wait for Keycloak to answer<br/><i>its first start: up to ~10 min</i>"]
+  KW["<b>keycloak</b><br/>wait for Keycloak to answer<br/><i>its first start: up to ~10 min</i>"]
   R(["Platform ready"])
 
   P --> T
@@ -69,7 +69,7 @@ The bold names are the phases `urbex status --progress` shows.
 | connect | 17 s | ~15 s |
 | stacks | 88 s | ~30 s |
 | cloudflare | 28 s | ~30 s |
-| Keycloak's first start | ~8 min after its Stack is deployed (up to ~10 measured) | - |
+| keycloak | its first start: ~8 min after its Stack is deployed (up to ~10 measured) | a few seconds: it already answers |
 | **total** | **~12 min, ~20 with Keycloak's first start** | **~2 min** |
 
 From an empty node, measured on 2026-10-16
