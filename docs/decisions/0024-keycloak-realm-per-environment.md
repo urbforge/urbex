@@ -61,8 +61,7 @@ production - and so the staging test users would work in production.
 - Keycloak still runs in development mode (embedded database): realms
   survive restarts and upgrades, but production mode is still to do.
   Done in [ADR-0029](0029-keycloak-production-postgresql.md): production
-  mode on PostgreSQL; the realms of a platform that ran on H2 are
-  re-created by each environment's next `urbex apply`.
+  mode on PostgreSQL.
 - Not yet: confidential clients for services calling each other, the
   realm's login theme and e-mail settings, social logins, several
   frontends per project.

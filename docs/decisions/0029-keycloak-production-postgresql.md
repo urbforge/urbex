@@ -9,7 +9,7 @@ the realms urbex creates in it, stand).
 
 ## Context
 
-Keycloak ran `start-dev`, the development mode, with its embedded H2
+Keycloak ran `start-dev`, the development mode, with its embedded
 database in the container's volume:
 
 - **It built at every start.** Keycloak "builds" itself for its
@@ -19,10 +19,8 @@ database in the container's volume:
   bootstrap from scratch 5-10 minutes. Bootstrap and apply now wait for
   it (urbforge/urbex-cli#32), but the wait stayed the slowest step of a
   bootstrap.
-- **H2 isn't meant for production**, as Keycloak's documentation says.
-- **Upgrades were tied to H2's credentials**: urbex pinned the ones
-  Keycloak 26.0 created the database with, or later versions couldn't
-  open it.
+- **Development mode isn't meant for production**, nor is its embedded
+  database, as Keycloak's documentation says.
 
 ## Decision
 
@@ -50,13 +48,6 @@ database in the container's volume:
   without, the hostname isn't fixed (`KC_HOSTNAME_STRICT=false`): the
   issuer is the address each request reaches Keycloak at, as in
   development mode.
-- **No migration** of a platform whose Keycloak ran on H2: what was in
-  it - each environment's realm, roles, clients and test users - is
-  left behind. Bootstrap re-creates Keycloak on PostgreSQL with its
-  admin and says so; the next `urbex apply <env>` of each environment
-  re-creates its realm, roles and clients, and the test users with the
-  passwords already in the GitOps repo. Anything added by hand in
-  Keycloak's console is lost.
 
 ## Consequences
 
@@ -66,6 +57,5 @@ database in the container's volume:
 - Keycloak's upgrade path is PostgreSQL's and Keycloak's own: a new
   Keycloak version rebuilds the image and migrates the schema at its
   first start.
-- The old H2 volume stays on the LXC of a platform that had one, unused.
 - Not yet: backups of the database (as for the other base services),
   Keycloak's own TLS, a database outside the LXC.
