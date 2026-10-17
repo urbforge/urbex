@@ -158,6 +158,7 @@ deploying needs none of it: a commit to the GitOps repo is enough.
 | `komodoWebhookSecret` | `URBEX_KOMODO_WEBHOOK_SECRET` | Secret Gitea signs its webhooks to Komodo with |
 | `komodoDbPassword`, `komodoJwtSecret` | `URBEX_KOMODO_DB_PASSWORD`, `URBEX_KOMODO_JWT_SECRET` | Komodo's internal database password and signing secret |
 | `keycloakAdminPassword` | `URBEX_KEYCLOAK_ADMIN_PASSWORD` | Keycloak's bootstrap admin password |
+| `keycloakDbPassword` | `URBEX_KEYCLOAK_DB_PASSWORD` | Keycloak's PostgreSQL password, also in the Keycloak Stack's encrypted secrets |
 | `grafanaAdminPassword` | `URBEX_GRAFANA_ADMIN_PASSWORD` | Grafana's `admin` password |
 | `technitiumAdminPassword` | `URBEX_TECHNITIUM_ADMIN_PASSWORD` | Technitium's admin password - only takes effect while Technitium has no configuration yet (its own behavior); see the note below |
 | `technitiumToken` | `URBEX_TECHNITIUM_TOKEN` | Technitium API token, minted with the admin password, used to create the zone and the services' DNS records ([ADR-0026](../decisions/0026-technitium-internal-dns-records.md)) |

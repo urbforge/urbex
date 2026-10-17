@@ -33,16 +33,16 @@ flowchart TD
   D["<b>dns</b><br/>Technitium: zone, records<br/><i>~5 s</i>"]
   GO["<b>gitops</b><br/>Gitea org and repo, Komodo keys,<br/>Action, Procedure; push the GitOps repo<br/><i>~10-20 s</i>"]
   CO["<b>connect</b><br/>Ansible: Periphery on every LXC;<br/>Komodo adopts Technitium, Gitea, Komodo<br/><i>~20 s</i>"]
-  subgraph ST["<b>stacks</b> - Komodo, all at once <i>~1.5 min</i>"]
+  subgraph ST["<b>stacks</b> - Komodo, all at once <i>~1.5 min; ~8 from an empty node</i>"]
     direction LR
-    KC["Keycloak"]
+    KC["Keycloak and its PostgreSQL;<br/>its image built once, ~7 min"]
     OB["Prometheus,<br/>Loki, Grafana"]
     TU["tunnel"]
     TE["a telemetry agent<br/>per LXC"]
   end
   CF{"Cloudflare<br/>configured?"}
   PUB["<b>cloudflare</b><br/>Access, then routes and DNS records<br/><i>~30 s</i>"]
-  KW["<b>keycloak</b><br/>wait for Keycloak to answer<br/><i>its first start: up to ~10 min</i>"]
+  KW["<b>keycloak</b><br/>wait for Keycloak to answer<br/><i>under a minute</i>"]
   R(["Platform ready"])
 
   P --> T
@@ -67,15 +67,17 @@ The bold names are the phases `urbex status --progress` shows.
 | agents | 5 s | ~5 s |
 | dns, gitops | 13 s | ~10 s |
 | connect | 17 s | ~15 s |
-| stacks | 88 s | ~30 s |
+| stacks | ~8 min: Keycloak's image is built (~7 min) | ~30 s |
 | cloudflare | 28 s | ~30 s |
-| keycloak | its first start: ~8 min after its Stack is deployed (up to ~10 measured) | a few seconds: it already answers |
-| **total** | **~12 min, ~20 with Keycloak's first start** | **~2 min** |
+| keycloak | under a minute (23 s measured) | a few seconds: it already answers |
+| **total** | **~19 min** | **~2 min** |
 
 From an empty node, measured on 2026-10-16
 ([urbforge/urbex-cli#30](https://github.com/urbforge/urbex-cli/issues/30)):
-the template, the image pulls of the **base** phase and Keycloak's first
-start are most of the time. On an existing platform, measured on
+the template, the image pulls of the **base** phase and the build of
+Keycloak's image in **stacks** are most of the time (the **stacks** and
+**keycloak** rows measured on 2026-10-16 too, for
+[urbforge/urbex-cli#36](https://github.com/urbforge/urbex-cli/issues/36)). On an existing platform, measured on
 2026-10-15 (116 s, Cloudflare configured), most phases only check that
 everything is already right.
 
@@ -85,10 +87,12 @@ everything is already right.
   images Komodo deploys on them later - one LXC at a time, so as not to
   slow Gitea's and Komodo's first starts on the shared disk. In
   **stacks**, Komodo deploys every Stack at once.
-- **Keycloak** runs in development mode for now, which builds at every
-  start; its first start is the slowest step of all. Bootstrap waits for
-  it (up to 15 minutes) before saying the platform is ready, so that
-  the first `urbex apply` finds it.
+- **Keycloak** runs in production mode on an image built once for its
+  PostgreSQL ([ADR-0029](../decisions/0029-keycloak-production-postgresql.md)):
+  the build, in Komodo's first deploy of its Stack, is the slowest step
+  of all; later starts take under a minute. Bootstrap waits for it (up
+  to 15 minutes) before saying the platform is ready, so that the first
+  `urbex apply` finds it.
 
 ## `urbex apply <env>`
 
