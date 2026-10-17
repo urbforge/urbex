@@ -159,7 +159,7 @@ command uses them yet - see [`status.md`](../status.md):
 | `observability.metrics` | Scraping of the services' metrics by Prometheus. |
 | `email.provider` (`brevo`), `email.fromAddress`, `email.fromName` | Transactional email; the provider key will be a secret. |
 | `services[].image`, `version` | An application from a published image instead of `runtime`, pinned by digest per environment ([ADR-0028](../decisions/0028-application-model.md)). |
-| `services[].provides: postgres`, `services[].uses` | A PostgreSQL in the stack - its own LXC per environment, its data on a named volume - and the applications that use it, which get `DATABASE_URL` and `PG*` ([ADR-0030](../decisions/0030-postgresql-application.md)). A provider needs a volume, and has no `port` and no `public`. |
+| `services[].provides: postgres`, `services[].uses` | A PostgreSQL in the stack - its own LXC per environment, its data on a named volume - and the applications that use it, each with its own role and schema on it, which get `DATABASE_URL` and `PG*` ([ADR-0030](../decisions/0030-postgresql-application.md)). A provider has exactly one volume, and no `port`, `public` or `healthcheck`. |
 | `services[].volumes[]` (`name`, `path`, `size`, default `10Gi`) | Named volumes: data kept across redeploys and updates, deleted only by `urbex destroy <env> --delete-data`. |
 
 The rows from `image` on are in this repository's schema; the CLI

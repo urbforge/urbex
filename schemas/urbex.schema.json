@@ -191,10 +191,10 @@
           "then": {
             "required": ["volumes"],
             "properties": {
-              "volumes": { "minItems": 1 },
+              "volumes": { "minItems": 1, "maxItems": 1 },
               "public": { "const": false }
             },
-            "not": { "required": ["port"] }
+            "not": { "anyOf": [{ "required": ["port"] }, { "required": ["healthcheck"] }] }
           }
         }
       ]
