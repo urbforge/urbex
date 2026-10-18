@@ -50,6 +50,7 @@ Cloudflare Quick Tunnel
 | Applications from published images must be public: a registry that requires credentials is refused when the tag is resolved ([ADR-0028](decisions/0028-application-model.md)). | None at present. |
 | The major-version guard (`--allow-major`) has no effect yet: it applies to applications with volumes, and volumes are not supported yet ([urbex-cli#44](https://github.com/urbforge/urbex-cli/issues/44)). | Check the release notes of the image before moving to a new major version. |
 | A stack cannot change from two environments to production only by editing `environments`: removing `staging` from the list leaves its LXCs, Stacks and folder in place. | Run `urbex destroy staging` before removing it. |
+| A stack whose services built from source are all replaced by applications from published images keeps their Builds in Komodo: `urbex apply` removes the release webhook, but not the Builds, as with any service removed from `urbex.yaml`. | Delete the Builds in Komodo's UI. |
 
 ## Public endpoints (Cloudflare)
 

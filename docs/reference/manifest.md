@@ -136,7 +136,10 @@ services:
 On the first `urbex apply` of an environment, the tag in `version` is
 resolved, through the registry, to the digest of the image it refers to
 at that moment. The environment records both in its `version.env`
-(`VERSION=1.29@sha256:...`) and runs that digest. The digest remains in
+(`VERSION=1.29@sha256:...`) and runs that digest. A new prod of a stack
+with staging is the exception: it takes the tag and digest that staging
+runs, if staging has them, so that production never runs a digest
+staging has not run. The digest remains in
 place when the tag is later moved by its publisher; it changes only
 through `urbex deploy <env> --update`, which resolves the tag again,
 through `urbex deploy <env> --app <name> --version <tag>`, which pins

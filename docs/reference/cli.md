@@ -210,7 +210,10 @@ usual times: [startup sequence](startup.md#urbex-apply-env);
    has one - declares their Komodo Stacks, commits and pushes. Each
    application from a published image that has no version in this
    environment yet is pinned in the same commit: its tag is resolved to
-   a digest, which `version.env` records. When the tag in `urbex.yaml`
+   a digest, which `version.env` records. A new prod of a stack with
+   staging takes instead the tag and digest staging runs, as `urbex
+   promote` would, so that production never starts on a digest staging
+   has not run. When the tag in `urbex.yaml`
    differs from the one pinned, `apply` reports it and leaves the pinned
    one in place.
 5. **Identity**: once Keycloak answers (right after a bootstrap its first
@@ -232,7 +235,7 @@ usual times: [startup sequence](startup.md#urbex-apply-env);
      waits until staging runs it;
    - a new **prod** stays empty until `urbex promote` or `urbex deploy
      prod`, except for its applications from published images, which run
-     the digest just pinned;
+     the digest just pinned, staging's when staging has one;
    - in a stack whose services all come from published images, every
      environment runs its pinned digests at once;
    - an environment that already runs something is redeployed (e.g. onto
