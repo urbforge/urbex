@@ -3,7 +3,9 @@
 Everything Urbex doesn't do yet, or does with a catch, in one place - with
 what to do meanwhile. What *is* supported, and the priorities, are in
 [`status.md`](status.md); planned work is in [`roadmap.md`](roadmap.md).
-Last reviewed: 2026-10-08, with the gaps the service conventions
+Last reviewed: 2026-10-17, with the applications from published images
+([ADR-0028](decisions/0028-application-model.md)); before that
+2026-10-08, with the gaps the service conventions
 ([ADR-0027](decisions/0027-service-conventions.md)) address; before
 that 2026-10-05, after internal DNS registration in Technitium
 ([ADR-0026](decisions/0026-technitium-internal-dns-records.md)) was
@@ -45,6 +47,10 @@ Cloudflare Quick Tunnel
 | **Changing a port or healthcheck** needs `urbex deploy <env>` (it regenerates the compose files); configuration in `urbex.yaml`'s `env` only seeds `config.env` once. | Edit `config.env` in the GitOps repo afterwards. |
 | **No concurrency guard across machines** on the Terraform state and the address ledger. | Don't run `plan`, `apply`, `destroy` from two machines at once. |
 | **Terraform state isn't encrypted** (it holds no secrets). | Keep the GitOps repo private. |
+| Applications from published images must be public: a registry that requires credentials is refused when the tag is resolved ([ADR-0028](decisions/0028-application-model.md)). | None at present. |
+| The major-version guard (`--allow-major`) has no effect yet: it applies to applications with volumes, and volumes are not supported yet ([urbex-cli#44](https://github.com/urbforge/urbex-cli/issues/44)). | Check the release notes of the image before moving to a new major version. |
+| A stack cannot change from two environments to production only by editing `environments`: removing `staging` from the list leaves its LXCs, Stacks and folder in place. | Run `urbex destroy staging` before removing it. |
+| A stack whose services built from source are all replaced by applications from published images keeps their Builds in Komodo: `urbex apply` removes the release webhook, but not the Builds, as with any service removed from `urbex.yaml`. | Delete the Builds in Komodo's UI. |
 
 ## Public endpoints (Cloudflare)
 
@@ -76,6 +82,7 @@ Cloudflare Quick Tunnel
 |---|---|
 | **Keycloak covers the projects' users only** ([ADR-0024](decisions/0024-keycloak-realm-per-environment.md)): no admin SSO for Gitea/Komodo/Grafana, no confidential clients for services calling each other, one client per frontend (and one frontend per project); destroying an environment deletes its realm's users. | Add what's missing in Keycloak's console: urbex keeps what it doesn't manage (extra redirect URIs, users, clients). |
 | **A platform bootstrapped before internal DNS registration existed keeps Technitium's original admin password**: `DNS_SERVER_ADMIN_PASSWORD` only takes effect while Technitium has no configuration yet, so re-running `urbex bootstrap` on an already-configured instance doesn't rotate it, and minting the API token fails ([ADR-0026](decisions/0026-technitium-internal-dns-records.md)). | Seed the real password into `~/.urbex/credentials.yaml`'s `technitiumAdminPassword` before bootstrapping. |
+| Technitium does not validate DNSSEC: it leaves validation to its forwarders, since many LAN resolvers, and routers that intercept DNS traffic, do not return the records validation requires, and Technitium would then fail every public name. | Use forwarders that validate DNSSEC, if validation is required. |
 | **When Technitium is down, internal names don't resolve**: the LXCs fall back to the forwarders, which only know public names. | Re-run `urbex bootstrap` to reinstall it. |
 | **The internal zone (`urbex.<domain>`) shadows Cloudflare on the LAN**: Technitium answers for every name under it, so a record you created there on Cloudflare doesn't resolve from the LXCs; with `nested` public hostnames, neither do the web frontends' (they have no LXC, so no internal record) ([ADR-0027](decisions/0027-service-conventions.md)). | Keep your own records out of the platform's subdomain, or set `dns.zone`. |
 | **Without Cloudflare, the token issuer is Keycloak's LAN address** (`KEYCLOAK_ISSUER`): the address your users' browsers reach it at, which the tokens carry. The services fetch the signing keys by internal name. | Configure Cloudflare for a stable, public issuer. |

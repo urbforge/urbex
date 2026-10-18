@@ -79,10 +79,21 @@ VERSION=8d41b07
 TRACK=main
 ```
 
+```sh
+VERSION=17.6@sha256:4f1d...
+```
+
 | Key | Meaning |
 |---|---|
-| `VERSION` | The image tag to run: a release (`1.4.2`, from the git tag `v1.4.2`) or a commit of `main` (its 7-12 character short hash). Absent: the service isn't deployed. |
+| `VERSION` | The image tag to run: a release (`1.4.2`, from the git tag `v1.4.2`) or a commit of `main` (its 7-12 character short hash). For an application from a published image, the tag followed by the digest it was resolved to (`17.6@sha256:...`): the digest is what runs, and the tag records where it came from. Absent: the service isn't deployed. |
 | `TRACK` | Only value: `main`. After every build of `main`, the `urbex-release` Action sets `VERSION` to the new commit in every `version.env` that has it, in a single commit (`urbex: <project> main@<hash> to staging`). Without it, `VERSION` only changes when someone changes it. |
+
+An application from a published image never has `TRACK`: its first
+`urbex apply` in an environment resolves the tag in `urbex.yaml` and
+records the result, which only `urbex deploy --update`, `urbex deploy
+--app <name> --version <tag>`, `urbex promote` or an edit by hand
+change. A digest written by hand must be the full `sha256:` digest of
+the image.
 
 Staging's files are created with `TRACK=main`, prod's without - see
 [ADR-0021](../decisions/0021-staging-follows-main.md). `urbex deploy
@@ -167,6 +178,26 @@ services:
 `VERSION` comes from `version.env`; the image is
 `<gitea>/<org>/<project>-<service>`.
 
+For an application from a published image, the image is the one it
+declares, and `VERSION` carries the tag and the digest, so that Docker
+pulls exactly the recorded digest:
+
+```yaml
+services:
+  app:
+    image: docker.io/library/nginx:${VERSION}
+    restart: unless-stopped
+    env_file:
+      - config.env
+      - path: ${URBEX_SECRETS_FILE:-secrets.env}
+        required: false
+    ports:
+      - "80:80"
+```
+
+Such an application receives no `PORT`, and its port is published only
+when `urbex.yaml` declares one.
+
 ## The platform's folders
 
 `platform/` holds the platform's own services
@@ -220,7 +251,7 @@ Only `main` is deployed: other branches are for pull requests.
 |---|---|---|
 | `urbex.platform.yaml` | you | Once, then when the platform changes. |
 | `.sops.yaml` | `urbex bootstrap` | Every run (from the age key). |
-| `…/version.env` | `urbex apply` (new staging), `urbex deploy`, `urbex promote`, the `urbex-release` Action (when `TRACK=main`), you | Each deploy. |
+| `…/version.env` | `urbex apply` (new staging; for an application from a published image, its first apply in each environment), `urbex deploy`, `urbex promote`, the `urbex-release` Action (when `TRACK=main`), you | Each deploy. |
 | `…/config.env` | `urbex apply` (first time), you | When configuration changes. |
 | `…/secrets.sops.env` | `urbex apply` (placeholder), `urbex secret`, `sops` | When secrets change. |
 | `…/compose.yaml` | `urbex apply`, `urbex deploy` | When `urbex.yaml` changes. |

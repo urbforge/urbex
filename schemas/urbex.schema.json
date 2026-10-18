@@ -19,6 +19,15 @@
       "description": "Unique project name on the platform.",
       "pattern": "^[a-z][a-z0-9-]{1,38}[a-z0-9]$"
     },
+    "environments": {
+      "type": "array",
+      "description": "The stack's environments: [staging, prod] (the default), or [prod] for a stack that runs only one - release and promote then don't apply. See docs/decisions/0028-application-model.md.",
+      "items": { "enum": ["staging", "prod"] },
+      "minItems": 1,
+      "uniqueItems": true,
+      "contains": { "const": "prod" },
+      "default": ["staging", "prod"]
+    },
     "frontend": {
       "type": "object",
       "additionalProperties": false,
