@@ -23,7 +23,8 @@ the [cookbook](../cookbook.md).
 ## Conventions
 
 - **`<env>`** is `staging` or `prod`. They are the only environments in
-  v1.
+  v1. A stack declared with `environments: [prod]` has production only,
+  and the commands refuse `staging` for it.
 - **Project commands** (`plan`, `apply`, `release`, `deploy`, `promote`,
   `secret`, `status <env>`, `destroy`) act on the project whose
   `urbex.yaml` is in the current directory (`--file` to point elsewhere),
@@ -39,7 +40,9 @@ the [cookbook](../cookbook.md).
   ([ADR-0027](../decisions/0027-service-conventions.md)).
 - **A version** is either a release (`1.4.2`, from the tag `v1.4.2`) or
   a commit of `main`, as its short hash (`a1b2c3d`) - the tag of the image
-  built for that commit.
+  built for that commit. For an application from a published image, the
+  version is a tag of that image together with the digest it was
+  resolved to (`17.6@sha256:...`).
 - **Credentials** come from environment variables, falling back to
   `~/.urbex/credentials.yaml`; see [credentials](credentials.md).
 - Commands that change the GitOps repo first pull it from Gitea
@@ -198,11 +201,18 @@ usual times: [startup sequence](startup.md#urbex-apply-env);
    and the compose wrapper that decrypts secrets.
 3. **The project:** its repo on Gitea (if Gitea has no `main`, pushes
    `--repo-dir`'s `HEAD` there), a Komodo Build per service, and the
-   project repo's webhook to the `urbex-release` Action.
+   project repo's webhook to the `urbex-release` Action. Applications
+   from published images have no Build; a project made only of such
+   applications has no webhook either.
 4. **The environment:** waits for the LXCs' agents to connect to Komodo
    (accepting the new key of a recreated LXC), writes each service's
    folder in the GitOps repo - and the web frontend's, if the manifest
-   has one - declares their Komodo Stacks, commits and pushes.
+   has one - declares their Komodo Stacks, commits and pushes. Each
+   application from a published image that has no version in this
+   environment yet is pinned in the same commit: its tag is resolved to
+   a digest, which `version.env` records. When the tag in `urbex.yaml`
+   differs from the one pinned, `apply` reports it and leaves the pinned
+   one in place.
 5. **Identity**: once Keycloak answers (right after a bootstrap its first
    start can take minutes; `apply` waits up to 15, and says so), the
    environment's Keycloak realm (`<project>-<env>`),
@@ -221,7 +231,10 @@ usual times: [startup sequence](startup.md#urbex-apply-env);
    - a new **staging** follows `main`: `apply` builds `main`'s head and
      waits until staging runs it;
    - a new **prod** stays empty until `urbex promote` or `urbex deploy
-     prod`;
+     prod`, except for its applications from published images, which run
+     the digest just pinned;
+   - in a stack whose services all come from published images, every
+     environment runs its pinned digests at once;
    - an environment that already runs something is redeployed (e.g. onto
      a recreated LXC) and waited for.
 
@@ -250,6 +263,10 @@ urbex release [--version vX.Y.Z] [--ref <commit|branch|tag>] [--file urbex.yaml]
 Makes a release: tags a commit of the project as `vX.Y.Z` on Gitea and
 waits until every service has an image `X.Y.Z` in the registry.
 
+A release concerns the services built from source only. It is refused
+for a stack without such services, and for a stack whose environments
+are only `prod`, where there is no staging to release from.
+
 - **Version:** `--version`, or the patch after the highest existing
   `vX.Y.Z` tag (`v0.1.0` for the first). An existing version is refused.
 - **Commit:** `--ref`; else, if staging follows `main`, **the commit
@@ -275,6 +292,7 @@ Needs: the platform credentials.
 
 ```
 urbex deploy <env> [--version <version> | --follow-main] [--file urbex.yaml] [--gitops-repo <dir>]
+urbex deploy <env> [--app <name>] (--update | --version <tag> [--no-save]) [--allow-major] [--file urbex.yaml] [--gitops-repo <dir>]
 ```
 
 Sets what an environment runs, by writing each service's
@@ -287,13 +305,43 @@ and `deploy` waits until the environment runs it.
 | `urbex deploy <env> --version 1.4.2` | That release. How to roll back. |
 | `urbex deploy <env> --version 8d41b07` | The image of that commit of `main`. |
 | `urbex deploy <env> --follow-main` | Follow `main`: build its head now, and deploy every later push. |
+| `urbex deploy <env> --update` | Every application from a published image: its tag in `urbex.yaml`, resolved again to the digest it refers to now. |
+| `urbex deploy <env> --app <name> --update` | The same, for one application. |
+| `urbex deploy <env> --app <name> --version <tag>` | Another tag of one application, resolved to its digest. |
+
+The first four forms concern the services built from source and leave
+the applications from published images as they are; the last three
+concern only the applications from published images, which run the
+digest recorded in their `version.env` until one of these forms, or
+`urbex promote`, replaces it. An application whose digest is unchanged
+is reported as such (`already runs`) and not redeployed. `--update` and
+`--version` cannot be combined, and `--version` requires `--app`, since
+each application has its own tags.
+
+`--app <name> --version <tag>` also writes the tag into the `version` of
+the application in `urbex.yaml`, so that the manifest and the GitOps
+repository do not diverge, when the environment is the first one of the
+stack: staging, or prod for a stack that has only production. A
+deployment to another environment, such as a rollback of prod, leaves
+the manifest as it is. The file is edited in place, with its comments and
+formatting preserved, and is not committed. `--no-save` leaves it
+unchanged.
+
+A change of major version (the leading number of the tag, `17` to
+`18`) of an application with volumes is refused without
+`--allow-major`, since its data may require a migration, such as a dump
+and restore, before the new version can read it. Volumes are not
+supported yet ([urbex-cli#44](https://github.com/urbforge/urbex-cli/issues/44)),
+so the check has no effect until they are.
 
 Deploying a version removes `TRACK=main`, so an environment that
 followed `main` stays on that version (`deploy` says so);
 `--follow-main` adds it back.
 
-Before writing anything, `deploy` checks that every service has an image
-for the version, and refuses otherwise. It also regenerates each
+Before writing anything, `deploy` checks that every service built from
+source has an image for the version, and that every tag of an
+application from a published image exists in its registry, and refuses
+otherwise. It also regenerates each
 service's `compose.yaml` from `urbex.yaml`: this is how a changed port or
 healthcheck takes effect.
 
@@ -305,10 +353,14 @@ Needs: the platform credentials. No Terraform, no SSH.
 ## `urbex promote`
 
 ```
-urbex promote [--file urbex.yaml] [--gitops-repo <dir>]
+urbex promote [--allow-major] [--file urbex.yaml] [--gitops-repo <dir>]
 ```
 
-Sets production to the release staging runs, and waits until it runs.
+Sets production to what staging runs, for the whole stack, and waits
+until it runs: the services built from source get the release staging
+runs, and the applications from published images get the digests
+staging runs, so that an update of such an application is tried in
+staging first.
 
 - Staging runs a release: prod gets that release.
 - Staging runs a commit of `main`: prod gets the release tagged on that
@@ -319,6 +371,11 @@ Prod is pinned to the release (no `TRACK=main`). Nothing is rebuilt: the
 image is the one staging runs. Prints `Nothing to promote` when prod
 already runs it. Configuration and secrets are not copied: they are per
 environment.
+
+A change of major version of an application with volumes requires
+`--allow-major`, as for [`deploy`](#urbex-deploy). A stack whose
+environments are only `prod` has nothing to promote, and `promote`
+refuses it.
 
 Needs: both environments applied; the platform credentials.
 

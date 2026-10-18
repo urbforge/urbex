@@ -14,8 +14,9 @@ secrets - is not here but in the [GitOps repo](gitops-repo.md).
 - [Top level](#top-level)
 - [`services[]`](#services)
 - [Runtimes](#runtimes)
+- [Applications from published images](#applications-from-published-images)
 - [`frontend`](#frontend)
-- [`domain`, `observability.metrics`, `email`, `auth`](#declared-not-yet-acted-on)
+- [`domain`, `observability.metrics`, `email`, `provides`, `uses`, `volumes`](#declared-not-yet-acted-on)
 - [What changes take effect how](#what-changes-take-effect-how)
 
 ## Full example
@@ -59,6 +60,7 @@ frontend:
 | `apiVersion` | `urbex/v1` | yes | Manifest format version. |
 | `project` | string | yes | The project's name on the platform: 3-40 characters, lowercase letters, digits, `-`, starting with a letter. It names the repo on Gitea, the LXCs, the images, and the folders in the GitOps repo, so changing it means a new project. |
 | `services` | list | one of `services` or `frontend` | The services to build and run. At least one if present. |
+| `environments` | `[staging, prod]` or `[prod]` | `[staging, prod]` | The environments of the stack. With `[prod]` the stack runs in production only: `urbex apply staging` is refused, and `urbex release` and `urbex promote` do not apply, since versions are set in production directly with `urbex deploy prod` ([ADR-0028](../decisions/0028-application-model.md)). |
 | `frontend` | object | | See [`frontend`](#frontend). |
 | `observability.logs` | boolean | `true` | Ship the services' logs to the platform's Loki ([ADR-0023](../decisions/0023-service-logs-to-loki.md)); `false` removes the log agent from the project's LXCs. |
 | `domain`, `observability.metrics`, `email` | object | | Validated, [not acted on yet](#declared-not-yet-acted-on). |
@@ -71,15 +73,19 @@ Each service gets, per environment, its own LXC
 (`<project>-<service>-<env>`), its own Komodo Build
 (`<project>-<service>`, shared by the environments), its own image
 (`<registry>/<org>/<project>-<service>`), and its own folder in the
-GitOps repo.
+GitOps repo. An application from a published image has neither a Build
+nor an image of its own: its LXC pulls the image it declares (see
+[applications from published images](#applications-from-published-images)).
 
 | Field | Type | Default | Meaning |
 |---|---|---|---|
 | `name` | string | required | 2-40 characters, lowercase letters, digits, `-`, starting with a letter. Unique in the project. |
 | `runtime` | `go`, `java`, `python`, `docker` | required (without `image`) | How the image is built - see [runtimes](#runtimes). |
+| `image` | image reference without tag | required (without `runtime`) | A published image to run instead of building one, such as `docker.io/library/postgres` or `ghcr.io/immich-app/immich-server`. A name without a registry refers to Docker Hub. Only public images are supported. |
+| `version` | image tag | required with `image` | The tag to run, such as `17.6`. Each environment runs the digest this tag pointed to when it was resolved, recorded in its `version.env`, until `urbex deploy` resolves it again. |
 | `dockerfile` | path | required with `docker` | Path of the Dockerfile from the repo root; its directory is the build context. Ignored for other runtimes. |
 | `public` | boolean | `false` | Publish the service on the internet through the platform's Cloudflare Tunnel, at `<service>-<project>-urbex.<domain>` (prod) and `<service>-staging-<project>-urbex.<domain>` (staging). Its own auth is its gate. Needs Cloudflare in the [platform config](platform-config.md#public-hostnames). |
-| `port` | 1-65535 | required with `runtime` | The port the service listens on. The container gets `PORT` set to it, and it is published on the LXC's IP at the same number. |
+| `port` | 1-65535 | required with `runtime` | The port the service listens on. The container gets `PORT` set to it, and it is published on the LXC's IP at the same number. An application from a published image may omit it; if it declares one, the port is published in the same way, but `PORT` is not set, since such an image reads its own variables. `public` and `healthcheck` require a port. |
 | `healthcheck` | HTTP path | none | Path probed every 30 s from inside the container (`wget -q --spider http://localhost:<port><path>`); three failures mark the container unhealthy, and `urbex` waits for healthy. Without it, a running container counts. |
 | `resources.cpu` | integer ≥ 1 | `1` | Cores of the LXC. |
 | `resources.memory` | `<n>Mi` or `<n>Gi` | `1Gi` | Memory of the LXC. |
@@ -108,6 +114,51 @@ In every case:
 - with a `healthcheck`, the image must contain `wget` (Urbex's do);
 - there is one image per commit of `main`, tagged with the commit's short
   hash, plus one tag per release (`1.4.2`) on the same image.
+
+## Applications from published images
+
+An application can run a published image, pulled as it is, instead of
+an image built from the project's repository
+([ADR-0028](../decisions/0028-application-model.md)):
+
+```yaml
+apiVersion: urbex/v1
+project: acme-site
+environments: [prod]
+
+services:
+  - name: web
+    image: docker.io/library/nginx
+    version: "1.29"
+    port: 80
+```
+
+On the first `urbex apply` of an environment, the tag in `version` is
+resolved, through the registry, to the digest of the image it refers to
+at that moment. The environment records both in its `version.env`
+(`VERSION=1.29@sha256:...`) and runs that digest. The digest remains in
+place when the tag is later moved by its publisher; it changes only
+through `urbex deploy <env> --update`, which resolves the tag again,
+through `urbex deploy <env> --app <name> --version <tag>`, which pins
+another tag, and through `urbex promote`, which copies to production the
+digest that staging runs. The [CLI reference](cli.md#urbex-deploy)
+describes these forms.
+
+Changing `version` in `urbex.yaml` therefore changes nothing by itself:
+`urbex apply` reports the difference, and `urbex deploy <env> --app
+<name> --update` applies it. In the opposite direction, `urbex deploy
+<env> --app <name> --version <tag>` writes the new tag into `version`
+when the environment is the first one of the stack, as the [CLI
+reference](cli.md#urbex-deploy) describes.
+
+An application from a published image is never built and never follows
+`main`. A stack may combine such applications with services built from
+source: `urbex release` and the builds concern the latter only, while
+`urbex promote` moves both, the releases of the services built from
+source and the digests of the applications from images.
+
+The image must be reachable without credentials: a registry that
+requires authentication is refused when the tag is resolved.
 
 ## `frontend`
 
@@ -151,20 +202,22 @@ GitOps repo it appears as a service called `web`.
 ## Declared, not yet acted on
 
 These are validated, so a manifest can already state them, but no
-command uses them yet - see [`status.md`](../status.md):
+command uses them yet (see [`status.md`](../status.md)). The fields of
+`services[]` in this table are refused by `urbex plan`, `apply`,
+`deploy` and `promote` rather than ignored, since an application that expects a volume
+or a database would otherwise run without it.
 
 | Field | Meaning, once implemented |
 |---|---|
 | `domain.subdomain` | A custom name for the project's public hostnames (today they are derived from the project's name). |
 | `observability.metrics` | Scraping of the services' metrics by Prometheus. |
 | `email.provider` (`brevo`), `email.fromAddress`, `email.fromName` | Transactional email; the provider key will be a secret. |
-| `services[].image`, `version` | An application from a published image instead of `runtime`, pinned by digest per environment ([ADR-0028](../decisions/0028-application-model.md)). |
 | `services[].provides: postgres`, `services[].uses` | A PostgreSQL in the stack - its own LXC per environment, its data on a named volume - and the applications that use it, each with its own role and schema on it, which get `DATABASE_URL` and `PG*` ([ADR-0030](../decisions/0030-postgresql-application.md)). A provider has exactly one volume, and no `port`, `public` or `healthcheck`. |
 | `services[].volumes[]` (`name`, `path`, `size`, default `10Gi`) | Named volumes: data kept across redeploys and updates, deleted only by `urbex destroy <env> --delete-data`. |
 
-The rows from `image` on are in this repository's schema; the CLI
-accepts them once its copy is updated, with
-[urbex-cli#9](https://github.com/urbforge/urbex-cli/issues/9).
+`provides` and `uses` are tracked in
+[urbex-cli#43](https://github.com/urbforge/urbex-cli/issues/43), and
+`volumes` in [urbex-cli#44](https://github.com/urbforge/urbex-cli/issues/44).
 
 ## What changes take effect how
 
@@ -173,6 +226,8 @@ accepts them once its copy is updated, with
 | Code | A push to `main` (staging); then `urbex release` and `urbex promote` (prod). |
 | `port`, `healthcheck` | `urbex deploy <env>` (it regenerates the compose files). |
 | `runtime`, `dockerfile` | `urbex apply <env>` (it updates the Build), then the next push to `main`. |
+| `version` of an application from an image | `urbex deploy <env> --app <name> --update` in each environment, or `urbex deploy staging --app <name> --update` followed by `urbex promote`. |
+| `environments` | `urbex apply <env>` for an environment added; an environment removed from the list is not destroyed: run `urbex destroy <env>` before removing it. |
 | `resources` | `urbex plan <env>`, then `urbex apply <env>`. |
 | A new service | `urbex apply <env>` in each environment. |
 | `public` | `urbex apply <env>` (it routes or unroutes the service). |
