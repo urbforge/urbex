@@ -191,7 +191,14 @@ services:
 
 A **named volume** is a mount point of the application's LXC on the
 platform's storage (`proxmox.storagePool`). It is mounted on the LXC at
-`/srv/volumes/<name>` and bound from there into the container. `urbex
+`/srv/volumes/<application>/<name>` (the application is in the path, so
+that applications sharing an LXC can each have a volume of the same
+name) and, in the container, is a Docker named volume on that folder:
+as for any named volume, Docker fills it the first time with what the
+image keeps at `path`, owners included, so an image that doesn't run as
+root (Grafana, Prometheus) can write to it; on an ext4 storage such
+as `local-lvm`, `apply` first removes the new volume's empty
+`lost+found`, which would keep Docker from filling it. `urbex
 apply` creates it with `backup=1`, so that Proxmox's backups (vzdump) of
 the LXC include it, and grows it when `size` grows. It can't be shrunk:
 `apply` refuses a smaller `size`. The data stays across redeploys,
@@ -206,7 +213,8 @@ destroy --delete-data`.
 A **share** is a folder of the Proxmox node that exists outside Urbex,
 such as a NAS's media library. The operator declares it once in
 `urbex.platform.yaml`, and every application that names it mounts it, at
-`/srv/shares/<share>` on its LXC. Binding a folder of the node into an
+`/srv/shares/<share>` on its LXC. `urbex plan` and `urbex apply` refuse
+a share the platform doesn't declare. Binding a folder of the node into an
 LXC needs `root@pam`, which an API token never has, so the operator
 binds it. Until an application's LXC has its shares, `urbex apply`
 prints the commands to run on the node, deploys the rest of the stack
@@ -215,12 +223,19 @@ without that application, and exits with an error:
 ```
 Some applications need shares their LXC doesn't have yet. Binding a folder of the Proxmox node needs root@pam: on the node, as root, run
   pct set 9112 -mp1 /mnt/pve/nas/media,mp=/srv/shares/media,ro=1
-then run 'urbex apply prod' again.
-not deployed until their shares are mounted: jellyfin
+Then run 'urbex apply prod' again.
+not deployed until what they keep is mounted: jellyfin
 ```
 
-`apply` restarts a running LXC that can't mount a new volume or share
-at once. Urbex never deletes a share.
+A mount point Proxmox can't mount into a running LXC at once stays
+pending until the LXC restarts: `apply` restarts it once, saying so
+first, and with it the containers on it. An application never starts
+before its volumes and shares are mounted: a named volume's container refuses to start
+without its folder, and one started without a share would write to the
+LXC's own disk. If one is still not mounted after the
+restart, `apply` leaves that application out, names it and the volumes,
+and exits with an error; the next `apply` tries again. Urbex never
+deletes a share.
 
 ## `frontend`
 

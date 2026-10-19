@@ -35,7 +35,7 @@ Proxmox VE 9.2 node, see [What has been validated](#what-has-been-validated).
 | **Secrets** | SOPS + age, per service and environment, in the GitOps repo; decrypted only on the LXC, at deploy time; `urbex secret set/unset/list` |
 | `urbex apply` | Terraform, Ansible, the project's Builds and webhook, the environment's folder and Stacks; a new staging builds and runs `main`'s head; redeploys an environment that already runs something |
 | Applications from published images | A service with `image` and `version` instead of `runtime` is pulled rather than built: each environment runs the digest its tag was resolved to, recorded in `version.env`, until `urbex deploy --update` or `--app <name> --version <tag>` replaces it; `urbex promote` copies the digests staging runs; `environments: [prod]` declares a stack with production only, for which `release` and `promote` do not apply. Public images only ([ADR-0028](decisions/0028-application-model.md)) |
-| Volumes | An application's named volumes are mount points of its LXC on the platform's storage, in Proxmox's backups, grown when their size grows; `urbex apply` refuses a change that would replace an LXC with named volumes, and `urbex destroy` deletes them only with `--delete-data`. Shares of the Proxmox node, declared in `storage.shares`, are bound by the operator with the `pct set` commands `apply` prints ([ADR-0028](decisions/0028-application-model.md)) |
+| Volumes | An application's named volumes are mount points of its LXC on the platform's storage, in Proxmox's backups, grown when their size grows, and Docker named volumes in its container, filled from the image the first time, owners included; `urbex apply` refuses a change that would replace an LXC with named volumes, restarts an LXC that needs it to mount one and never starts an application before its volumes are mounted, and `urbex destroy` deletes them only with `--delete-data`. Shares of the Proxmox node, declared in `storage.shares`, are bound by the operator with the `pct set` commands `apply` prints ([ADR-0028](decisions/0028-application-model.md)) |
 | `urbex release` | Tags the next release on the commit staging runs (or `main`, or `--ref`) and waits for its images |
 | `urbex deploy` | Sets an environment's version in the GitOps repo (latest release, `--version` with a release or commit - also how to roll back - or `--follow-main`), pushes, waits for Komodo to run it |
 | `urbex promote` | Sets prod to the release staging runs: prod runs the very images staging ran; refuses an unreleased commit |
@@ -83,7 +83,7 @@ Proxmox VE 9.2 node, see [What has been validated](#what-has-been-validated).
 Debian 13 systemd machines reachable over SSH at the static IPs Urbex
 allocates - the same thing an LXC is to Ansible - and checks every step.
 Only `terraform` (a stub) and the Proxmox API (a stub listing the
-machines) are faked; Ansible, Docker, Gitea, Komodo, sops, and the other
+machines and keeping their mount points) are faked; Ansible, Docker, Gitea, Komodo, sops, and the other
 base services are real. It covers:
 
 1. `urbex bootstrap`: all five base-service roles, the platform setup,
@@ -105,6 +105,12 @@ base services are real. It covers:
    is refused.
 10. `urbex destroy staging` (prod untouched), then `urbex apply` onto a
     brand-new machine.
+11. A named volume: a mount point of the LXC (`backup=1`) that is a
+    Docker volume on its folder, its data kept when the container is
+    replaced; a bigger
+    `size` grows it, a smaller one is refused; `urbex destroy` refuses
+    without `--delete-data`. What Proxmox does with it (allocating the
+    volume, mounting it after a restart, the backup) is not in the e2e.
 
 Separately, `terraform validate` passes on the base and project modules
 with the real `bpg/proxmox` provider, and the `python` and `java`

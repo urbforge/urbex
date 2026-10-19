@@ -199,15 +199,19 @@ usual times: [startup sequence](startup.md#urbex-apply-env);
    When an LXC has named volumes, declared in `urbex.yaml` or still on
    it, `terraform plan` runs first, and a plan that would replace the
    LXC is refused, naming it and the attributes that force it: Proxmox
-   deletes an LXC's volumes with it. Then each named volume the LXC lacks becomes a mount point
-   (`backup=1`), and a bigger `size` grows it; a smaller one is refused.
-   An LXC that can't mount them at once is restarted. An application
-   whose shares the LXC lacks is left out of the next steps, and the
-   `pct set` commands for the operator are printed at the end (see
-   [volumes](manifest.md#volumes)).
+   deletes an LXC's volumes with it. Then each named volume the LXC
+   lacks becomes a mount point (`backup=1`), and a bigger `size` grows
+   it; a smaller one is refused. An LXC that can't mount them at once
+   is restarted, and the restart is said first. An application whose
+   shares the LXC lacks, or whose volumes are still not mounted, is
+   left out of the next steps, and the operator's `pct set` commands
+   are printed at the end (see [volumes](manifest.md#volumes)).
 2. `ansible-playbook` with `ansible/project-playbook.yml`: Docker, the
    Komodo Periphery agent (registered under the LXC's hostname), `sops`
-   and the compose wrapper that decrypts secrets.
+   and the compose wrapper that decrypts secrets. For each named
+   volume, it removes the empty `lost+found` of a new one (ext4) so that
+   Docker can fill the volume from the image, and stops if the folder is
+   not a mount point.
 3. **The project:** its repo on Gitea (if Gitea has no `main`, pushes
    `--repo-dir`'s `HEAD` there), a Komodo Build per service, and the
    project repo's webhook to the `urbex-release` Action. Applications
@@ -250,9 +254,11 @@ usual times: [startup sequence](startup.md#urbex-apply-env);
    - an environment that already runs something is redeployed (e.g. onto
      a recreated LXC) and waited for.
 
-When an application waits for its shares, `apply` does all of the above
-for the others, then prints the commands and exits with an error naming
-it. Run the commands on the node, as root, and `apply` again.
+When an application waits for its shares, or its volumes are not
+mounted after the LXC restarted, `apply` does all of the above for the
+others, then prints what is missing (for a share, the commands to run
+on the node, as root) and exits with an error naming the application.
+Fix it and run `apply` again.
 
 | Flag | Default | Meaning |
 |---|---|---|
