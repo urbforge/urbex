@@ -42,6 +42,7 @@ copy of the GitOps repo.
 - [Several services in one repo](#several-services-in-one-repo)
 - [Change a port or the healthcheck](#change-a-port-or-the-healthcheck)
 - [Give a service more CPU, memory, or disk](#give-a-service-more-cpu-memory-or-disk)
+- [Keep an application's data](#keep-an-applications-data)
 - [Several projects on one platform](#several-projects-on-one-platform)
 - [Decommission an environment or a project](#decommission-an-environment-or-a-project)
 - [Remove the whole platform](#remove-the-whole-platform)
@@ -456,7 +457,37 @@ urbex apply prod
 ```
 
 CPU and memory change in place; growing a disk usually does too, but
-read the plan. If the LXC is replaced, `apply` redeploys onto it.
+read the plan. If the LXC is replaced, `apply` redeploys onto it. An LXC
+with named volumes is never replaced: `apply` refuses the change.
+
+## Keep an application's data
+
+Declare a named volume where the application writes:
+
+```yaml
+services:
+  - name: vault
+    image: vaultwarden/server
+    version: "1.34.3"
+    port: 80
+    volumes:
+      - { name: data, path: /data, size: 5Gi }
+```
+
+```sh
+urbex apply prod
+```
+
+The volume is a mount point of the LXC, kept across deploys and
+re-applies, and included in Proxmox's backups of the LXC. To grow it,
+raise `size` and apply again; it can't shrink. See
+[volumes](reference/manifest.md#volumes).
+
+To mount a folder of the Proxmox node instead, such as a NAS's media
+library, declare it once in `urbex.platform.yaml` ([shares](reference/platform-config.md#shares)),
+name it in the application (`{ share: media, path: /media, readOnly: true }`),
+and run `urbex apply`. It prints a `pct set` command: run it on the
+node, as root, and apply again.
 
 ## Several projects on one platform
 
@@ -473,7 +504,9 @@ urbex destroy prod
 ```
 
 Each takes the environment's containers down, deletes its Stacks and
-folders, destroys its LXCs, and frees their addresses. With the last
+folders, destroys its LXCs, and frees their addresses. An environment
+with named volumes needs `--delete-data`, which deletes them with the
+LXCs. With the last
 environment gone, the project's Builds and webhook go too. The repo and
 its images stay on Gitea - delete them there if you want them gone.
 

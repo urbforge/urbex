@@ -48,7 +48,11 @@ Cloudflare Quick Tunnel
 | **No concurrency guard across machines** on the Terraform state and the address ledger. | Don't run `plan`, `apply`, `destroy` from two machines at once. |
 | **Terraform state isn't encrypted** (it holds no secrets). | Keep the GitOps repo private. |
 | Applications from published images must be public: a registry that requires credentials is refused when the tag is resolved ([ADR-0028](decisions/0028-application-model.md)). | None at present. |
-| The major-version guard (`--allow-major`) has no effect yet: it applies to applications with volumes, and volumes are not supported yet ([urbex-cli#44](https://github.com/urbforge/urbex-cli/issues/44)). | Check the release notes of the image before moving to a new major version. |
+| **Named volumes can't survive a replacement of their LXC**: Proxmox deletes an LXC's volumes with it, and Urbex doesn't detach and re-attach them, so `urbex apply` refuses a change that would replace an LXC with named volumes (a different `proxmox.storagePool`, for instance). | Revert the change; or copy the data out, `urbex destroy <env> --delete-data`, and apply again. |
+| **A named volume can only grow**: Proxmox can't shrink one, and `urbex apply` refuses a smaller `size`. | Keep the size; or copy the data out and recreate the environment. |
+| **A volume removed from `urbex.yaml`** is no longer mounted in the container, but stays on its LXC, and in its backups, until `urbex destroy <env> --delete-data`; `urbex apply` still refuses to replace that LXC. | Remove the mount point by hand (`pct set <vmid> -delete mp<n>`): Proxmox keeps the volume as an unused disk of the LXC, and removing that disk too deletes the data. |
+| **An image that changes the user it runs as** between versions leaves the files of a volume with the old owner: Docker fills a volume from the image only the first time, when it is empty. | As with any Docker volume: change the owner of the volume's folder on the LXC (`chown -R`, as root) once, before the new version starts. |
+| **Shares need the operator**: binding a folder of the Proxmox node into an LXC needs `root@pam`, which an API token never has. `urbex apply` prints the `pct set` commands and deploys the application once they have been run. The LXCs are unprivileged, so the folder's files must be readable, or writable, by user 100000 on the node. | Run the printed commands on the node, as root. Shares without root, through a VM, are tracked in [urbex-cli#40](https://github.com/urbforge/urbex-cli/issues/40). |
 | A stack cannot change from two environments to production only by editing `environments`: removing `staging` from the list leaves its LXCs, Stacks and folder in place. | Run `urbex destroy staging` before removing it. |
 | A stack whose services built from source are all replaced by applications from published images keeps their Builds in Komodo: `urbex apply` removes the release webhook, but not the Builds, as with any service removed from `urbex.yaml`. | Delete the Builds in Komodo's UI. |
 
@@ -97,5 +101,5 @@ Cloudflare Quick Tunnel
 | Limitation | Workaround / consequence |
 |---|---|
 | **Gitea and its registry are plain HTTP on the LAN**, trusted by the LXCs' Docker as an insecure registry. | Keep the LAN trusted. |
-| **No backups** of Gitea, Komodo, Keycloak or the services' data. | Proxmox's own backups of the LXCs. |
+| **No backups** of Gitea, Komodo, Keycloak or the services' data. | Proxmox's own backups of the LXCs, which include the applications' named volumes (`backup=1`). |
 | **No fleet-wide status**: `urbex status <env>` is per project. | Komodo's UI; `grep -r '^VERSION' environments/` in the GitOps repo. |

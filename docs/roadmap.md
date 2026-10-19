@@ -105,10 +105,10 @@ What the planned additions of v1 became:
   the production folder - planned in E10 (M5).
 - **Applications from published images, stacks, declared requirements**
   ([ADR-0028](decisions/0028-application-model.md), proposed): linked
-  applications (`uses`/`provides`), volumes and NAS shares, `access`
-  exposure, OIDC clients, and one LXC per stack (`placement: stack`) for
-  more resource-constrained hardware. Images pinned by digest and
-  single-environment stacks are implemented.
+  applications (`uses`/`provides`), `access` exposure, OIDC clients,
+  and one LXC per stack (`placement: stack`) for more
+  resource-constrained hardware. Images pinned by digest,
+  single-environment stacks, volumes and NAS shares are implemented.
 - Optional layers on top of the CLI: a dedicated Claude Code skill/plugin,
   an MCP server.
 - **Schema sync automation**: a CI check (or codegen step) so the

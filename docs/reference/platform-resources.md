@@ -14,6 +14,8 @@ for finding your way in the UIs, and for knowing what is safe to touch.
 | LXC template | `urbex-template`, VMID `vmIdBase+90` to `+99`: the Debian template with Docker, sops and the compose wrapper and the Periphery and Alloy images; every new LXC is a linked clone of it. Rebuilt, at another VMID, when what builds it changes; an older one is removed once no LXC is a clone of it | `urbex bootstrap` | `urbex teardown` |
 | Base-service LXCs | `urbex-gitea`, `urbex-komodo`, `urbex-technitium`, `urbex-keycloak`, `urbex-observability`, and `urbex-tunnel` with Cloudflare | `urbex bootstrap` | `urbex teardown` |
 | Project LXCs | `<project>-<service>-<env>` | `urbex apply <env>` | `urbex destroy <env>` |
+| Named volumes | A mount point of the application's LXC (`mp<n>`, mounted at `/srv/volumes/<application>/<name>`), on `proxmox.storagePool`, with `backup=1`; in the container, a Docker volume (`driver: local`, `o: bind`) on that folder | `urbex apply <env>` | `urbex destroy <env> --delete-data` |
+| Share mounts | A mount point of the application's LXC binding `storage.shares.<name>.path` at `/srv/shares/<name>`; the folder itself is never touched | the operator, with the `pct set` command `urbex apply` prints | `urbex destroy <env>`, with the LXC |
 
 All are unprivileged Debian 13 LXCs with `nesting` (and `keyctl`, unless
 disabled), on `proxmox.node`, in `proxmox.pool` if set, with the VMIDs
