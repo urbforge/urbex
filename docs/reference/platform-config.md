@@ -101,7 +101,8 @@ it at `/srv/shares/media`. Binding a folder of the node into an LXC needs
 that lacks it and deploys the application once the command has been
 run. Urbex never changes or deletes a share. The LXCs are unprivileged:
 their root is user 100000 on the node, so the files must be readable,
-or writable, by that user, as the NAS mounts them.
+or writable, by that user, as the NAS mounts them. The cookbook has the steps, for NFS and SMB:
+[Mount a NAS share](../cookbook.md#mount-a-nas-share).
 
 ## Public hostnames
 
