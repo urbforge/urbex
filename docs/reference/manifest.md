@@ -206,9 +206,11 @@ updates, re-applies and changes of the LXC's `resources`, which are made
 in place. A change that would make Terraform replace the LXC is refused
 by `apply`, since Proxmox deletes an LXC's volumes with it (see [known
 limitations](../known-limitations.md)). `urbex destroy` deletes the
-volumes only with `--delete-data`. A volume removed from `urbex.yaml` is
-no longer mounted in the container, but stays on the LXC until `urbex
-destroy --delete-data`.
+volumes only with `--delete-data`. So does `urbex apply` for an
+application removed from `urbex.yaml`: without the flag it refuses, since
+Terraform deletes the LXC and Proxmox its volumes. A volume removed from
+`urbex.yaml` is no longer mounted in the container, but stays on the LXC
+until `urbex destroy --delete-data`.
 
 A **share** is a folder of the Proxmox node that exists outside Urbex,
 such as a NAS's media library. The operator declares it once in

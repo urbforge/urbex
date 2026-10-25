@@ -186,7 +186,7 @@ Needs: `URBEX_PROXMOX_TOKEN`, `URBEX_AGE_KEY`, `terraform`.
 ## `urbex apply`
 
 ```
-urbex apply <env> [--file urbex.yaml] [--gitops-repo <dir>] [--repo-dir .]
+urbex apply <env> [--file urbex.yaml] [--gitops-repo <dir>] [--repo-dir .] [--delete-data]
 ```
 
 Creates or updates an environment of the project - its infrastructure,
@@ -196,10 +196,13 @@ usual times: [startup sequence](startup.md#urbex-apply-env);
 `urbex status --progress` follows them live.
 
 1. Everything `plan` does, then `terraform apply`: one LXC per service.
-   When an LXC has named volumes, declared in `urbex.yaml` or still on
-   it, `terraform plan` runs first, and a plan that would replace the
-   LXC is refused, naming it and the attributes that force it: Proxmox
-   deletes an LXC's volumes with it. Then each named volume the LXC
+   `terraform plan` runs first, and a plan that would delete an LXC
+   with named volumes, declared in `urbex.yaml` or still on it, is
+   refused, naming it: Proxmox deletes an LXC's volumes with it. A
+   replacement names the attributes that force it and is never allowed.
+   An application removed from `urbex.yaml` is a plain delete, which
+   goes ahead only with `--delete-data`: `apply` names the LXCs and
+   volumes first, and deletes them. Then each named volume the LXC
    lacks becomes a mount point (`backup=1`), and a bigger `size` grows
    it; a smaller one is refused. An LXC that can't mount them at once
    is restarted, and the restart is said first. An application whose
@@ -263,6 +266,7 @@ Fix it and run `apply` again.
 | Flag | Default | Meaning |
 |---|---|---|
 | `--repo-dir <dir>` | `.` | The project's local repo, used only if Gitea has no `main` yet. |
+| `--delete-data` | off | Let `apply` delete the LXC of an application removed from `urbex.yaml`, with its named volumes. Nothing is kept. A replacement of an LXC with volumes is refused with it as well. |
 
 Needs: `URBEX_PROXMOX_TOKEN`, `URBEX_AGE_KEY`, the platform credentials
 from bootstrap, `terraform`, `ansible-playbook`, `git`, the SSH agent.

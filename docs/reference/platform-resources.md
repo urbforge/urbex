@@ -14,7 +14,7 @@ for finding your way in the UIs, and for knowing what is safe to touch.
 | LXC template | `urbex-template`, VMID `vmIdBase+90` to `+99`: the Debian template with Docker, sops and the compose wrapper and the Periphery and Alloy images; every new LXC is a linked clone of it. Rebuilt, at another VMID, when what builds it changes; an older one is removed once no LXC is a clone of it | `urbex bootstrap` | `urbex teardown` |
 | Base-service LXCs | `urbex-gitea`, `urbex-komodo`, `urbex-technitium`, `urbex-keycloak`, `urbex-observability`, and `urbex-tunnel` with Cloudflare | `urbex bootstrap` | `urbex teardown` |
 | Project LXCs | `<project>-<service>-<env>` | `urbex apply <env>` | `urbex destroy <env>` |
-| Named volumes | A mount point of the application's LXC (`mp<n>`, mounted at `/srv/volumes/<application>/<name>`), on `proxmox.storagePool`, with `backup=1`; in the container, a Docker volume (`driver: local`, `o: bind`) on that folder | `urbex apply <env>` | `urbex destroy <env> --delete-data` |
+| Named volumes | A mount point of the application's LXC (`mp<n>`, mounted at `/srv/volumes/<application>/<name>`), on `proxmox.storagePool`, with `backup=1`; in the container, a Docker volume (`driver: local`, `o: bind`) on that folder | `urbex apply <env>` | `urbex destroy <env> --delete-data`, or `urbex apply <env> --delete-data` once its application is out of `urbex.yaml` |
 | Share mounts | A mount point of the application's LXC binding `storage.shares.<name>.path` at `/srv/shares/<name>`; the folder itself is never touched | the operator, with the `pct set` command `urbex apply` prints | `urbex destroy <env>`, with the LXC |
 
 All are unprivileged Debian 13 LXCs with `nesting` (and `keyctl`, unless
@@ -169,7 +169,7 @@ Unlike Cloudflare, these exist regardless of `cloudflare.accountId`/
 | Zone (Primary) | `dns.zone`, by default `<cloudflare.name>.<domain>` (a zone named after `domain`, from an older urbex, is moved and deleted) | `urbex bootstrap` | `urbex teardown` (the LXC itself) |
 | Forwarders (server setting) | `dns.forwarders`, by default `proxmox.network.dnsServers` or the gateway | `urbex bootstrap` | `urbex teardown` (the LXC itself) |
 | A records, platform | `git`, `komodo`, `hooks`, `auth`, `dns`, `grafana`, `prometheus`, `loki`, `tunnel` (with Cloudflare) under the zone | `urbex bootstrap` | `urbex teardown` (the LXC itself) |
-| A records, projects | `<service>.<env>.<project>.<zone>`, `<service>.<project>.<zone>` in prod - every declared service, whether or not it's `public: true` | `urbex apply <env>` | `urbex destroy <env>` only - removing a service from `urbex.yaml` leaves its record behind, like its LXC and Stack (see [known limitations](../known-limitations.md#projects-and-deploys)) |
+| A records, projects | `<service>.<env>.<project>.<zone>`, `<service>.<project>.<zone>` in prod - every declared service, whether or not it's `public: true` | `urbex apply <env>` | `urbex destroy <env>` only - removing a service from `urbex.yaml` leaves its record behind, like its Stack (see [known limitations](../known-limitations.md#projects-and-deploys)) |
 
 ## Cloudflare
 

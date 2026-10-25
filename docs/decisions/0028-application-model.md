@@ -206,13 +206,19 @@ services:
     until the LXC restarts: `apply` restarts it once, saying so
     first. An application whose volumes are still not mounted after
     that, or whose shares the operator hasn't bound, is left out:
-    `apply` names it and exits non-zero, and the next one tries again. A share counts
-    as bound when the LXC has a mount point at its path, on the share's
-    folder, with the access the manifest asks for.
+    `apply` names it and exits non-zero, and the next one tries again.
+    A share counts as bound when the LXC has a mount point at its path,
+    on the share's folder, with the access the manifest asks for.
   - **Deleting data is explicit**: `urbex destroy <env>` of an
     environment whose applications have named volumes refuses without
-    `--delete-data`, naming them, in every environment. Shares are
-    never touched.
+    `--delete-data`, naming them, in every environment. So does
+    `urbex apply <env>` when the plan deletes an LXC with named volumes,
+    which happens when an application leaves `urbex.yaml`: it reads the
+    volumes from the LXC itself, so it covers applications the
+    manifest no longer declares, and goes ahead only with
+    `--delete-data`, naming them first (the flag ADR-0030 uses for
+    roles and schemas). A plan that replaces such an LXC is refused
+    with the flag too. Shares are never touched.
 - **Resources**: `cpu`, `memory`, `disk` as today; `gpu: true` asks for
   the node's GPU (hardware transcoding, machine learning). The
   application only runs on a node the operator prepared for it (see
@@ -481,10 +487,10 @@ these examples are illustrative.
 
 - **A different storage for a volume** than `proxmox.storagePool`, which
   holds the LXCs' disks and every named volume.
-- **Deleting a volume `urbex.yaml` no longer declares** with `urbex apply
-  <env> --delete-data`, as ADR-0030 does for the roles and schemas no
-  application uses: until then it stays on its LXC, which `apply` still
-  refuses to replace.
+- **Deleting a volume `urbex.yaml` no longer declares**, from an
+  application that stays, with `urbex apply <env> --delete-data`, as
+  ADR-0030 does for the roles and schemas no application uses: until
+  then it stays on its LXC, which `apply` still refuses to replace.
 - **A curated catalog of applications** (`urbex app add immich`):
   manifests prepared for common applications, on top of this model.
   Later: the model must be settled and used first.

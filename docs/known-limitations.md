@@ -43,7 +43,7 @@ Cloudflare Quick Tunnel
 | **`urbex promote` commits straight to the GitOps repo.** | [Gate production behind a pull request](cookbook.md#gate-production-behind-a-pull-request) with Gitea's protected file patterns. |
 | **Komodo can miss a push** made within ~5 seconds of the previous one (it caches the repo); the scheduled run catches up within 15 minutes. | The `urbex` commands handle it; by hand, run the `urbex-gitops` Procedure. |
 | **Every push to `main` is built**, documentation-only ones included, and **images are never pruned.** | Delete old ones in Gitea, under the organization's *Packages*. |
-| **Removing a service from `urbex.yaml`** leaves its LXC, Stack, folder, routes and internal DNS record. | `urbex destroy <env>` before removing it, or remove them by hand. |
+| **Removing a service from `urbex.yaml`**: the next `urbex apply` deletes its LXC (the project's Terraform has one per declared service) but leaves its Stack, folder, routes and internal DNS record. With named volumes, `apply` refuses: Proxmox deletes an LXC's volumes with it. | Remove the leftovers by hand. For an application with named volumes, put it back, or run `urbex apply <env> --delete-data` to delete it with its volumes. |
 | **Changing a port or healthcheck** needs `urbex deploy <env>` (it regenerates the compose files); configuration in `urbex.yaml`'s `env` only seeds `config.env` once. | Edit `config.env` in the GitOps repo afterwards. |
 | **No concurrency guard across machines** on the Terraform state and the address ledger. | Don't run `plan`, `apply`, `destroy` from two machines at once. |
 | **Terraform state isn't encrypted** (it holds no secrets). | Keep the GitOps repo private. |
