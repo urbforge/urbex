@@ -182,17 +182,43 @@ services:
   - a **named volume** (`name`, `path`, `size`) is a mount point of the
     application's LXC on the platform's Proxmox storage, sized on its
     own, grown in place, included in the LXC's backups, and mounted into
-    the container at `path`;
+    the container at `path`. On the LXC it is at
+    `/srv/volumes/<application>/<name>`: the application is in the path
+    so that applications sharing an LXC (`placement: stack`) can each
+    have a volume of the same name. In the container it is a Docker
+    named volume on that folder, so Docker does what it does for any
+    named volume: the first time, it fills the volume with what the
+    image keeps at `path`, owners included. An image that doesn't run
+    as root can write to it, with nothing to declare. A container
+    doesn't start when the folder isn't there. Docker fills a volume
+    only when it is empty, and a mount point formatted ext4 has an
+    empty `lost+found`: `apply` removes it from a new volume, and stops
+    if the folder isn't a mount point. It can only grow: Proxmox
+    can't shrink one, and `apply` refuses a smaller `size`;
   - a **share** (`share`, `path`, `readOnly`) is a folder that exists
     outside Urbex - a NAS's media library - declared once by the
     operator in `urbex.platform.yaml` (`storage.shares.<name>`: the path
     on the Proxmox node where it is mounted) and mounted into every LXC
     and container that names it. Several applications, on one LXC or
     several, can share it.
+  - **An application never starts without what it keeps.** A mount
+    point Proxmox can't mount into a running LXC at once stays pending
+    until the LXC restarts: `apply` restarts it once, saying so
+    first. An application whose volumes are still not mounted after
+    that, or whose shares the operator hasn't bound, is left out:
+    `apply` names it and exits non-zero, and the next one tries again.
+    A share counts as bound when the LXC has a mount point at its path,
+    on the share's folder, with the access the manifest asks for.
   - **Deleting data is explicit**: `urbex destroy <env>` of an
     environment whose applications have named volumes refuses without
-    `--delete-data`, naming them, in every environment. Shares are
-    never touched.
+    `--delete-data`, naming them, in every environment. So does
+    `urbex apply <env>` when the plan deletes an LXC with named volumes,
+    which happens when an application leaves `urbex.yaml`: it reads the
+    volumes from the LXC itself, so it covers applications the
+    manifest no longer declares, and goes ahead only with
+    `--delete-data`, naming them first (the flag ADR-0030 uses for
+    roles and schemas). A plan that replaces such an LXC is refused
+    with the flag too. Shares are never touched.
 - **Resources**: `cpu`, `memory`, `disk` as today; `gpu: true` asks for
   the node's GPU (hardware transcoding, machine learning). The
   application only runs on a node the operator prepared for it (see
@@ -337,7 +363,7 @@ services:
     provides: postgres
     volumes:
       - name: data
-        path: /var/lib/postgresql/data
+        path: /var/lib/postgresql          # PGDATA is a folder inside it (ADR-0030)
         size: 20Gi
   - name: redis
     image: docker.io/valkey/valkey
@@ -423,7 +449,7 @@ services:
     provides: postgres
     volumes:
       - name: data
-        path: /var/lib/postgresql/data
+        path: /var/lib/postgresql          # PGDATA is a folder inside it (ADR-0030)
         size: 20Gi
 ```
 
@@ -459,6 +485,12 @@ these examples are illustrative.
 
 ## Out of scope, or later
 
+- **A different storage for a volume** than `proxmox.storagePool`, which
+  holds the LXCs' disks and every named volume.
+- **Deleting a volume `urbex.yaml` no longer declares**, from an
+  application that stays, with `urbex apply <env> --delete-data`, as
+  ADR-0030 does for the roles and schemas no application uses: until
+  then it stays on its LXC, which `apply` still refuses to replace.
 - **A curated catalog of applications** (`urbex app add immich`):
   manifests prepared for common applications, on top of this model.
   Later: the model must be settled and used first.

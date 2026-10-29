@@ -15,8 +15,9 @@ secrets - is not here but in the [GitOps repo](gitops-repo.md).
 - [`services[]`](#services)
 - [Runtimes](#runtimes)
 - [Applications from published images](#applications-from-published-images)
+- [Volumes](#volumes)
 - [`frontend`](#frontend)
-- [`domain`, `observability.metrics`, `email`, `provides`, `uses`, `volumes`](#declared-not-yet-acted-on)
+- [`domain`, `observability.metrics`, `email`, `provides`, `uses`](#declared-not-yet-acted-on)
 - [What changes take effect how](#what-changes-take-effect-how)
 
 ## Full example
@@ -87,6 +88,7 @@ nor an image of its own: its LXC pulls the image it declares (see
 | `public` | boolean | `false` | Publish the service on the internet through the platform's Cloudflare Tunnel, at `<service>-<project>-urbex.<domain>` (prod) and `<service>-staging-<project>-urbex.<domain>` (staging). Its own auth is its gate. Needs Cloudflare in the [platform config](platform-config.md#public-hostnames). |
 | `port` | 1-65535 | required with `runtime` | The port the service listens on. The container gets `PORT` set to it, and it is published on the LXC's IP at the same number. An application from a published image may omit it; if it declares one, the port is published in the same way, but `PORT` is not set, since such an image reads its own variables. `public` and `healthcheck` require a port. |
 | `healthcheck` | HTTP path | none | Path probed every 30 s from inside the container (`wget -q --spider http://localhost:<port><path>`); three failures mark the container unhealthy, and `urbex` waits for healthy. Without it, a running container counts. |
+| `volumes` | list | | What the application keeps: named volumes and shares, mounted in the container. See [volumes](#volumes). |
 | `resources.cpu` | integer ≥ 1 | `1` | Cores of the LXC. |
 | `resources.memory` | `<n>Mi` or `<n>Gi` | `1Gi` | Memory of the LXC. |
 | `resources.disk` | `<n>Mi` or `<n>Gi` | `5Gi` | Root disk of the LXC, rounded up to whole GiB. |
@@ -163,6 +165,80 @@ source and the digests of the applications from images.
 The image must be reachable without credentials: a registry that
 requires authentication is refused when the tag is resolved.
 
+## Volumes
+
+An application keeps data in volumes, mounted into its container at
+`path` ([ADR-0028](../decisions/0028-application-model.md)):
+
+```yaml
+services:
+  - name: jellyfin
+    image: jellyfin/jellyfin
+    version: "10.10.7"
+    port: 8096
+    volumes:
+      - { name: config, path: /config, size: 5Gi }
+      - { share: media, path: /media, readOnly: true }
+```
+
+| Field | Type | Default | Meaning |
+|---|---|---|---|
+| `name` | string | one of `name` or `share` | A named volume: 2-40 characters, lowercase letters, digits, `-`. Unique in the application. |
+| `share` | string | one of `name` or `share` | A share of the platform, declared in [`storage.shares`](platform-config.md#shares) of `urbex.platform.yaml`. |
+| `path` | absolute path | required | Where the container sees it. Two volumes of an application can't have the same path. |
+| `size` | `<n>Mi` or `<n>Gi` | `10Gi` | Size of a named volume, rounded up to whole GiB. Not for a share. |
+| `readOnly` | boolean | `false` | Mounts the share read-only. Not for a named volume. |
+
+A **named volume** is a mount point of the application's LXC on the
+platform's storage (`proxmox.storagePool`). It is mounted on the LXC at
+`/srv/volumes/<application>/<name>` (the application is in the path, so
+that applications sharing an LXC can each have a volume of the same
+name) and, in the container, is a Docker named volume on that folder:
+as for any named volume, Docker fills it the first time with what the
+image keeps at `path`, owners included, so an image that doesn't run as
+root (Grafana, Prometheus) can write to it; on an ext4 storage such
+as `local-lvm`, `apply` first removes the new volume's empty
+`lost+found`, which would keep Docker from filling it. `urbex
+apply` creates it with `backup=1`, so that Proxmox's backups (vzdump) of
+the LXC include it, and grows it when `size` grows. It can't be shrunk:
+`apply` refuses a smaller `size`. The data stays across redeploys,
+updates, re-applies and changes of the LXC's `resources`, which are made
+in place. A change that would make Terraform replace the LXC is refused
+by `apply`, since Proxmox deletes an LXC's volumes with it (see [known
+limitations](../known-limitations.md)). `urbex destroy` deletes the
+volumes only with `--delete-data`. So does `urbex apply` for an
+application removed from `urbex.yaml`: without the flag it refuses, since
+Terraform deletes the LXC and Proxmox its volumes. A volume removed from
+`urbex.yaml` is no longer mounted in the container, but stays on the LXC
+until `urbex destroy --delete-data`.
+
+A **share** is a folder of the Proxmox node that exists outside Urbex,
+such as a NAS's media library. The operator declares it once in
+`urbex.platform.yaml`, and every application that names it mounts it, at
+`/srv/shares/<share>` on its LXC. `urbex plan` and `urbex apply` refuse
+a share the platform doesn't declare. Binding a folder of the node into an
+LXC needs `root@pam`, which an API token never has, so the operator
+binds it. Until an application's LXC has its shares, `urbex apply`
+prints the commands to run on the node, deploys the rest of the stack
+without that application, and exits with an error:
+
+```
+Some applications need shares their LXC doesn't have yet. Binding a folder of the Proxmox node needs root@pam: on the node, as root, run
+  pct set 9112 -mp1 /mnt/pve/nas/media,mp=/srv/shares/media,ro=1
+Then run 'urbex apply prod' again.
+not deployed until what they keep is mounted: jellyfin
+```
+
+A mount point Proxmox can't mount into a running LXC at once stays
+pending until the LXC restarts: `apply` restarts it once, saying so
+first, and with it the containers on it. An application never starts
+before its volumes and shares are mounted: a named volume's container refuses to start
+without its folder, and one started without a share would write to the
+LXC's own disk. If one is still not mounted after the
+restart, `apply` leaves that application out, names it and the volumes,
+and exits with an error; the next `apply` tries again. Urbex never
+deletes a share.
+
 ## `frontend`
 
 ```yaml
@@ -207,8 +283,8 @@ GitOps repo it appears as a service called `web`.
 These are validated, so a manifest can already state them, but no
 command uses them yet (see [`status.md`](../status.md)). The fields of
 `services[]` in this table are refused by `urbex plan`, `apply`,
-`deploy` and `promote` rather than ignored, since an application that expects a volume
-or a database would otherwise run without it.
+`deploy` and `promote` rather than ignored, since an application that
+expects a database would otherwise run without it.
 
 | Field | Meaning, once implemented |
 |---|---|
@@ -216,11 +292,9 @@ or a database would otherwise run without it.
 | `observability.metrics` | Scraping of the services' metrics by Prometheus. |
 | `email.provider` (`brevo`), `email.fromAddress`, `email.fromName` | Transactional email; the provider key will be a secret. |
 | `services[].provides: postgres`, `services[].uses` | A PostgreSQL in the stack - its own LXC per environment, its data on a named volume - and the applications that use it, each with its own role and schema on it, which get `DATABASE_URL` and `PG*` ([ADR-0030](../decisions/0030-postgresql-application.md)). A provider has exactly one volume, and no `port`, `public` or `healthcheck`. |
-| `services[].volumes[]` (`name`, `path`, `size`, default `10Gi`) | Named volumes: data kept across redeploys and updates, deleted only by `urbex destroy <env> --delete-data`. |
 
 `provides` and `uses` are tracked in
-[urbex-cli#43](https://github.com/urbforge/urbex-cli/issues/43), and
-`volumes` in [urbex-cli#44](https://github.com/urbforge/urbex-cli/issues/44).
+[urbex-cli#43](https://github.com/urbforge/urbex-cli/issues/43).
 
 ## What changes take effect how
 
@@ -232,6 +306,7 @@ or a database would otherwise run without it.
 | `version` of an application from an image | `urbex deploy <env> --app <name> --update` in each environment, or `urbex deploy staging --app <name> --update` followed by `urbex promote`. |
 | `environments` | `urbex apply <env>` for an environment added; an environment removed from the list is not destroyed: run `urbex destroy <env>` before removing it. |
 | `resources` | `urbex plan <env>`, then `urbex apply <env>`. |
+| `volumes` | `urbex apply <env>`, which adds a new named volume and grows a bigger one. A new share needs the operator's `pct set` first. |
 | A new service | `urbex apply <env>` in each environment. |
 | `public` | `urbex apply <env>` (it routes or unroutes the service). |
 | `frontend` added | `urbex apply <env>` in each environment. |

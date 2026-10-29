@@ -58,7 +58,7 @@ cloudflare:
 | `proxmox.apiUrl` | required | Proxmox API URL, ending in `/api2/json`. |
 | `proxmox.insecure` | `false` | Skip TLS verification of the Proxmox API (its default certificate is self-signed). |
 | `proxmox.node` | required | The node every LXC is created on. |
-| `proxmox.storagePool` | `local-lvm` | Storage for the LXCs' root disks. |
+| `proxmox.storagePool` | `local-lvm` | Storage for the LXCs' root disks and the applications' named volumes. |
 | `proxmox.lxcTemplate` | required | The Debian 13 template volume, e.g. `local:vztmpl/debian-13-standard_13.6-1_amd64.tar.zst` (`pveam list local` shows yours). |
 | `proxmox.sshPublicKey` | required | Public key installed for `root` on every LXC; Ansible connects with the matching private key, from your SSH agent. |
 | `proxmox.vmIdBase` | `9000` | First VMID: base services get `vmIdBase` to `+4`, project LXCs `vmIdBase+100` onwards. |
@@ -79,6 +79,29 @@ cloudflare:
 | `dns.forwarders` | `proxmox.network.dnsServers`, or the gateway | IP addresses Technitium forwards every name outside `dns.zone` to. |
 | `dns.technitiumUrl` | | ⚠️ Not used: `urbex` finds Technitium itself from the allocated LAN IP. |
 | `keycloak.baseUrl`, `keycloak.platformRealm` (`platform`) | | ⚠️ Not used yet (SSO). |
+| `storage.shares.<name>.path` | none | A folder of the Proxmox node that applications mount by name: see [shares](#shares). An absolute path that isn't `/` and has no comma, space or tab. |
+
+## Shares
+
+A share is a folder of the Proxmox node that exists outside Urbex, such
+as a NAS mounted on the node, which applications mount by its name
+([ADR-0028](../decisions/0028-application-model.md)):
+
+```yaml
+storage:
+  shares:
+    media:
+      path: /mnt/pve/nas/media    # where the NAS is mounted on the node
+```
+
+An application names it in its `volumes` (`{ share: media, path: /media }`,
+see the [manifest reference](manifest.md#volumes)), and its LXC mounts
+it at `/srv/shares/media`. Binding a folder of the node into an LXC needs
+`root@pam`, so `urbex apply` prints the `pct set` command for each LXC
+that lacks it and deploys the application once the command has been
+run. Urbex never changes or deletes a share. The LXCs are unprivileged:
+their root is user 100000 on the node, so the files must be readable,
+or writable, by that user, as the NAS mounts them.
 
 ## Public hostnames
 
@@ -125,6 +148,6 @@ The IPs must be free on the LAN: Urbex doesn't check, and nothing else
 ## Changing it
 
 Edit, commit, and run `urbex bootstrap` again. What changes on existing
-LXCs is what Terraform plans: a different template or storage pool
-replaces them. `network.cidr`, `baseHostOffset`, and `vmIdBase` should
+LXCs is what Terraform plans: a different storage pool replaces them,
+which `urbex apply` refuses for an LXC with named volumes. `network.cidr`, `baseHostOffset`, and `vmIdBase` should
 not change once LXCs exist.

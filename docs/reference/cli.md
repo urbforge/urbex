@@ -186,7 +186,7 @@ Needs: `URBEX_PROXMOX_TOKEN`, `URBEX_AGE_KEY`, `terraform`.
 ## `urbex apply`
 
 ```
-urbex apply <env> [--file urbex.yaml] [--gitops-repo <dir>] [--repo-dir .]
+urbex apply <env> [--file urbex.yaml] [--gitops-repo <dir>] [--repo-dir .] [--delete-data]
 ```
 
 Creates or updates an environment of the project - its infrastructure,
@@ -196,9 +196,25 @@ usual times: [startup sequence](startup.md#urbex-apply-env);
 `urbex status --progress` follows them live.
 
 1. Everything `plan` does, then `terraform apply`: one LXC per service.
+   `terraform plan` runs first, and a plan that would delete an LXC
+   with named volumes, declared in `urbex.yaml` or still on it, is
+   refused, naming it: Proxmox deletes an LXC's volumes with it. A
+   replacement names the attributes that force it and is never allowed.
+   An application removed from `urbex.yaml` is a plain delete, which
+   goes ahead only with `--delete-data`: `apply` names the LXCs and
+   volumes first, and deletes them. Then each named volume the LXC
+   lacks becomes a mount point (`backup=1`), and a bigger `size` grows
+   it; a smaller one is refused. An LXC that can't mount them at once
+   is restarted, and the restart is said first. An application whose
+   shares the LXC lacks, or whose volumes are still not mounted, is
+   left out of the next steps, and the operator's `pct set` commands
+   are printed at the end (see [volumes](manifest.md#volumes)).
 2. `ansible-playbook` with `ansible/project-playbook.yml`: Docker, the
    Komodo Periphery agent (registered under the LXC's hostname), `sops`
-   and the compose wrapper that decrypts secrets.
+   and the compose wrapper that decrypts secrets. For each named
+   volume, it removes the empty `lost+found` of a new one (ext4) so that
+   Docker can fill the volume from the image, and stops if the folder is
+   not a mount point.
 3. **The project:** its repo on Gitea (if Gitea has no `main`, pushes
    `--repo-dir`'s `HEAD` there), a Komodo Build per service, and the
    project repo's webhook to the `urbex-release` Action. Applications
@@ -241,9 +257,16 @@ usual times: [startup sequence](startup.md#urbex-apply-env);
    - an environment that already runs something is redeployed (e.g. onto
      a recreated LXC) and waited for.
 
+When an application waits for its shares, or its volumes are not
+mounted after the LXC restarted, `apply` does all of the above for the
+others, then prints what is missing (for a share, the commands to run
+on the node, as root) and exits with an error naming the application.
+Fix it and run `apply` again.
+
 | Flag | Default | Meaning |
 |---|---|---|
 | `--repo-dir <dir>` | `.` | The project's local repo, used only if Gitea has no `main` yet. |
+| `--delete-data` | off | Let `apply` delete the LXC of an application removed from `urbex.yaml`, with its named volumes. Nothing is kept. A replacement of an LXC with volumes is refused with it as well. |
 
 Needs: `URBEX_PROXMOX_TOKEN`, `URBEX_AGE_KEY`, the platform credentials
 from bootstrap, `terraform`, `ansible-playbook`, `git`, the SSH agent.
@@ -333,9 +356,7 @@ unchanged.
 A change of major version (the leading number of the tag, `17` to
 `18`) of an application with volumes is refused without
 `--allow-major`, since its data may require a migration, such as a dump
-and restore, before the new version can read it. Volumes are not
-supported yet ([urbex-cli#44](https://github.com/urbforge/urbex-cli/issues/44)),
-so the check has no effect until they are.
+and restore, before the new version can read it.
 
 Deploying a version removes `TRACK=main`, so an environment that
 followed `main` stays on that version (`deploy` says so);
@@ -509,7 +530,7 @@ columns.
 ## `urbex destroy`
 
 ```
-urbex destroy <env> [--file urbex.yaml] [--gitops-repo <dir>]
+urbex destroy <env> [--file urbex.yaml] [--gitops-repo <dir>] [--delete-data]
 ```
 
 Removes an environment of the project, in this order:
@@ -521,7 +542,8 @@ Removes an environment of the project, in this order:
    Worker and custom domain. Removes each service's internal DNS record
    from Technitium ([ADR-0027](../decisions/0027-service-conventions.md)).
    Deletes its Keycloak realm, users included.
-3. `terraform destroy` for the services' LXCs (and their disks).
+3. `terraform destroy` for the services' LXCs, with their disks and
+   named volumes.
 4. Deletes their Komodo Servers.
 5. If the project has no environment left: deletes the project repo's
    webhook, waits for any build still running (a push just before), and
@@ -539,6 +561,18 @@ earlier would conflict with that commit.
 `destroy` can be run again after a failure: it resumes where it
 stopped. An LXC already gone from Proxmox is dropped from Terraform's
 state rather than failing (see [`plan`](#urbex-plan)).
+
+An environment whose applications have named volumes, declared in
+`urbex.yaml` or still on their LXCs, is refused before any step, naming
+them:
+
+```
+acme-vault (prod) has named volumes: vault/data. Destroying it deletes them with their LXCs: run 'urbex destroy prod --delete-data' to do so
+```
+
+| Flag | Meaning |
+|---|---|
+| `--delete-data` | Delete the named volumes with their LXCs. Nothing is kept. Shares are never touched. |
 
 The project's repo and images stay on Gitea. Services that were never
 applied are skipped; if none were, nothing happens. Base services are
