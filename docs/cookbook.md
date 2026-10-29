@@ -43,6 +43,7 @@ copy of the GitOps repo.
 - [Change a port or the healthcheck](#change-a-port-or-the-healthcheck)
 - [Give a service more CPU, memory, or disk](#give-a-service-more-cpu-memory-or-disk)
 - [Keep an application's data](#keep-an-applications-data)
+- [Mount a NAS share](#mount-a-nas-share)
 - [Several projects on one platform](#several-projects-on-one-platform)
 - [Decommission an environment or a project](#decommission-an-environment-or-a-project)
 - [Remove the whole platform](#remove-the-whole-platform)
@@ -478,16 +479,138 @@ services:
 urbex apply prod
 ```
 
-The volume is a mount point of the LXC, kept across deploys and
-re-applies, and included in Proxmox's backups of the LXC. To grow it,
-raise `size` and apply again; it can't shrink. See
-[volumes](reference/manifest.md#volumes).
+What happens. With a token that has the permissions of the setup, the
+server's administrator has nothing to do:
 
-To mount a folder of the Proxmox node instead, such as a NAS's media
-library, declare it once in `urbex.platform.yaml` ([shares](reference/platform-config.md#shares)),
-name it in the application (`{ share: media, path: /media, readOnly: true }`),
-and run `urbex apply`. It prints a `pct set` command: run it on the
-node, as root, and apply again.
+1. Urbex asks Proxmox for a disk of `size` (default `10Gi`) on
+   `proxmox.storagePool` and mounts it on the application's LXC at
+   `/srv/volumes/vault/data`, with `backup=1`. This is done through the
+   Proxmox API, with the token of the platform, which needs to manage
+   the LXC and allocate disks on `proxmox.storagePool` (see
+   [the token](reference/credentials.md#proxmox-api-token)).
+2. If Proxmox can't mount it into the running LXC at once, `apply` says
+   so and restarts the LXC once.
+3. The compose file declares `data` as a Docker volume on that folder.
+   The first time, Docker fills it with what the image keeps at
+   `/data`, owners included, so an image that doesn't run as root can
+   write to it.
+4. The application starts only when the folder is a mount point.
+
+The volume is kept across deploys, updates, re-applies and changes of
+`resources`, and included in Proxmox's backups of the LXC. To grow it,
+raise `size` and apply again; it can't shrink. A change that would make
+Terraform replace the LXC is refused, since Proxmox would delete the
+volume with it, and so is removing the application from `urbex.yaml`.
+`urbex destroy prod` refuses too, until you add `--delete-data`, and
+`urbex apply prod --delete-data` deletes an application you removed from
+`urbex.yaml`, with its volumes. See [volumes](reference/manifest.md#volumes).
+
+## Mount a NAS share
+
+A share is a folder that already exists on the Proxmox node, such as a
+NAS's media library. Urbex mounts it into the application's LXC and never
+changes or deletes it. Binding a folder of the node needs `root@pam`,
+which an API token never has, so the steps are split between the
+administrator of the node and whoever runs `urbex`. The first two are
+done once per NAS folder, on the node.
+
+**1. Mount the NAS on the node.** Either in `/etc/fstab`, or as a Proxmox
+storage (*Datacenter* → *Storage* → *Add* → *NFS* or *SMB/CIFS*), which
+mounts it at `/mnt/pve/<storage>`. For a share that is only bound into
+LXCs, `/etc/fstab` is the simpler one: Proxmox may create folders of its
+own on a storage when it activates it (`images/`, `dump/`, ..., depending
+on the storage's content types), and on a NAS you would rather it
+didn't. If you add a storage, check what appeared on the NAS. In step 3
+use the folder the application needs, not the whole export.
+
+**2. Make the files accessible to user 100000.** The LXCs are
+unprivileged: root in the container is user 100000 on the node, and the
+users above it are shifted the same way (user 1000 in the container is
+100000 + 1000). A file the node sees as owned by someone else shows up as
+`nobody` in the container, and an empty or read-only folder is the
+usual symptom. Make the NAS present the files as user 100000.
+
+For NFS, in the export on the NAS:
+
+```
+/volume1/media  <node-ip>(rw,sync,all_squash,anonuid=100000,anongid=100000)
+```
+
+Export it to the Proxmox node's address only (`192.168.1.10`, for
+instance), not to the whole network: `all_squash` makes every client
+that can write there act as user 100000, so any host in the range would
+write to the NAS as the user the containers use.
+
+For SMB, in the mount options of the storage or of `/etc/fstab`:
+
+```
+//nas/media  /mnt/nas/media  cifs  credentials=/root/.nas-credentials,uid=100000,gid=100000,file_mode=0664,dir_mode=0775  0  0
+```
+
+Check it on the node, with numeric ids:
+
+```sh
+ls -ln /mnt/pve/nas/media | head
+```
+
+The owner column must read `100000` (SMB, and NFS with the export above).
+If the NAS must keep its own owners, give user 100000 read access
+there instead, and mount the share read-only.
+
+**3. Declare it, name it, apply.** In `urbex.platform.yaml`:
+
+```yaml
+storage:
+  shares:
+    media:
+      path: /mnt/pve/nas/media
+```
+
+In the application ([shares](reference/platform-config.md#shares),
+[volumes](reference/manifest.md#volumes)):
+
+```yaml
+    volumes:
+      - { share: media, path: /media, readOnly: true }
+```
+
+```sh
+urbex apply prod
+```
+
+`apply` deploys the rest of the stack, leaves this application out, and
+prints the command for the node, then exits with an error:
+
+```
+pct set 9112 -mp1 /mnt/pve/nas/media,mp=/srv/shares/media,ro=1
+```
+
+**4. Run it on the node, as root, then apply again.** The next
+`urbex apply prod` restarts the LXC if the mount point is still pending,
+and deploys the application. `readOnly: true` adds `ro=1`: use it when the
+application only reads, so that it can't change the NAS. Without it, the
+container writes, and the NAS must allow user 100000 to.
+
+A share is not in Proxmox's backups of the LXC (`vzdump` skips bind
+mount points: *excluding bind mount point ... (not a volume)*). The NAS's
+data is backed up on the NAS; the application's named volumes are in the
+LXC's backups.
+
+**If the folder is empty in the container, or says `Permission denied`,**
+check in this order:
+
+1. On the node, `ls -ln /mnt/pve/nas/media`: empty means the NAS isn't
+   mounted there (a Proxmox storage mounts only when it is enabled and
+   reachable); `nobody` or another owner means step 2 is missing. A
+   folder that user 100000 can't read (owned by root with mode 700, for
+   instance) is not empty in the container: it gives `Permission denied`
+   on listing, reading and writing, and step 2 is the fix.
+2. `pct config <vmid> | grep mp`: a line with `mp=/srv/shares/media`
+   must be there. If not, the command wasn't run or was for another LXC.
+3. In the LXC, `ls -ln /srv/shares/media` shows what the container sees.
+
+A share through a VM, without root on the node, is tracked in
+[urbex-cli#40](https://github.com/urbforge/urbex-cli/issues/40).
 
 ## Several projects on one platform
 
