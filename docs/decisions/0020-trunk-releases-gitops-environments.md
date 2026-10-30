@@ -9,7 +9,7 @@ Accepted. Supersedes [ADR-0019](0019-branch-environments-komodo-rollouts.md)
 GitOps repo. Extended by [ADR-0021](0021-staging-follows-main.md): every
 push to `main` is built, staging follows `main`, and a release retags
 the image `main` built instead of building it again. Refined by
-[ADR-0028](0028-application-model.md) (proposed): applications from
+[ADR-0028](0028-application-model.md): applications from
 published images, pinned by digest in `version.env`, promoted with their
 stack; stacks with a single environment.
 

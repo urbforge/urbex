@@ -2,9 +2,12 @@
 
 ## Status
 
-Proposed. Part of [urbforge/redemptor#17](https://github.com/urbforge/redemptor/issues/17)
+Accepted. Part of [urbforge/redemptor#17](https://github.com/urbforge/redemptor/issues/17)
 (E2 Databases), tracked by [urbforge/urbex#6](https://github.com/urbforge/urbex/issues/6);
 implemented by [urbforge/urbex-cli#9](https://github.com/urbforge/urbex-cli/issues/9).
+Amended on 2026-10-30 to follow ADR-0028. The generated variables are
+kept in the generated file, and the applications wait for the provider
+in their own Stack.
 Builds on [ADR-0028](0028-application-model.md) (a database is an
 application in a stack, `provides: postgres`) and replaces the draft
 `databases` section of [urbforge/urbex#19](https://github.com/urbforge/urbex/pull/19).
@@ -109,22 +112,27 @@ start, Urbex generates the server's:
 
 | | Value | Kept in the GitOps repo |
 |---|---|---|
-| Admin user | `urbex` | the provider's `config.env`: `POSTGRES_USER` |
-| Database | the project's name, `-` turned into `_` (`acme_app`) | the provider's `config.env`: `POSTGRES_DB` |
-| Admin password | 32 random letters and digits - nothing to escape in a URL | the provider's `secrets.sops.env`: `POSTGRES_PASSWORD` |
-| Data directory | `<volume path>/pgdata` | the provider's `config.env`: `PGDATA` |
+| Admin user | `urbex` | the provider's generated file (`POSTGRES_USER`) |
+| Database | the project's name, `-` turned into `_` (`acme_app`) | the provider's generated file (`POSTGRES_DB`) |
+| Admin password | 32 random letters and digits, nothing to escape in a URL | the provider's generated file, encrypted (`POSTGRES_PASSWORD`) |
+| Data directory | `<volume path>/pgdata` | the provider's generated file (`PGDATA`) |
 
-On every `apply`, once the provider is healthy and before the
-applications that use it are deployed, Urbex makes sure each of them
-has its role and schema, and generates a password for a role that has
-none yet. Each application gets, in its environment:
+The generated file is the one ADR-0028 describes (*Generated variables*),
+apart from the user's `config.env` and `secrets.sops.env`.
+
+On every `apply`, once the provider is healthy, Urbex makes sure each
+application that uses it has its role and schema, and generates a
+password for a role that has none yet. The applications are not started
+by `apply` in that order: each waits in its own Stack for the provider
+(ADR-0028, *Order between stacks*). Each application gets these
+variables in its environment.
 
 | Variable | Value | Kept in |
 |---|---|---|
-| `DATABASE_URL` | `postgres://<role>:<password>@<host>:5432/<database>` | `secrets.sops.env` |
-| `PGHOST` | the provider's internal name: `db.acme-app.<zone>` in production, `db.staging.acme-app.<zone>` in staging (ADR-0027) | `config.env` |
-| `PGPORT`, `PGDATABASE`, `PGUSER` | `5432`, the database, its role | `config.env` |
-| `PGPASSWORD` | its role's password | `secrets.sops.env` |
+| `DATABASE_URL` | `postgres://<role>:<password>@<host>:5432/<database>` | the generated file, encrypted |
+| `PGHOST` | the provider's internal name: `db.acme-app.<zone>` in production, `db.staging.acme-app.<zone>` in staging (ADR-0027) | the generated file |
+| `PGPORT`, `PGDATABASE`, `PGUSER` | `5432`, the database, its role | the generated file |
+| `PGPASSWORD` | its role's password | the generated file, encrypted |
 
 - An application using two `postgres` providers gets each set prefixed
   with the provider's name in capitals: `ANALYTICS_DATABASE_URL`,
@@ -136,8 +144,8 @@ none yet. Each application gets, in its environment:
   (`env.staging`, `env.prod`), and resolve to that environment's
   provider and the application's own role.
 - **A variable whose value references `password` or `url` is a
-  secret**: it is written to the application's `secrets.sops.env`,
-  encrypted like `DATABASE_URL`, never to `config.env`.
+  secret**: it is written to the application's generated file,
+  encrypted like `DATABASE_URL`, never in plain text.
 - The host is always the internal name, an A record in Technitium set by
   `apply` and removed by `destroy` (ADR-0026); in `stack` placement it
   points to the stack's LXC, like every name of the stack.
@@ -246,7 +254,7 @@ A provider is an application like any other (ADR-0027, ADR-0028):
 
 - kind **`app`**; its own Komodo Stack `<project>-<app>-<env>` from its
   folder in the GitOps repo (`compose.yaml`, `config.env`,
-  `secrets.sops.env`, `version.env`); its container labelled
+  `secrets.sops.env`, the generated file, `version.env`); its container labelled
   `urbex.kind: app` and `urbex.service: <app>`;
 - in `app` placement its LXC is a Komodo Server (Periphery), tagged
   `app`, the project and the environment;
@@ -278,8 +286,9 @@ it by internal name. The official image accepts password logins
 LAN at the same name (with the router forwarding the zone to Technitium,
 ADR-0027) or at the LXC's address, with an application's credentials
 decrypted from the GitOps repo
-(`sops -d environments/<env>/<project>/<app>/secrets.sops.env`;
-`urbex secret list` shows only names). An admin UI is just another
+(`sops -d` on the application's generated file in
+`environments/<env>/<project>/<app>/`; `urbex secret list` shows only
+names). An admin UI is just another
 application: pgAdmin from its image, with `exposure: access`.
 
 ### Backups
