@@ -2,7 +2,11 @@
 
 ## Status
 
-Proposed. Tracked by [urbforge/urbex#26](https://github.com/urbforge/urbex/issues/26).
+Accepted. Tracked by [urbforge/urbex#26](https://github.com/urbforge/urbex/issues/26).
+Amended on 2026-10-30 after the review of
+[urbforge/urbex-cli#43](https://github.com/urbforge/urbex-cli/issues/43).
+It adds the order between stacks, *ready* and *healthy*, and the
+generated variables in their own file.
 Refines [ADR-0002](0002-app-manifest-in-app-repo.md) (a manifest
 without code, several stacks in one repository), [ADR-0009](0009-one-lxc-per-service-per-env.md) (one LXC
 per stack as a choice), [ADR-0020](0020-trunk-releases-gitops-environments.md)
@@ -89,8 +93,9 @@ Each application has exactly one source:
   `<app>.<project>.<zone>` in production and
   `<app>.staging.<project>.<zone>` in staging, wherever it runs.
 - **`uses`** lists the applications of the stack an application needs.
-  Urbex deploys those first and waits for them to be healthy, and passes
-  their connection settings.
+  Urbex passes their connection settings, and the application's
+  containers do not start until they are healthy (see *Order between
+  stacks*).
 - **`provides`** says which **interface** an application implements, so
   that Urbex knows how to configure it and what to pass to the
   applications that use it. Urbex knows a few interfaces:
@@ -111,8 +116,33 @@ Each application has exactly one source:
   `user`, `password`, `database`. This is how a published image, which
   reads its own variable names, is wired without changing it.
 - **Generated credentials are secrets** (ADR-0011): created by the first
-  `apply` of an environment, SOPS-encrypted in the GitOps repo - in the
-  provider's folder and in each user's - and reused on every re-apply.
+  `apply` of an environment, SOPS-encrypted in the GitOps repo, in the
+  provider's folder and in each user's, and reused on every re-apply.
+  They are kept in the generated file (see *Generated variables*).
+
+#### Order between stacks
+
+The order in which applications start is not `apply`'s job. "Providers
+first, then their users" supports only two levels of dependencies and
+ignores applications that depend on each other.
+
+- **Inside a Komodo Stack**, Docker Compose resolves the dependencies
+  between its containers; Urbex handles nothing differently.
+- **Between Stacks**, which is what `uses` is, a component of Urbex in
+  the Stack holds back the start of the containers until the
+  applications they depend on are healthy. How it is introduced in the
+  Stack is decided in
+  [urbforge/urbex-cli#43](https://github.com/urbforge/urbex-cli/issues/43).
+- **Ready and healthy are different.** *Ready* is that the containers
+  run; *healthy* is that the application can take calls. Urbex
+  distinguishes them.
+
+#### Generated variables
+
+An application's folder has two kinds of environment files: the ones the
+user edits (`config.env`, `secrets.sops.env`) and one that `apply`
+generates, with the keys the application needs. `apply` can regenerate
+it and change its keys at will, without touching what the user wrote.
 
 ### Where a stack runs: one LXC per application, or per stack
 
@@ -531,8 +561,9 @@ these examples are illustrative.
   2. applications from images: no Build, `version.env` with tag and
      digest, `deploy --update` / `--version` / `--allow-major`, `promote`
      of a whole stack, single-environment stacks;
-  3. interfaces and links: generated credentials, injected variables,
-     `env` references, deploy order by `uses`;
+  3. interfaces and links: generated credentials, injected variables in
+     the generated file, `env` references, the order between stacks,
+     ready and healthy;
   4. volumes and shares: Proxmox mount points, `storage.shares`, the
      operator's `pct set` commands, `destroy --delete-data`;
   5. `placement: stack`: one LXC per stack-environment, several Stacks
