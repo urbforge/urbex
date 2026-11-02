@@ -30,7 +30,7 @@ runs inside each.
 | `urbex-komodo` | Komodo Core on `:9120`, its database (FerretDB on PostgreSQL), and a Periphery agent that is also the **builder** (server `urbex-komodo`). |
 | `urbex-technitium` | Technitium DNS, web console on `:5380`. |
 | `urbex-keycloak` | Keycloak on `:8080`, in production mode, from an image the Stack builds once for PostgreSQL; its PostgreSQL 17, reachable only by Keycloak (no port published), with its data on the volume `urbex_keycloak-db` ([ADR-0029](../decisions/0029-keycloak-production-postgresql.md)). |
-| `urbex-observability` | Prometheus `:9090` (receiving the agents' metrics by remote write), Loki `:3100`, Grafana `:3000` (admin / `grafanaAdminPassword`), with Loki and Prometheus as data sources and the *Urbex logs* and *Urbex resources* dashboards (folder *Urbex*). |
+| `urbex-observability` | Prometheus `:9090` (receiving the agents' metrics by remote write), Loki `:3100`, Grafana `:3000` (admin / `grafanaAdminPassword`), with Loki and Prometheus as data sources and the *Urbex logs* and *Urbex resources* dashboards (folder *Urbex*), and the reconciler's alerts (folder `urbex`, see [its runbook](../cookbook.md#the-reconciler-holds-applications-back)). |
 | `urbex-tunnel` | `cloudflared`, the connector of the platform's Cloudflare Tunnel, with its token in `/opt/urbex/cloudflared.env`. |
 | each project LXC | Komodo Periphery; `sops` and the compose wrapper in `/opt/urbex/bin/`; the service's container. |
 
@@ -77,7 +77,9 @@ them up in Gitea under the organization's *Packages* when they pile up.
 | API key | `urbex-cli` | `urbex bootstrap` | `urbex teardown` |
 | Onboarding key | `urbex-projects` | `urbex bootstrap` | `urbex teardown` |
 | Git account, registry account | `urbex-admin` on `<gitea>`, with the Gitea token | `urbex bootstrap` | `urbex teardown` |
-| Variables | `URBEX_GITEA_URL`, `URBEX_GITEA_USER`, `URBEX_GITEA_TOKEN` (secret), `URBEX_ORG`; with Cloudflare `URBEX_CLOUDFLARE_TOKEN` (secret), `URBEX_CLOUDFLARE_ACCOUNT_ID` | `urbex bootstrap` | `urbex teardown` |
+| Variables | `URBEX_GITEA_URL`, `URBEX_GITEA_USER`, `URBEX_GITEA_TOKEN` (secret), `URBEX_ORG`, `URBEX_LOKI_PUSH_URL`; with Cloudflare `URBEX_CLOUDFLARE_TOKEN` (secret), `URBEX_CLOUDFLARE_ACCOUNT_ID` | `urbex bootstrap` | `urbex teardown` |
+| Variables of the linked environments | `URBEX_GRAPH_<PROJECT>_<ENV>`, the graph of `uses` of an environment, for the reconciler | `urbex apply <env>` | `urbex apply <env>` once nothing is linked, `urbex destroy <env>` |
+| Variable of the reconciler | `URBEX_RECONCILE_STATE`, its state between runs | the `urbex-reconcile` Action | `urbex teardown` |
 | Server (builder) | `urbex-komodo` | `urbex bootstrap` | `urbex teardown` |
 | Servers of the base services | `urbex-gitea`, `urbex-technitium`, `urbex-keycloak`, `urbex-observability`, `urbex-tunnel`: Periphery in `/opt/urbex/periphery` on their LXCs, with `/opt/urbex` mounted | `urbex bootstrap` | `urbex teardown` |
 | Stacks of the bootstrap services | `urbex-technitium`, `urbex-gitea`, `urbex-komodo`: files on the server (`/opt/urbex/docker-compose.yml`, compose project `urbex`), adopted from Ansible; copies in the GitOps repo's `platform/<service>/` | `urbex bootstrap` | `urbex teardown` |
@@ -85,6 +87,7 @@ them up in Gitea under the organization's *Packages* when they pile up.
 | Stacks of the other platform services | `urbex-keycloak`, `urbex-observability`, with Cloudflare `urbex-tunnel`: from the GitOps repo's `platform/<service>/` (compose project `urbex`, the volumes Ansible used before), secrets decrypted by Periphery with sops | `urbex bootstrap` | `urbex teardown` |
 | Tags | `platform`, `app`, each project's name, `staging`, `prod` | `urbex bootstrap`, `urbex apply` | - |
 | Action | `urbex-release` | `urbex bootstrap` | `urbex teardown` |
+| Action | `urbex-reconcile`, every minute | `urbex bootstrap` | `urbex teardown` |
 | Procedure | `urbex-gitops` | `urbex bootstrap` | `urbex teardown` |
 | Builds | `<project>-<service>` | `urbex apply` | `urbex destroy` of the last environment |
 | Servers | `<project>-<service>-<env>` | the LXC's agent, with the onboarding key, during `urbex apply` | `urbex destroy <env>` |
@@ -98,7 +101,7 @@ lists filter the same way:
 
 | Resources | Tags |
 |---|---|
-| The base services' Servers, the builder, `urbex-release`, `urbex-gitops` | `platform` |
+| The base services' Servers, the builder, `urbex-release`, `urbex-reconcile`, `urbex-gitops` | `platform` |
 | A project's Builds | `app`, `<project>` |
 | A project environment's Servers and Stacks (web frontend included) | `app`, `<project>`, `<env>` |
 
@@ -129,6 +132,36 @@ or not.
 It reads Gitea's address and token from the `URBEX_*` variables.
 `urbex release` and `urbex apply` also run it directly. Its source is
 `platform/komodo/release.ts` in `urbex-cli`.
+
+### `urbex-reconcile` (Action)
+
+A TypeScript script, run every minute (schedule `0 * * * * *`), that
+looks after the environments whose applications use each other
+([ADR-0031](../decisions/0031-readiness-between-stacks.md)). It deploys
+again an application that is down, unhealthy, or has a version it could
+not deploy, once what it uses is healthy, after a wait that gave up, a
+provider that came back late, a change pushed while a provider was down,
+a reboot of the node.
+
+- It reads the graphs from the `URBEX_GRAPH_*` variables, and the
+  containers only through `ListStackServices`, which carries no
+  environment and so no secret.
+- It only deploys, and never stops anything. A Stack on a server Komodo
+  cannot reach, one being deployed, and one an operator stopped are left
+  alone.
+- A provider that restarted is unstable, and what uses it is not
+  deployed until it stays up for two runs. A second restart within 10
+  minutes is a crash loop; the run fails and sends an alert.
+- Failed deploys of a Stack back off from 1 to 15 minutes; after 5 in a
+  row its circuit opens for 10 minutes, and the run fails and sends an
+  alert. A run starts at most 5 deploys, and 1 per server.
+- Every run sends a line to Loki (`{source="urbex-reconcile"}`), and an
+  error line per alert.
+
+Komodo runs it as its system user `Action`, an admin; see
+[ADR-0031](../decisions/0031-readiness-between-stacks.md#the-permissions-of-the-action).
+Its sources are `platform/komodo/reconcile.ts` and
+`reconcile_logic.ts` in `urbex-cli`.
 
 ### `urbex-gitops` (Procedure)
 

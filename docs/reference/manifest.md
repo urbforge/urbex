@@ -311,8 +311,12 @@ reach them, a `postgres` provider with `pg_isready` and any other with
 its healthcheck. A provider counts as healthy once it has answered every
 probe for 20 seconds; a single failure starts the 20 seconds again. The
 wait gives up after the longest chain of `ready_within` upstream, plus
-20 s per level, and the application then does not start until its Stack
-is deployed again.
+20 s per level, and the application then does not start. The
+reconciler of the platform, the Komodo Action `urbex-reconcile`, deploys
+it again once what it uses is healthy, and does the same after a reboot
+of the node or a change pushed while a provider was down (see
+[`urbex status`](cli.md#urbex-status) and
+[platform resources](platform-resources.md#urbex-reconcile-action)).
 
 ## `frontend`
 
