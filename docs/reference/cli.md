@@ -424,7 +424,10 @@ LXC when Komodo deploys.
   neither `sops` nor the key, and never prints values.
 
 `KEY` must be a valid environment variable name (letters, digits,
-underscores, not starting with a digit, not `sops_...`).
+underscores, not starting with a digit, not `sops_...`). A key that Urbex
+generates for a linked application, such as `PGPASSWORD` or
+`POSTGRES_PASSWORD`, is refused, since `urbex apply` would overwrite it
+([linked applications](manifest.md#linked-applications)).
 
 Needs: `sops` and `URBEX_AGE_KEY` (`set`, `unset`), the platform
 credentials.

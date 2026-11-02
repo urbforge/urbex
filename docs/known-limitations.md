@@ -3,7 +3,9 @@
 Everything Urbex doesn't do yet, or does with a catch, in one place - with
 what to do meanwhile. What *is* supported, and the priorities, are in
 [`status.md`](status.md); planned work is in [`roadmap.md`](roadmap.md).
-Last reviewed: 2026-10-17, with the applications from published images
+Last reviewed: 2026-11-02, with the linked applications
+([ADR-0031](decisions/0031-readiness-between-stacks.md)); before that
+2026-10-17, with the applications from published images
 ([ADR-0028](decisions/0028-application-model.md)); before that
 2026-10-08, with the gaps the service conventions
 ([ADR-0027](decisions/0027-service-conventions.md)) address; before
@@ -55,6 +57,12 @@ Cloudflare Quick Tunnel
 | **Shares need the operator**: binding a folder of the Proxmox node into an LXC needs `root@pam`, which an API token never has. `urbex apply` prints the `pct set` commands and deploys the application once they have been run. A share is not in Proxmox's backups of the LXC (vzdump skips bind mount points): the NAS's data is backed up on the NAS. The LXCs are unprivileged, so the folder's files must be readable, or writable, by user 100000 on the node ([how](cookbook.md#mount-a-nas-share)). | Run the printed commands on the node, as root. Shares without root, through a VM, are tracked in [urbex-cli#40](https://github.com/urbforge/urbex-cli/issues/40). |
 | A stack cannot change from two environments to production only by editing `environments`: removing `staging` from the list leaves its LXCs, Stacks and folder in place. | Run `urbex destroy staging` before removing it. |
 | A stack whose services built from source are all replaced by applications from published images keeps their Builds in Komodo: `urbex apply` removes the release webhook, but not the Builds, as with any service removed from `urbex.yaml`. | Delete the Builds in Komodo's UI. |
+| Urbex does not create the PostgreSQL role of an application that uses a `postgres` provider yet ([urbex-cli#9](https://github.com/urbforge/urbex-cli/issues/9)). The application gets `DATABASE_URL` and `PG*` for a role named after it, which does not exist, so it cannot connect. | Create the role once, as the provider's administrator `urbex`, with the password from the application's `urbex.sops.env` (`sops decrypt`), with `docker exec -it <project>-<db>-<env>-app-1 psql -U urbex -d <database> -c "CREATE ROLE api LOGIN PASSWORD '...'; CREATE SCHEMA api AUTHORIZATION api;"` on the provider's LXC. |
+| The wait sees a provider from outside, so it cannot see a restart. A provider in a crash loop that stays up longer than 20 s at a time passes the wait, and the application starts on it ([ADR-0031](decisions/0031-readiness-between-stacks.md)). | Watch the provider's restarts in Komodo or Grafana. |
+| Every level of `uses` starts at least 20 s after the one it uses, the time a provider must answer without a failure. | None; it is the price of the check. |
+| An application whose wait gave up does not start, even once what it uses is back, and a change pushed while what it uses is down is not deployed; the deploy fails and the running version stays up. | Deploy its Stack again in Komodo once the provider is healthy. |
+| An application used by others needs an HTTP healthcheck or the `postgres` interface; a provider that speaks another protocol, such as Redis or MQTT, cannot be used yet. | Give it an HTTP healthcheck, if it has one. |
+| The wait runs `postgres:17-alpine`, pulled on the LXC of every application that uses others, by tag. | None at present; an image of Urbex's own, pinned by digest, is planned. |
 
 ## Public endpoints (Cloudflare)
 

@@ -151,6 +151,10 @@ Server `<project>-<service>-<env>`; repo `<org>/gitops` branch `main`;
 run directory `environments/<env>/<project>/<service>`; `version.env` as
 an env file and `config.env`, `secrets.sops.env` as config files - a
 change to any of the three, or to `compose.yaml`, redeploys the Stack.
+An application that provides or uses something also has `urbex.env` and
+`urbex.sops.env` as config files, and one that uses others has its
+service `wait` in `ignore_services`, so that the wait, which exits once
+its work is done, does not make the Stack look unhealthy.
 Compose runs through `/opt/urbex/bin/urbex-compose`, which decrypts the
 secrets. Nothing in a Stack's definition depends on what it deploys:
 after `apply`, everything is a commit.

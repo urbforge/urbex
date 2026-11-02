@@ -16,8 +16,9 @@ secrets - is not here but in the [GitOps repo](gitops-repo.md).
 - [Runtimes](#runtimes)
 - [Applications from published images](#applications-from-published-images)
 - [Volumes](#volumes)
+- [Linked applications](#linked-applications)
 - [`frontend`](#frontend)
-- [`domain`, `observability.metrics`, `email`, `provides`, `uses`](#declared-not-yet-acted-on)
+- [`domain`, `observability.metrics`, `email`](#declared-not-yet-acted-on)
 - [What changes take effect how](#what-changes-take-effect-how)
 
 ## Full example
@@ -89,6 +90,9 @@ nor an image of its own: its LXC pulls the image it declares (see
 | `port` | 1-65535 | required with `runtime` | The port the service listens on. The container gets `PORT` set to it, and it is published on the LXC's IP at the same number. An application from a published image may omit it; if it declares one, the port is published in the same way, but `PORT` is not set, since such an image reads its own variables. `public` and `healthcheck` require a port. |
 | `healthcheck` | HTTP path | none | Path probed every 30 s from inside the container (`wget -q --spider http://localhost:<port><path>`); three failures mark the container unhealthy, and `urbex` waits for healthy. Without it, a running container counts. |
 | `volumes` | list | | What the application keeps: named volumes and shares, mounted in the container. See [volumes](#volumes). |
+| `provides` | `postgres` | none | The interface the application implements, so that Urbex configures it and passes its connection to the applications that use it. See [linked applications](#linked-applications). |
+| `uses` | list of names | | The applications of the stack this one needs. Its Stack waits until they are healthy before it starts, and it gets their connection. See [linked applications](#linked-applications). |
+| `ready_within` | `<n>s` or `<n>m` | `60s` | How long the application may take to be healthy after it starts. The applications that use it wait for it that long, and after a reboot Proxmox waits that long, up to 5 minutes, before it starts their LXCs. |
 | `resources.cpu` | integer ≥ 1 | `1` | Cores of the LXC. |
 | `resources.memory` | `<n>Mi` or `<n>Gi` | `1Gi` | Memory of the LXC. |
 | `resources.disk` | `<n>Mi` or `<n>Gi` | `5Gi` | Root disk of the LXC, rounded up to whole GiB. |
@@ -239,6 +243,77 @@ restart, `apply` leaves that application out, names it and the volumes,
 and exits with an error; the next `apply` tries again. Urbex never
 deletes a share.
 
+## Linked applications
+
+An application lists in `uses` the applications of the stack it needs.
+Urbex passes it their connection, and its Stack does not start it until
+they are healthy ([ADR-0028](../decisions/0028-application-model.md),
+[ADR-0031](../decisions/0031-readiness-between-stacks.md)).
+
+```yaml
+services:
+  - name: db
+    image: docker.io/library/postgres
+    version: "17"
+    provides: postgres
+    ready_within: 90s
+    volumes:
+      - { name: data, path: /var/lib/postgresql, size: 10Gi }
+  - name: api
+    image: docker.io/library/caddy
+    version: "2.10"
+    port: 80
+    healthcheck: /
+    uses: [db]
+  - name: web
+    image: docker.io/library/caddy
+    version: "2.10"
+    port: 80
+    uses: [api, db]
+    env:
+      prod:
+        API_ADDRESS: ${api.url}
+```
+
+What an application gets from what it uses.
+
+| Provider | The provider gets | An application that uses it gets |
+|---|---|---|
+| `provides: postgres` | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `PGDATA` in its volume | `DATABASE_URL`, `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`, for a role of its own named after it ([ADR-0030](../decisions/0030-postgresql-application.md)); Urbex does not create that role yet, see [known limitations](../known-limitations.md#projects-and-deploys) |
+| any other application | nothing | `<APP>_HOST`, `<APP>_PORT`, `<APP>_URL`, where `<APP>` is the name in capitals with `_` for `-` |
+
+An application that uses two providers of the same interface gets each
+one's variables prefixed with its name, such as `ANALYTICS_DATABASE_URL`.
+An image that reads other names maps them in `env` with references to
+what it uses, `${<app>.<key>}`. A `postgres` provider exports `host`,
+`port`, `url`, `user`, `password` and `database`; any other application
+exports `host`, `port` and `url`. A value with a reference is resolved by
+every `urbex apply` and `urbex deploy`, and kept in the generated files, not in `config.env`;
+one that holds a password is kept encrypted.
+
+Rules that `urbex apply` enforces.
+
+- An application used by others must have a `port` and a `healthcheck`,
+  or an interface. A port that answers does not tell that the
+  application can take calls.
+- A `postgres` provider has exactly one named volume, and no `port`,
+  `public` or `healthcheck`; Urbex gives it a healthcheck with
+  `pg_isready`.
+- `uses` names applications of the same stack, never the application
+  itself, and forms no cycle. A reference names an application in `uses`
+  and a key its interface exports.
+- The variables Urbex generates cannot be set with `urbex secret`, since
+  `apply` would overwrite them.
+
+How the order holds. Each application that uses others has, in its
+compose file, a service `wait` that probes them as the application will
+reach them, a `postgres` provider with `pg_isready` and any other with
+its healthcheck. A provider counts as healthy once it has answered every
+probe for 20 seconds; a single failure starts the 20 seconds again. The
+wait gives up after the longest chain of `ready_within` upstream, plus
+20 s per level, and the application then does not start until its Stack
+is deployed again.
+
 ## `frontend`
 
 ```yaml
@@ -281,20 +356,13 @@ GitOps repo it appears as a service called `web`.
 ## Declared, not yet acted on
 
 These are validated, so a manifest can already state them, but no
-command uses them yet (see [`status.md`](../status.md)). The fields of
-`services[]` in this table are refused by `urbex plan`, `apply`,
-`deploy` and `promote` rather than ignored, since an application that
-expects a database would otherwise run without it.
+command uses them yet (see [`status.md`](../status.md)).
 
 | Field | Meaning, once implemented |
 |---|---|
 | `domain.subdomain` | A custom name for the project's public hostnames (today they are derived from the project's name). |
 | `observability.metrics` | Scraping of the services' metrics by Prometheus. |
 | `email.provider` (`brevo`), `email.fromAddress`, `email.fromName` | Transactional email; the provider key will be a secret. |
-| `services[].provides: postgres`, `services[].uses` | A PostgreSQL in the stack - its own LXC per environment, its data on a named volume - and the applications that use it, each with its own role and schema on it, which get `DATABASE_URL` and `PG*` ([ADR-0030](../decisions/0030-postgresql-application.md)). A provider has exactly one volume, and no `port`, `public` or `healthcheck`. |
-
-`provides` and `uses` are tracked in
-[urbex-cli#43](https://github.com/urbforge/urbex-cli/issues/43).
 
 ## What changes take effect how
 
@@ -306,6 +374,7 @@ expects a database would otherwise run without it.
 | `version` of an application from an image | `urbex deploy <env> --app <name> --update` in each environment, or `urbex deploy staging --app <name> --update` followed by `urbex promote`. |
 | `environments` | `urbex apply <env>` for an environment added; an environment removed from the list is not destroyed: run `urbex destroy <env>` before removing it. |
 | `resources` | `urbex plan <env>`, then `urbex apply <env>`. |
+| `provides`, `uses`, `ready_within`, references in `env` | `urbex apply <env>`, which regenerates the generated files and the wait. |
 | `volumes` | `urbex apply <env>`, which adds a new named volume and grows a bigger one. A new share needs the operator's `pct set` first. |
 | A new service | `urbex apply <env>` in each environment. |
 | `public` | `urbex apply <env>` (it routes or unroutes the service). |
