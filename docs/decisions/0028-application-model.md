@@ -131,8 +131,8 @@ ignores applications that depend on each other.
 - **Between Stacks**, which is what `uses` is, a component of Urbex in
   the Stack holds back the start of the containers until the
   applications they depend on are healthy. How it is introduced in the
-  Stack is decided in
-  [urbforge/urbex-cli#43](https://github.com/urbforge/urbex-cli/issues/43).
+  Stack, and how Urbex recovers when a provider comes back late, is
+  decided in [ADR-0031](0031-readiness-between-stacks.md).
 - **Ready and healthy are different.** *Ready* is that the containers
   run; *healthy* is that the application can take calls. Urbex
   distinguishes them.
