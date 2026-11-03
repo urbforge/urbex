@@ -541,6 +541,12 @@ instance), not to the whole network: `all_squash` makes every client
 that can write there act as user 100000, so any host in the range would
 write to the NAS as the user the containers use.
 
+`all_squash` also makes every user of the container write as 100000, so
+a file that user 1000 writes in the container shows up there as owned by
+root. An application that checks the owner of its files, as some do when
+they start, may need to run as root, or the NAS must keep its own owners
+(below).
+
 For SMB, in the mount options of the storage or of `/etc/fstab`:
 
 ```
@@ -553,9 +559,30 @@ Check it on the node, with numeric ids:
 ls -ln /mnt/pve/nas/media | head
 ```
 
-The owner column must read `100000` (SMB, and NFS with the export above).
+With NFS, the owner column must read `100000` (with the export above,
+every file does). With SMB, it doesn't tell you anything: the client
+shows every file and folder as owned by `100000`, as `uid=` and `gid=`
+say, even a folder the NAS denies, and writing there from the container
+still gives `Permission denied`. What decides is what the NAS lets the
+user of the credentials do: check it on the NAS, or write a test file
+from the node:
+
+```sh
+touch /mnt/nas/media/.urbex-test && rm /mnt/nas/media/.urbex-test
+```
+
 If the NAS must keep its own owners, give user 100000 read access
-there instead, and mount the share read-only.
+there instead, and mount the share read-only. With an NFS export that
+squashes only root (`root_squash`, the default, without `all_squash`),
+the folder must also be readable by the user that the node's root
+becomes on the NAS, usually `nobody`. Otherwise Proxmox can't open it,
+and `pct set` fails in step 4 before the container is involved, as
+starting the LXC would:
+
+```
+400 Parameter verification failed.
+mp1: unable to hotplug mp1: cannot open directory //mnt/pve/nas/media: Permission denied
+```
 
 **3. Declare it, name it, apply.** In `urbex.platform.yaml`:
 
@@ -604,10 +631,15 @@ check in this order:
    reachable); `nobody` or another owner means step 2 is missing. A
    folder that user 100000 can't read (owned by root with mode 700, for
    instance) is not empty in the container: it gives `Permission denied`
-   on listing, reading and writing, and step 2 is the fix.
-2. `pct config <vmid> | grep mp`: a line with `mp=/srv/shares/media`
+   on listing, reading and writing, and step 2 is the fix. With SMB the
+   owners are always `100000`, so check the permissions on the NAS
+   instead (step 2).
+2. If `pct set` itself fails with `cannot open directory ...: Permission
+   denied`, the node's root can't read the folder: with NFS and
+   `root_squash`, see the end of step 2.
+3. `pct config <vmid> | grep mp`: a line with `mp=/srv/shares/media`
    must be there. If not, the command wasn't run or was for another LXC.
-3. In the LXC, `ls -ln /srv/shares/media` shows what the container sees.
+4. In the LXC, `ls -ln /srv/shares/media` shows what the container sees.
 
 A share through a VM, without root on the node, is tracked in
 [urbex-cli#40](https://github.com/urbforge/urbex-cli/issues/40).
