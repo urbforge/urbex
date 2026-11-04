@@ -122,7 +122,8 @@ from the app repo on every push to `main`, pushes it to Gitea's
 container registry, and deploys each environment folder of the GitOps
 repo on the service's LXC, through the Periphery agent installed there,
 whenever the folder changes. An application that uses others waits, in
-its own Stack, until what it uses is healthy
+its own Stack, until what it uses is healthy, and a Komodo Action, the
+reconciler, deploys it again when it could not start
 ([ADR-0031](decisions/0031-readiness-between-stacks.md)). What Urbex creates in Gitea and Komodo is
 listed in [platform resources](reference/platform-resources.md); the
 repo's layout and files in the [GitOps repo reference](reference/gitops-repo.md). See

@@ -59,6 +59,8 @@ copy of the GitOps repo.
 - [Run urbex from another machine or a new agent session](#run-urbex-from-another-machine-or-a-new-agent-session)
 - [A push didn't deploy](#a-push-didnt-deploy)
 - [A build or a deploy failed](#a-build-or-a-deploy-failed)
+- [The reconciler holds applications back](#the-reconciler-holds-applications-back)
+- [The reconciler is not running](#the-reconciler-is-not-running)
 - [An LXC was recreated](#an-lxc-was-recreated)
 - [Bootstrap was interrupted](#bootstrap-was-interrupted)
 - [Ansible refuses an LXC: host key changed](#ansible-refuses-an-lxc-host-key-changed)
@@ -916,6 +918,43 @@ To redo a release whose Action run failed, delete the tag in Gitea and
 create it again (`urbex release --version <same> --ref <commit>`). A tag
 pushed while `main` is still building that commit is fine: runs of the
 Action queue up.
+
+## The reconciler holds applications back
+
+Grafana's alert "The reconciler holds applications back" means that the
+`urbex-reconcile` Action keeps some applications from being deployed.
+Find which, and why.
+
+```sh
+urbex status prod
+```
+
+```
+Reconciler: running, last heard from 18s ago.
+  restarting (crash loop), what uses them waits: shop-db-prod
+```
+
+- A provider in a crash loop restarted twice within 10 minutes. Read its
+  logs in Grafana ("Urbex logs") or on its Stack in Komodo, and fix what
+  makes it fail, such as its configuration, its volume or its resources. Once it
+  stays up for two runs, what uses it is deployed again, with nothing to
+  do.
+- A circuit open means that the deploys of that Stack failed 5 times in
+  a row. Its latest update in Komodo says why; the Action tries again
+  after 10 minutes, or deploy the Stack in Komodo once it is fixed.
+
+The Action's last runs, with what it decided for each Stack, are in
+Komodo under "Actions", `urbex-reconcile`, and in Grafana with
+`{source="urbex-reconcile"}`.
+
+## The reconciler is not running
+
+Grafana's alert "The reconciler is not running" means that the
+`urbex-reconcile` Action has not run for five minutes; until it runs,
+an application that uses another and goes down stays down. `urbex
+status <env>` says the same. Check that Komodo Core is up, and that the
+Action is scheduled in Komodo ("Actions", `urbex-reconcile`, schedule
+`0 * * * * *`, enabled). `urbex bootstrap` installs it again.
 
 ## An LXC was recreated
 

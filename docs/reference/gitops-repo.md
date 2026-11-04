@@ -299,7 +299,8 @@ application runs.
    a webhook missed.
 5. For an application that uses others, `urbex-compose` first runs the
    wait alone. If what the application uses is not healthy, the deploy
-   fails and the running version stays up.
+   fails and the running version stays up. The `urbex-reconcile`
+   Action deploys it once they are healthy.
 
 Komodo caches the repo for a few seconds after reading it: a commit
 pushed within ~5 seconds of the previous one can wait for the next run.

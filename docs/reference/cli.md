@@ -527,6 +527,23 @@ Technitium: `(missing)` without a record, `(points to ...)` when it
 isn't the allocated IP, `(not checked: no technitium token)` on a
 machine without the token.
 
+For an environment whose applications use each other, a last section
+says what the reconciler (the Komodo Action `urbex-reconcile`) does for
+it, when it last ran and which Stacks it holds back.
+
+```
+Reconciler: running, last heard from 42s ago.
+  restarted, what uses them waits until they stay up: shop-db-prod
+```
+
+| Line | Meaning |
+|---|---|
+| `running, last heard from <time> ago` | It ran in the last 10 minutes. |
+| `has never run`, `last heard from <time> ago - not running` | The Action is not scheduled, or Komodo Core is down; nothing brings the applications back. |
+| `circuit open, not deployed until it cools down` | The deploys of these Stacks failed 5 times in a row; the next is tried after 10 minutes. |
+| `restarting (crash loop), what uses them waits` | These providers restarted twice within 10 minutes. |
+| `restarted, what uses them waits until they stay up` | These providers restarted once, a reboot for instance; what uses them is deployed once they stay up for two runs. |
+
 Needs: `URBEX_PROXMOX_TOKEN`; the platform credentials for the Komodo
 columns.
 
