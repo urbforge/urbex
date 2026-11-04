@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Refined by [ADR-0028](0028-application-model.md) (proposed):
+Accepted. Refined by [ADR-0028](0028-application-model.md):
 one LXC per application stays the default; a stack can choose one LXC
 per environment for all its applications (`placement: stack`).
 

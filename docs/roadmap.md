@@ -104,7 +104,7 @@ What the planned additions of v1 became:
 - **Promotion by pull request** on the GitOps repo, with protection on
   the production folder - planned in E10 (M5).
 - **Applications from published images, stacks, declared requirements**
-  ([ADR-0028](decisions/0028-application-model.md), proposed): linked
+  ([ADR-0028](decisions/0028-application-model.md)): linked
   applications (`uses`/`provides`), `access` exposure, OIDC clients,
   and one LXC per stack (`placement: stack`) for more
   resource-constrained hardware. Images pinned by digest,
