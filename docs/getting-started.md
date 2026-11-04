@@ -20,21 +20,31 @@ first time, most of it spent waiting for downloads.
 ### Required: a Proxmox VE node
 
 - **Proxmox VE 9**, and a root shell on it **once**, to create a token
-  and download the template. These are the commands, as `root` on the
-  node; [credentials](reference/credentials.md#proxmox-api-token)
-  explains each line and the web-UI way:
+  and download the template. Run this as `root` on the node (the web
+  UI's *node* → *Shell* works): it picks the storage, the bridge and the
+  latest Debian 13 template itself, and prints them.
+  [Credentials](reference/credentials.md#proxmox-api-token) explains each
+  line and the web-UI way:
   ```sh
+  STORAGE=$(pvesm status --content rootdir --enabled 1 | awk 'NR>1 && $3=="active" && $2!="dir" {print $1; exit}')
+  [ -n "$STORAGE" ] || STORAGE=$(pvesm status --content rootdir --enabled 1 | awk 'NR>1 && $3=="active" {print $1; exit}')
+  TEMPLATES=$(pvesm status --content vztmpl --enabled 1 | awk 'NR>1 && $3=="active" {print $1; exit}')
+  BRIDGE=$(ip -o route show default | awk '{print $5; exit}')
+  pveam update >/dev/null
+  TEMPLATE=$(pveam available --section system | awk '/debian-13-standard/ {print $2}' | sort -V | tail -1)
+  echo "disks on $STORAGE, templates on $TEMPLATES, bridge $BRIDGE, template $TEMPLATE"
+
   pveum pool add urbex --comment "Urbex"
-  pveum pool modify urbex --storage local-zfs,local
+  pveum pool modify urbex --storage "$STORAGE,$TEMPLATES"
   pveum group add urbex --comment "Urbex operators: pool urbex only"
   pveum acl modify /pool/urbex --groups urbex --roles PVEVMAdmin,PVEDatastoreUser,PVEPoolUser
-  pveum acl modify /sdn/zones/localnetwork/vmbr0 --groups urbex --roles PVESDNUser
+  pveum acl modify "/sdn/zones/localnetwork/$BRIDGE" --groups urbex --roles PVESDNUser
   pveum user add urbex@pve --comment "Urbex CLI" --groups urbex
+  pveam download "$TEMPLATES" "$TEMPLATE"
   pveum user token add urbex@pve cli --privsep 0 --comment "urbex"   # prints the token once: keep it
-  pveam update && pveam download local debian-13-standard_13.6-1_amd64.tar.zst
   ```
-  Change `local-zfs` and `vmbr0` if your storage or bridge are named
-  differently.
+  The token is `urbex@pve!cli=<value>`, with the value the last command
+  prints.
 - **A free block of IPs on the LAN**: 10 for the platform, then one per
   service per environment.
 - **A domain name.** With Cloudflare, it's your Cloudflare zone.
@@ -88,22 +98,25 @@ Set up Urbex for me and deploy my app with it.
 1. Clone https://github.com/urbforge/urbex and https://github.com/urbforge/urbex-cli
    side by side, then read urbex/docs/getting-started.md and follow
    "Path 2: step by step from the CLI" with the container (urbex-op).
-2. First, ask me whether I use Cloudflare (none, Quick Tunnel, or my
-   zone), then give me what I have to do myself: the commands of
-   "Prerequisites" to run as root on Proxmox, which create the pool, the
-   user and the Proxmox token and download the template; and, with my
-   zone, how to create the Cloudflare token, from
-   urbex/docs/reference/credentials.md. Wait until I've done it.
-3. After `urbex-op init`, stop and ask me to run `urbex-op set proxmoxToken`
-   (and `cloudflareToken`) myself, in my terminal. Never ask me for a
-   token in the chat, and never print the credentials file or the age key.
-4. Before filling in urbex.platform.yaml, ask me for the values you
-   can't know: the Proxmox URL, node, storage, bridge, the LAN's CIDR and
-   gateway, the first free IP, the domain, and with Cloudflare the
-   account and zone IDs.
+2. Find every value yourself, don't ask me for what you can discover:
+   from this machine the LAN's CIDR, gateway and DNS, the Proxmox node
+   (port 8006 on the LAN) and a free block of addresses; once my tokens
+   are stored, from the Proxmox API the node, storage, bridge, template
+   and pool, and from the Cloudflare API my zone and its IDs. Never print
+   a token. Ask me only whether I use Cloudflare (none, Quick Tunnel or
+   my zone).
+3. Give me what I have to do myself: the commands of "Prerequisites" to
+   run as root on Proxmox, and, with my zone, how to create the
+   Cloudflare token (urbex/docs/reference/credentials.md). After
+   `urbex-op init`, ask me to run `urbex-op set proxmoxToken` (and
+   `cloudflareToken`) in my terminal. Never ask me for a token in the
+   chat, and never print the credentials file or the age key.
+4. Propose the whole urbex.platform.yaml, saying where each value comes
+   from, and ask me to confirm it once.
 5. My app is <git URL or path>. Write its urbex.yaml from its code, show
    it to me, then deploy it to staging and give me its address.
-6. Ask me before `urbex apply prod`, `urbex release` and `urbex promote`.
+6. Ask me before `urbex bootstrap`, `urbex apply prod`, `urbex release`
+   and `urbex promote`.
 ```
 
 From then on, ask in plain words: "deploy to staging", "what runs in
