@@ -36,7 +36,7 @@ Proxmox VE 9.2 node, see [What has been validated](#what-has-been-validated).
 | `urbex apply` | Terraform, Ansible, the project's Builds and webhook, the environment's folder and Stacks; a new staging builds and runs `main`'s head; redeploys an environment that already runs something |
 | Applications from published images | A service with `image` and `version` instead of `runtime` is pulled rather than built: each environment runs the digest its tag was resolved to, recorded in `version.env`, until `urbex deploy --update` or `--app <name> --version <tag>` replaces it; `urbex promote` copies the digests staging runs; `environments: [prod]` declares a stack with production only, for which `release` and `promote` do not apply. Public images only ([ADR-0028](decisions/0028-application-model.md)) |
 | Volumes | An application's named volumes are mount points of its LXC on the platform's storage, in Proxmox's backups, grown when their size grows, and Docker named volumes in its container, filled from the image the first time, owners included; `urbex apply` refuses a change that would replace or delete an LXC with named volumes (deleting one, removed from `urbex.yaml`, needs `--delete-data`), restarts an LXC that needs it to mount one and never starts an application before its volumes are mounted, and `urbex destroy` deletes them only with `--delete-data`, and so does `urbex apply`. Shares of the Proxmox node, declared in `storage.shares`, are bound by the operator with the `pct set` commands `apply` prints ([ADR-0028](decisions/0028-application-model.md)) |
-| Linked applications | `provides: postgres` and `uses` ([ADR-0028](decisions/0028-application-model.md), [ADR-0031](decisions/0031-readiness-between-stacks.md)). A provider gets a generated user, password and database; an application that uses others gets their connection (`DATABASE_URL` and `PG*`, or `<APP>_HOST`, `<APP>_PORT`, `<APP>_URL`) and its `${app.key}` references resolved, in generated files whose passwords are encrypted. Its Stack waits until what it uses has answered its probe for 20 s, and a change pushed while they are down leaves the running version up. After a reboot of the node, Proxmox starts the LXCs in the order of `uses` |
+| Linked applications | `provides: postgres` and `uses` ([ADR-0028](decisions/0028-application-model.md), [ADR-0031](decisions/0031-readiness-between-stacks.md)). A provider gets a generated user, password and database; an application that uses others gets their connection (`DATABASE_URL` and `PG*`, or `<APP>_HOST`, `<APP>_PORT`, `<APP>_URL`) and its `${app.key}` references resolved, in generated files whose passwords are encrypted. Its Stack waits until what it uses has answered its probe for 20 s, and a change pushed while they are down leaves the running version up. After a reboot of the node, Proxmox starts the LXCs in the order of `uses`. The reconciler, a Komodo Action run every minute, deploys again what is down once what it uses is healthy, holds back what uses a provider that restarted, and alerts in Grafana on a crash loop, on deploys that keep failing and when it stops running; `urbex status <env>` shows it |
 | `urbex release` | Tags the next release on the commit staging runs (or `main`, or `--ref`) and waits for its images |
 | `urbex deploy` | Sets an environment's version in the GitOps repo (latest release, `--version` with a release or commit - also how to roll back - or `--follow-main`), pushes, waits for Komodo to run it |
 | `urbex promote` | Sets prod to the release staging runs: prod runs the very images staging ran; refuses an unreleased commit |
@@ -69,7 +69,7 @@ Proxmox VE 9.2 node, see [What has been validated](#what-has-been-validated).
 | Frontend-only projects | A web frontend needs at least one service in the manifest | [0022](decisions/0022-cloudflare-tunnel-access-workers.md) |
 | Keycloak beyond projects | No `platform` realm (admin SSO), no confidential clients for service-to-service calls | [0008](decisions/0008-keycloak-scope.md), [0024](decisions/0024-keycloak-realm-per-environment.md) |
 | Terraform state encryption | State is plain JSON in the (private) GitOps repo, not SOPS-encrypted as designed | [0013](decisions/0013-terraform-state-in-gitops-repo.md) |
-| Service metrics, alerting | LXC resource metrics are collected, but not the services' own metrics (`observability.metrics` is ignored); no alerting; Loki has no retention | [0023](decisions/0023-service-logs-to-loki.md) |
+| Service metrics, alerting | LXC resource metrics are collected, but not the services' own metrics (`observability.metrics` is ignored); no alerting beyond the reconciler's; Loki has no retention | [0023](decisions/0023-service-logs-to-loki.md) |
 | Mobile frontend deploy | `frontend.type: mobile` (Firebase) is validated, not deployed | - |
 | Fleet-wide status | `urbex status` is scoped to one project+environment at a time; Komodo's UI is the cross-project view | - |
 | Per-project Proxmox isolation | New projects should get their own resource pool, a group for their users with minimal permissions, and dedicated technical users; today every LXC goes in the platform-wide `proxmox.pool`, managed with the operator's token | [roadmap](roadmap.md) |
@@ -117,6 +117,12 @@ base services are real. It covers:
     restart, and gets its connection with no password in plaintext in
     the repo; a provider without a healthcheck is refused. The order of
     the LXCs after a reboot of a real node is not in the e2e.
+13. The reconciler. A change pushed while the database is down leaves
+    the running api alone and is deployed once the database is back; an
+    api removed while the database is down comes back after it; a reboot
+    of the node, simulated by stopping the three machines for two and a
+    half minutes, deploys nothing and alerts nobody; an api in a crash
+    loop holds back what uses it and fails the runs.
 
 Separately, `terraform validate` passes on the base and project modules
 with the real `bpg/proxmox` provider, and the `python` and `java`
