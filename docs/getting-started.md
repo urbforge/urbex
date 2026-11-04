@@ -1,8 +1,8 @@
 # Getting started
 
 From an empty Proxmox server to an app in staging and production. There
-are two ways to do it: [type the commands](#path-1-step-by-step-from-the-cli)
-yourself, or [let an AI agent do it](#path-2-with-an-ai-agent). Both
+are two ways to do it: [let an AI agent do it](#path-1-with-an-ai-agent),
+or [type the commands](#path-2-step-by-step-from-the-cli) yourself. Both
 start from the same [prerequisites](#prerequisites). Allow an hour the
 first time, most of it spent waiting for downloads.
 
@@ -64,11 +64,46 @@ Linux or macOS, `git`, and one of the following:
 | **Container** (recommended) | `podman` or `docker` | Nothing else: the image has `urbex`, Terraform, Ansible, sops and age at the versions the CLI is tested with. Go isn't needed. |
 | **Native** | [mise](https://mise.jdx.dev), then `mise install` in the `urbex-cli` checkout | Installs the pinned versions of Go (only to build `urbex`), Terraform, Ansible, sops and age, listed in `urbex-cli`'s `mise.toml`. Without mise, install them yourself: Go 1.26, Terraform 1.13 (or OpenTofu), `ansible-core`, `sops`, `age`, plus `ssh`. |
 
-The steps below use the container. With the native tools, run the same
+Both paths use the container. With the native tools, run the same
 `urbex ...` commands directly, after the extra setup in
 [Native tools](#native-tools).
 
-## Path 1: step by step from the CLI
+## Path 1: with an AI agent
+
+An agent like Claude Code or Codex can do the setup for you, following
+[Path 2](#path-2-step-by-step-from-the-cli). Two things stay yours:
+
+1. **The Proxmox prerequisites**: they need root on the node.
+2. **The tokens**: give them to Urbex yourself, so they never go through
+   the chat. After the agent has run `urbex-op init`, run
+   `urbex-op set proxmoxToken` (and `cloudflareToken`) in your own
+   terminal.
+
+Start the agent in an empty folder and give it this prompt, adapted to
+your app:
+
+```text
+Set up Urbex for me and deploy my app with it.
+
+1. Clone https://github.com/urbforge/urbex and https://github.com/urbforge/urbex-cli
+   side by side, then read urbex/docs/getting-started.md and follow
+   "Path 2: step by step from the CLI" with the container (urbex-op).
+2. After `urbex-op init`, stop and ask me to run `urbex-op set proxmoxToken`
+   myself. Never ask me for a token in the chat, and never print the
+   credentials file or the age key.
+3. Before filling in urbex.platform.yaml, ask me for the values you
+   can't know: the Proxmox URL, node, storage, bridge, the LAN's CIDR and
+   gateway, the first free IP, the domain, and whether I use Cloudflare.
+4. My app is <git URL or path>. Write its urbex.yaml from its code, show
+   it to me, then deploy it to staging and give me its address.
+5. Ask me before `urbex apply prod`, `urbex release` and `urbex promote`.
+```
+
+From then on, ask in plain words: "deploy to staging", "what runs in
+prod?", "set the STRIPE_KEY secret in prod", "release and promote". The
+agent finds the commands in the [CLI reference](reference/cli.md).
+
+## Path 2: step by step from the CLI
 
 ### 1. Get Urbex
 
@@ -220,41 +255,6 @@ Then run the commands of steps 3 to 6 without `urbex-op '...'`, from
 your app's folder, wherever it is. Terraform, Ansible and sops must be
 on the `PATH` there: with mise, that is `mise use -g` for each tool, or a
 `mise.toml` in that folder.
-
-## Path 2: with an AI agent
-
-An agent like Claude Code or Codex can do Path 1 for you. Two things stay
-yours:
-
-1. **The Proxmox prerequisites**: they need root on the node.
-2. **The tokens**: give them to Urbex yourself, so they never go through
-   the chat. After the agent has run `urbex-op init`, run
-   `urbex-op set proxmoxToken` (and `cloudflareToken`) in your own
-   terminal.
-
-Start the agent in an empty folder and give it this prompt, adapted to
-your app:
-
-```text
-Set up Urbex for me and deploy my app with it.
-
-1. Clone https://github.com/urbforge/urbex and https://github.com/urbforge/urbex-cli
-   side by side, then read urbex/docs/getting-started.md and follow
-   "Path 1: step by step from the CLI" with the container (urbex-op).
-2. After `urbex-op init`, stop and ask me to run `urbex-op set proxmoxToken`
-   myself. Never ask me for a token in the chat, and never print the
-   credentials file or the age key.
-3. Before filling in urbex.platform.yaml, ask me for the values you
-   can't know: the Proxmox URL, node, storage, bridge, the LAN's CIDR and
-   gateway, the first free IP, the domain, and whether I use Cloudflare.
-4. My app is <git URL or path>. Write its urbex.yaml from its code, show
-   it to me, then deploy it to staging and give me its address.
-5. Ask me before `urbex apply prod`, `urbex release` and `urbex promote`.
-```
-
-From then on, ask in plain words: "deploy to staging", "what runs in
-prod?", "set the STRIPE_KEY secret in prod", "release and promote". The
-agent finds the commands in the [CLI reference](reference/cli.md).
 
 ## Configuration and secrets
 
