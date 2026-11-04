@@ -88,15 +88,22 @@ Set up Urbex for me and deploy my app with it.
 1. Clone https://github.com/urbforge/urbex and https://github.com/urbforge/urbex-cli
    side by side, then read urbex/docs/getting-started.md and follow
    "Path 2: step by step from the CLI" with the container (urbex-op).
-2. After `urbex-op init`, stop and ask me to run `urbex-op set proxmoxToken`
-   myself. Never ask me for a token in the chat, and never print the
-   credentials file or the age key.
-3. Before filling in urbex.platform.yaml, ask me for the values you
+2. First, ask me whether I use Cloudflare (none, Quick Tunnel, or my
+   zone), then give me what I have to do myself: the commands of
+   "Prerequisites" to run as root on Proxmox, which create the pool, the
+   user and the Proxmox token and download the template; and, with my
+   zone, how to create the Cloudflare token, from
+   urbex/docs/reference/credentials.md. Wait until I've done it.
+3. After `urbex-op init`, stop and ask me to run `urbex-op set proxmoxToken`
+   (and `cloudflareToken`) myself, in my terminal. Never ask me for a
+   token in the chat, and never print the credentials file or the age key.
+4. Before filling in urbex.platform.yaml, ask me for the values you
    can't know: the Proxmox URL, node, storage, bridge, the LAN's CIDR and
-   gateway, the first free IP, the domain, and whether I use Cloudflare.
-4. My app is <git URL or path>. Write its urbex.yaml from its code, show
+   gateway, the first free IP, the domain, and with Cloudflare the
+   account and zone IDs.
+5. My app is <git URL or path>. Write its urbex.yaml from its code, show
    it to me, then deploy it to staging and give me its address.
-5. Ask me before `urbex apply prod`, `urbex release` and `urbex promote`.
+6. Ask me before `urbex apply prod`, `urbex release` and `urbex promote`.
 ```
 
 From then on, ask in plain words: "deploy to staging", "what runs in
