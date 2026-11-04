@@ -57,6 +57,11 @@ What it means for an agent, in practice:
   adds or changes one documents its kind, internal name and exposure
   (the table *Every current service* there, and the reference), matching
   its entry in `urbex-cli`'s service catalog.
+- The repository is also a Claude Code plugin (`.claude-plugin/`,
+  `skills/`). The skills point to the docs instead of copying them; when
+  a command, a flag, a credential or a confirmation rule changes, check
+  `skills/*/SKILL.md` too, and bump `version` in
+  `.claude-plugin/plugin.json`.
 - `schemas/urbex.schema.json` is the source of truth for the manifest;
   `urbex-cli` keeps a copy that must match it.
 - Write for the reader who runs the commands: real commands and output,

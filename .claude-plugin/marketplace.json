@@ -1,0 +1,18 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "urbex",
+  "owner": {
+    "name": "urbforge",
+    "url": "https://github.com/urbforge"
+  },
+  "metadata": {
+    "description": "Urbex, a self-hosted app platform on your Proxmox node, for Claude Code."
+  },
+  "plugins": [
+    {
+      "name": "urbex",
+      "source": "./",
+      "description": "Set up Urbex on a Proxmox node, write and change urbex.yaml, and run every urbex command: bootstrap, apply, release, deploy, promote, secrets, status."
+    }
+  ]
+}
