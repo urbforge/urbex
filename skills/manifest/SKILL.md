@@ -51,19 +51,24 @@ skill.
    (*Runtimes*): the service must listen on `$PORT`; with a `healthcheck`
    the image needs `wget` (Urbex's images have it). If the code listens on
    a fixed port, say so and propose reading `PORT`, or use that port.
-4. **Ask only what the code doesn't tell**: the project name (3-40
-   characters, lowercase, digits, `-`; it names everything on the
-   platform and can't change), whether there is staging (`environments:
-   [prod]` for an app with production only, such as a self-hosted tool),
-   which services are public on the internet, how much data to keep.
+4. **Propose, don't ask.** Decide every value from the code and these
+   defaults, and let the user correct them in step 6: the project name
+   from the repository's name (3-40 characters, lowercase, digits, `-`;
+   it names everything on the platform and can't change later), staging
+   and prod (`environments: [prod]` only for an app with production only,
+   such as a self-hosted tool from a published image), nothing `public`
+   unless the app is meant for the internet and Cloudflare is
+   configured, the default resources unless the code clearly needs more
+   (a JVM: `memory: 2Gi`), `10Gi` per named volume. Ask only when the
+   code leaves two real choices open.
 5. **Write it**, then validate:
    ```sh
    urbex-op 'cd /work/projects/<project> && urbex init'     # or: urbex init, natively
    ```
    It lists every error. With no `urbex.yaml`, `urbex init --project
    <name>` writes a starter one; you can also write the file directly.
-6. **Show it** to the user with a line per choice that isn't obvious,
-   and commit it when they agree.
+6. **Show it** to the user with a line per value you chose and why, ask
+   for one confirmation, and commit it when they agree.
 
 A minimal service:
 

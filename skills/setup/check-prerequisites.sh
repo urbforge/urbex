@@ -21,6 +21,7 @@ esac
 
 command -v git >/dev/null && ok "git $(git --version | awk '{print $3}')" || miss "git"
 command -v ssh-keygen >/dev/null && ok "ssh-keygen" || miss "ssh-keygen (OpenSSH client)"
+command -v python3 >/dev/null && ok "python3 (the setup's discovery scripts)" || warn "no python3: the setup can't find the values by itself, and asks for them"
 
 engine=
 if command -v podman >/dev/null; then engine=podman; elif command -v docker >/dev/null; then engine=docker; fi
