@@ -10,7 +10,7 @@ in [`known-limitations.md`](known-limitations.md); the table below keeps
 only the gaps that matter for planning. Update both whenever a priority
 item gets implemented, or a new gap is discovered.
 
-As of this writing: 27 ADRs, 12 `urbex` CLI commands, 156 unit tests
+As of this writing: 31 ADRs, 12 `urbex` CLI commands, 156 unit tests
 across 20 Go packages, and an end-to-end test (`e2e/run.sh`) in
 [`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli) that runs
 the real binary through a whole project lifecycle against Debian 13
