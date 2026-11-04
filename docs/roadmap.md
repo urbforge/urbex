@@ -104,11 +104,11 @@ What the planned additions of v1 became:
 - **Promotion by pull request** on the GitOps repo, with protection on
   the production folder - planned in E10 (M5).
 - **Applications from published images, stacks, declared requirements**
-  ([ADR-0028](decisions/0028-application-model.md)): linked
-  applications (`uses`/`provides`), `access` exposure, OIDC clients,
-  and one LXC per stack (`placement: stack`) for more
-  resource-constrained hardware. Images pinned by digest,
-  single-environment stacks, volumes and NAS shares are implemented.
+  ([ADR-0028](decisions/0028-application-model.md)): `access`
+  exposure, OIDC clients, and one LXC per stack (`placement: stack`)
+  for more resource-constrained hardware. Images pinned by digest,
+  single-environment stacks, volumes, NAS shares and linked applications
+  (`uses`, `provides: postgres`) are implemented.
 - Optional layers on top of the CLI: a dedicated Claude Code skill/plugin,
   an MCP server.
 - **Schema sync automation**: a CI check (or codegen step) so the

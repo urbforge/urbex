@@ -44,6 +44,7 @@ copy of the GitOps repo.
 - [Give a service more CPU, memory, or disk](#give-a-service-more-cpu-memory-or-disk)
 - [Keep an application's data](#keep-an-applications-data)
 - [Mount a NAS share](#mount-a-nas-share)
+- [Link a database to the applications that use it](#link-a-database-to-the-applications-that-use-it)
 - [Several projects on one platform](#several-projects-on-one-platform)
 - [Decommission an environment or a project](#decommission-an-environment-or-a-project)
 - [Remove the whole platform](#remove-the-whole-platform)
@@ -611,6 +612,58 @@ check in this order:
 
 A share through a VM, without root on the node, is tracked in
 [urbex-cli#40](https://github.com/urbforge/urbex-cli/issues/40).
+
+## Link a database to the applications that use it
+
+Declare the PostgreSQL as an application that `provides: postgres`, and
+list it in `uses` of the applications that need it.
+
+```yaml
+services:
+  - name: db
+    image: docker.io/library/postgres
+    version: "17"
+    provides: postgres
+    ready_within: 90s
+    volumes:
+      - { name: data, path: /var/lib/postgresql, size: 10Gi }
+  - name: api
+    runtime: go
+    port: 8080
+    healthcheck: /healthz
+    uses: [db]
+  - name: web
+    image: docker.io/library/nginx
+    version: "1.29"
+    port: 80
+    uses: [api]
+    env:
+      prod:
+        BACKEND_URL: ${api.url}
+```
+
+```sh
+urbex apply prod
+```
+
+What happens.
+
+1. Urbex generates the provider's user, password and database, and
+   gives `api` its `DATABASE_URL` and `PG*`, and `web` the address of
+   `api` in `BACKEND_URL`. The passwords are kept encrypted in the
+   GitOps repo, in each application's `urbex.sops.env`.
+2. Every Stack is deployed at once. The Stacks of `api` and `web` start
+   a `wait` first, which probes `db` with `pg_isready` and `api` on its
+   healthcheck, and starts the application once what it uses has
+   answered for 20 seconds without a failure.
+3. If `db` takes longer than its `ready_within` on the first start,
+   raise it, since what uses `db` waits for it that long.
+
+`api` must have a `port` and a `healthcheck`, since `web` uses it; without
+them `apply` refuses the manifest. Urbex does not create the role of
+`api` on the database yet: create it once by hand, as
+[known limitations](known-limitations.md#projects-and-deploys) shows. See
+[linked applications](reference/manifest.md#linked-applications).
 
 ## Several projects on one platform
 
