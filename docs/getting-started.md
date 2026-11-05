@@ -1,306 +1,126 @@
 # Getting started
 
-From an empty Proxmox server to a service running in production, with
-every command and what it prints. The example project is **acme-app**, a
-Go service called `api`. Allow an hour the first time, most of it waiting
-for downloads.
+From an empty Proxmox server to an app in staging and production. This
+page has what every way of doing it shares: how Urbex works, and the
+prerequisites. Then pick a guide: let an AI agent do the setup, or type
+the commands yourself. Allow an hour the first time, most of it spent
+waiting for downloads.
 
-If you want the ideas before the commands, read
-[How Urbex works](#how-urbex-works) first; if you want every option, see
-the [reference](reference/).
-
-> ⚠️ Urbex is early-stage. Everything here has been run end to end by the
-> CLI's test suite and on a real Proxmox VE 9.2 node - see
-> [`status.md`](status.md) and [`known-limitations.md`](known-limitations.md).
-> Gaps are called out with ⚠️.
+> ⚠️ Urbex is early-stage. Everything here has been run end to end on a
+> real Proxmox VE 9.2 node - see [`status.md`](status.md) and
+> [`known-limitations.md`](known-limitations.md).
+>
+> ⚠️ The CLI's repository, [`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli),
+> isn't public yet: it will be, as open source, with the first release.
+> Until then, cloning it needs access to it. This repository,
+> `urbforge/urbex`, is public and holds the documentation.
 
 ## How Urbex works
 
 ```
  your machine (or an agent)        Proxmox
  ┌───────────────────────┐   ┌──────────────────────────────────────────┐
- │ acme-app working copy │   │ base: Gitea, Komodo, Technitium,         │
- │   urbex.yaml          │──▶│       Keycloak, Prometheus/Grafana/Loki  │
+ │ acme-app working copy │   │ platform: Gitea, Komodo, Technitium,     │
+ │   urbex.yaml          │──▶│   Keycloak, Prometheus/Grafana/Loki      │
  │ urbex CLI             │   │ acme-app-api-staging   acme-app-api-prod │
  └───────────────────────┘   └──────────────────────────────────────────┘
 ```
 
-- **Base services.** `urbex bootstrap` creates five LXCs: Gitea (Git
-  server and container registry), Komodo (builds and deploys),
-  Technitium (DNS), Keycloak (identity), and an observability stack.
-- **Project repos** live on Gitea and are developed **trunk-based** on
-  `main`. Every push to `main` is built by Komodo into one image per
-  service, tagged with the commit (`acme-app-api:a1b2c3d`).
-- **A release is a Git tag** (`v1.4.2`). It gives the commit's existing
-  image the version as tag - nothing is rebuilt.
-- **The GitOps repo** (also on Gitea) says what each environment runs:
-  `environments/<env>/<project>/<service>/` holds the version, the
-  configuration, and the SOPS-encrypted secrets. Komodo deploys a folder
-  whenever it changes.
-- **Staging follows `main`**: after each build of `main`, its version is
-  set to the new commit, so every push is on staging within minutes.
-  **Production runs releases**, set by `urbex promote`.
-- **One LXC per service per environment**, each running Docker and the
-  Komodo agent (Periphery).
+- **The platform**: Gitea (Git and the container registry), Komodo
+  (builds and deploys), Technitium (internal DNS), Keycloak (login), and
+  an observability stack, each in its own LXC.
+- **Your app** lives on Gitea, developed on `main`. Every push is built
+  into one image per service and deployed to **staging**.
+- **A release is a Git tag** (`v1.4.2`) on a commit staging ran: it gives
+  that image the version, without rebuilding it. **Production runs
+  releases**, set by `urbex promote`.
+- **The GitOps repo** says what each environment runs: the version, the
+  configuration and the encrypted secrets of every service. Komodo
+  deploys whatever changes there.
+- **One LXC per service per environment**, with Docker.
 
-The CLI is for the things around that loop - creating the platform,
-creating environments, releasing, promoting. Day to day, a push to
-`main` is enough.
+Day to day, a push to `main` is enough. The CLI is for what's around it:
+creating the platform and the environments, releasing, promoting.
 
 ## Prerequisites
 
-On Proxmox:
+### Required: a Proxmox VE node
 
-- an API token (see [credentials](reference/credentials.md#proxmox-api-token)),
-  with `PVEVMAdmin` on the node or on a resource pool, and `SDN.Use` on
-  the bridge;
-- the Debian 13 LXC template:
+- **Proxmox VE 9**, and a root shell on it **once**, to create a token
+  and download the template. Run this as `root` on the node (the web
+  UI's *node* → *Shell* works): it picks the storage, the bridge and the
+  latest Debian 13 template itself, and prints them.
+  [Credentials](reference/credentials.md#proxmox-api-token) explains each
+  line and the web-UI way:
   ```sh
-  pveam update && pveam available --section system | grep debian-13
-  pveam download local debian-13-standard_13.6-1_amd64.tar.zst
+  STORAGE=$(pvesm status --content rootdir --enabled 1 | awk 'NR>1 && $3=="active" && $2!="dir" {print $1; exit}')
+  [ -n "$STORAGE" ] || STORAGE=$(pvesm status --content rootdir --enabled 1 | awk 'NR>1 && $3=="active" {print $1; exit}')
+  TEMPLATES=$(pvesm status --content vztmpl --enabled 1 | awk 'NR>1 && $3=="active" {print $1; exit}')
+  BRIDGE=$(ip -o route show default | awk '{print $5; exit}')
+  pveam update >/dev/null
+  TEMPLATE=$(pveam available --section system | awk -v arch="$(dpkg --print-architecture)" '$2 ~ /^debian-13-standard_/ && $3 == arch {print $2}' | sort -V | tail -1)
+  echo "disks on $STORAGE, templates on $TEMPLATES, bridge $BRIDGE, template $TEMPLATE"
+
+  pveum pool add urbex --comment "Urbex"
+  pveum pool modify urbex --storage "$STORAGE,$TEMPLATES"
+  pveum group add urbex --comment "Urbex operators: pool urbex only"
+  pveum acl modify /pool/urbex --groups urbex --roles PVEVMAdmin,PVEDatastoreUser,PVEPoolUser
+  pveum acl modify "/sdn/zones/localnetwork/$BRIDGE" --groups urbex --roles PVESDNUser
+  pveum user add urbex@pve --comment "Urbex CLI" --groups urbex
+  pveam download "$TEMPLATES" "$TEMPLATE"
+  pveum user token add urbex@pve cli --privsep 0 --comment "urbex"   # prints the token once: keep it
   ```
-- a free block of IPs on the LAN: 5 for the base services, then one per
+  The token is `urbex@pve!cli=<value>`, with the value the last command
+  prints.
+- **A free block of IPs on the LAN**: 10 for the platform, then one per
   service per environment.
+- **A domain name.** With Cloudflare, it's your Cloudflare zone.
+  Without Cloudflare, any name works: Urbex uses it for internal names
+  (`*.urbex.<domain>`) and for the admin's e-mail address.
 
-On the machine that runs `urbex` (yours, or an agent's) - or, with only
-podman or docker installed, in a container: see
-[Run urbex from a container](cookbook.md#run-urbex-from-a-container):
+### Optional: Cloudflare
 
-- the `urbex` binary, built from a checkout of `urbforge/urbex-cli`:
-  `go build -o ~/bin/urbex ./cmd/urbex` (the repository isn't public yet:
-  it will be with the first release);
-- `terraform` (or `tofu`), `ansible-playbook`, `git`, `ssh`, and - for
-  secrets - [`sops`](https://github.com/getsops/sops);
-- an SSH key in an agent; Ansible connects to the LXCs with it:
-  ```sh
-  ssh-keygen -t ed25519 -f ~/.ssh/urbex -C urbex && ssh-add ~/.ssh/urbex
-  ```
-- an [age](https://github.com/FiloSottile/age) key, which encrypts every
-  secret:
-  ```sh
-  age-keygen -o ~/urbex.key        # keep this file safe: it can't be recovered
-  ```
+Without Cloudflare everything works on the LAN, and you reach your apps
+at their IP and port. Choose one:
 
-## 1. Bootstrap the platform
+| | What you get | What you need |
+|---|---|---|
+| **Nothing** | Apps and admin tools on the LAN only | - |
+| **Quick Tunnel** | A public `https://*.trycloudflare.com` address per public service | No account ([ADR-0025](decisions/0025-cloudflare-quick-tunnel.md)) |
+| **Your zone** | Public HTTPS on your domain; Gitea, Komodo and the consoles behind Cloudflare Access | A Cloudflare account, the domain's zone on it, an API token ([credentials](reference/credentials.md)) |
 
-The GitOps repo starts as an empty local directory:
+You can add Cloudflare later: see
+[Put the platform on the internet](cookbook.md#put-the-platform-on-the-internet).
 
-```sh
-urbex bootstrap --gitops-repo ~/urbex-gitops
-```
+### On your machine
 
-```
-Created /home/you/urbex-gitops/urbex.platform.yaml.
-Edit it with your Proxmox/domain details, then run 'urbex bootstrap' again.
-```
+Linux or macOS, `git`, and one of the following:
 
-Edit it ([every field](reference/platform-config.md)):
+| | Install | Notes |
+|---|---|---|
+| **Container** (recommended) | `podman` or `docker` | Nothing else: the image has `urbex`, Terraform, Ansible, sops and age at the versions the CLI is tested with. Go isn't needed. |
+| **Native** | [mise](https://mise.jdx.dev), then `mise install` in the `urbex-cli` checkout | Installs the pinned versions of Go (only to build `urbex`), Terraform, Ansible, sops and age, listed in `urbex-cli`'s `mise.toml`. Without mise, install them yourself: Go 1.26, Terraform 1.13 (or OpenTofu), `ansible-core`, `sops`, `age`, plus `ssh`. |
 
-```yaml
-domain: acme.example
-git:
-  giteaUrl: https://git.acme.example
-  org: urbex
-proxmox:
-  apiUrl: https://192.168.1.10:8006/api2/json
-  insecure: true                  # Proxmox's default self-signed certificate
-  node: pve
-  storagePool: local-zfs
-  lxcTemplate: local:vztmpl/debian-13-standard_13.6-1_amd64.tar.zst
-  sshPublicKey: "ssh-ed25519 AAAA... urbex"
-  pool: urbex                     # if the token is scoped to a pool
-  keyctl: false                   # if the token isn't root@pam
-  network:
-    cidr: 192.168.1.0/24
-    gateway: 192.168.1.1
-    baseHostOffset: 200           # base services at .200-.204, projects from .210
-    dnsServers: [192.168.1.1]     # your LAN's resolver; default: the gateway
-```
+Every guide below uses the container. With the native tools, run the
+same `urbex ...` commands directly, after the extra setup in
+[Native tools](getting-started/with-the-cli.md#native-tools).
 
-Then provide the two credentials Urbex can't generate, and run it again:
+## Pick a guide
 
-```sh
-export URBEX_PROXMOX_TOKEN='acme@pve!urbex=xxxxxxxx-...'
-export URBEX_AGE_KEY="$(grep AGE-SECRET-KEY ~/urbex.key)"
-export URBEX_GITOPS_REPO=~/urbex-gitops
+| Guide | For you if |
+|---|---|
+| [With an AI agent](getting-started/with-an-ai-agent.md) | You use an agent such as Claude Code, Codex or another one that runs commands: you paste one prompt, it finds your network and Proxmox settings, asks you to confirm them, and sets everything up. |
+| [With the CLI](getting-started/with-the-cli.md) | You want to type every command yourself and see what each does. |
 
-urbex bootstrap
-```
-
-It creates the five LXCs with Terraform, configures them with Ansible,
-then wires Gitea and Komodo together. From an empty node it takes about
-twenty minutes, a third of it waiting for Keycloak's first start - the
-phases and their times are in [startup sequence](reference/startup.md). To see where it
-is from another terminal:
-
-```sh
-urbex status --progress --watch
-```
-
-When it ends:
-
-```
-Base services to provision: [urbex-gitea urbex-komodo urbex-technitium urbex-keycloak urbex-observability]
-...
-Base services provisioned.
-Gitea ready at http://192.168.1.200:3000 (org urbex).
-Komodo ready at http://192.168.1.201:9120 (builder urbex-komodo).
-GitOps repo pushed to http://192.168.1.200:3000/urbex/gitops.git.
-...
-Waiting for Keycloak to start - its first start takes a few minutes...
-Platform ready. Gitea/Komodo admin user: urbex-admin; generated passwords and tokens are in /home/you/.urbex/credentials.yaml.
-```
-
-Both UIs are now up: Gitea on `:3000` of the first IP, Komodo on `:9120`
-of the second, user `urbex-admin`, passwords in
-`~/.urbex/credentials.yaml`. What exactly was created is listed in
-[platform resources](reference/platform-resources.md).
-
-Running `urbex bootstrap` again is safe: it changes nothing that is
-already right.
-
-## 2. Describe the project
-
-In the project's repository:
-
-```sh
-cd ~/src/acme-app
-urbex init --project acme-app      # writes a starter urbex.yaml
-```
-
-Edit `urbex.yaml` ([every field](reference/manifest.md)):
-
-```yaml
-apiVersion: urbex/v1
-project: acme-app
-services:
-  - name: api
-    runtime: go          # Urbex supplies the Dockerfile; or: java, python, docker
-    port: 8080           # the service must listen on $PORT, set to this
-    healthcheck: /healthz
-    env:                 # first values of each environment's configuration
-      staging:
-        LOG_LEVEL: debug
-      prod:
-        LOG_LEVEL: info
-```
-
-```sh
-urbex init                          # validates it
-git add urbex.yaml && git commit -m "Add urbex manifest"
-```
-
-## 3. Create staging
-
-```sh
-urbex plan staging                  # what Terraform will create
-urbex apply staging
-```
-
-`apply` creates the LXC, installs Docker and the Komodo agent on it,
-creates `urbex/acme-app` on Gitea from your local `main`, declares the
-project's Build and the environment's Stack in Komodo, writes
-`environments/staging/acme-app/api/` in the GitOps repo - and, since
-staging follows `main`, builds `main` and deploys it:
-
-```
-Created urbex/acme-app on Gitea with branch main from the local HEAD.
-Building acme-app main@3f9c2e1 on Komodo...
-Waiting for Komodo to deploy acme-app (staging) from the GitOps repo...
-Deployed acme-app (staging):
-  api              http://192.168.1.210:8080  3f9c2e1 (git.urbex.example.com:3000/urbex/acme-app-api:3f9c2e1)
-staging follows main: every push to main is deployed here.
-```
-
-```sh
-curl http://192.168.1.210:8080/healthz
-```
-
-From now on Gitea is the project's remote:
-
-```sh
-git remote add origin http://192.168.1.200:3000/urbex/acme-app.git
-git fetch origin && git branch -u origin/main
-```
-
-Without Cloudflare, services are reached on their LAN IP and port; see
-[Put it on the internet](cookbook.md#put-the-platform-on-the-internet)
-for public HTTPS endpoints.
-
-## 4. Push, and it's on staging
-
-```sh
-# ... change code ...
-git commit -am "Better greeting"
-git push
-```
-
-Nothing else. Within a minute or two Komodo has built the commit,
-written it into staging's `version.env` in the GitOps repo, and deployed
-it:
-
-```sh
-urbex status staging
-```
-
-```
-acme-app (staging):
-  api              acme-app-api-staging             allocated=yes provisioned=yes version=8d41b07(follows-main) stack=running image=git.urbex.example.com:3000/urbex/acme-app-api:8d41b07
-```
-
-## 5. Release and promote to production
-
-When staging looks right, release what it runs and promote it:
-
-```sh
-urbex apply prod        # once: prod's LXC and Stack, empty until promoted
-urbex release           # tags v0.1.0 on the commit staging runs
-urbex promote           # prod runs v0.1.0
-```
-
-```
-Releasing acme-app v0.1.0 from the commit staging runs (8d41b07).
-Tagged v0.1.0 on 8d41b07; Komodo is publishing its images...
-Released acme-app 0.1.0:
-  api              git.urbex.example.com:3000/urbex/acme-app-api:0.1.0
-Put it in production with 'urbex promote' (or 'urbex deploy prod').
-
-api: none -> 0.1.0
-Waiting for Komodo to deploy acme-app (prod) from the GitOps repo...
-Deployed acme-app (prod):
-  api              http://192.168.1.211:8080  0.1.0 (git.urbex.example.com:3000/urbex/acme-app-api:0.1.0)
-```
-
-The release is the image staging ran, under a second tag; promoting
-writes `VERSION=0.1.0` into `environments/prod/acme-app/api/version.env`
-and pushes. Prod's configuration and secrets are its own.
-
-## 6. Configuration and secrets
-
-Configuration lives in the GitOps repo, per environment. Edit and push:
-
-```sh
-cd ~/urbex-gitops && git pull
-$EDITOR environments/prod/acme-app/api/config.env     # LOG_LEVEL=warn
-git commit -am "acme-app: quieter prod logs" && git push
-```
-
-Komodo redeploys the service. Secrets go through the CLI, which encrypts
-them for the platform's age key:
-
-```sh
-printf %s "$STRIPE_KEY" | urbex secret set prod api STRIPE_KEY
-urbex secret list prod api
-```
-
-The service gets `STRIPE_KEY` in its environment; the GitOps repo only
-ever holds it encrypted.
+Either way, two things stay yours: the commands that need root on
+Proxmox (above), and the tokens, which you enter in your own terminal so
+that they never go through a chat.
 
 ## Where to go from here
 
-- [Cookbook](cookbook.md): rolling back, pinning staging, adding a
-  service, decommissioning, running from another machine, and more.
+- [Cookbook](cookbook.md): rolling back, adding a service, putting the
+  platform on the internet, running from another machine, and more.
 - [Reference](reference/): every command, manifest field, platform
   setting, and file.
-- [Architecture](architecture.md) and the
-  [decision records](decisions/) for the why.
+- [Architecture](architecture.md) and the [decision records](decisions/)
+  for the why.
