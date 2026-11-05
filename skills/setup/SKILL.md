@@ -111,7 +111,15 @@ While the build runs, go on with step 4: the user can read it meanwhile.
 
 ## 4. Prepare Proxmox and the tokens (the user)
 
-**The default: one script, in the user's own terminal.** It logs in to
+Always offer the user both ways, in two lines, and let them choose; the
+script is the one to recommend:
+
+- **A. The script**: they type an administrator's password in their
+  terminal, and the script does the rest, token included.
+- **B. The commands by hand**: they run a root block on the node, and
+  store the token themselves. Nothing gets their password.
+
+**A. The script, in the user's own terminal.** It logs in to
 the Proxmox API as an administrator, shows what it will do and waits for
 a yes, then creates the pool, group, user and template, and stores the
 token in the workspace with `urbex-op set proxmoxToken`, without
@@ -138,9 +146,8 @@ Tell them, in a few lines:
 When they say it's done, go to step 5: `discover-platform.py` finds the
 token in the workspace.
 
-**Instead, the root block**, when they'd rather not give the script a
-password, or it can't log in (no Python, an account it can't use): give
-them this block, to run as `root` on the node, from a shell in the web UI
+**B. The commands by hand**, when they choose them, or the script can't
+log in (no Python, an account it can't use): give them this block, to run as `root` on the node, from a shell in the web UI
 (*node* → *Shell*). It picks the storage, the bridge and the latest Debian
 13 template by itself and prints them, and the token's value comes last.
 
