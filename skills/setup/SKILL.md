@@ -93,7 +93,7 @@ STORAGE=$(pvesm status --content rootdir --enabled 1 | awk 'NR>1 && $3=="active"
 TEMPLATES=$(pvesm status --content vztmpl --enabled 1 | awk 'NR>1 && $3=="active" {print $1; exit}')
 BRIDGE=$(ip -o route show default | awk '{print $5; exit}')
 pveam update >/dev/null
-TEMPLATE=$(pveam available --section system | awk '/debian-13-standard/ {print $2}' | sort -V | tail -1)
+TEMPLATE=$(pveam available --section system | awk -v arch="$(dpkg --print-architecture)" '$2 ~ /^debian-13-standard_/ && $3 == arch {print $2}' | sort -V | tail -1)
 echo "disks on $STORAGE, templates on $TEMPLATES, bridge $BRIDGE, template $TEMPLATE"
 
 pveum pool add urbex --comment "Urbex"

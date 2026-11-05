@@ -128,7 +128,9 @@ def proxmox(url, token, out):
         _, content = api.get(f"/nodes/{node}/storage/{s['storage']}/content", content="vztmpl")
         templates += [c["volid"] for c in (content or {}).get("data", []) if "debian-13-standard" in c.get("volid", "")]
     templates.sort(key=lambda t: [int(x) if x.isdigit() else x for x in re.split(r"(\d+)", t)])
-    out["lxcTemplate"] = templates[-1] if templates else None
+    # Proxmox nodes are amd64, bar the odd arm64 port: never pick another architecture's template when ours is there.
+    native = [t for t in templates if "_amd64" in t]
+    out["lxcTemplate"] = (native or templates)[-1] if templates else None
     if not templates:
         out["errors"].append("no Debian 13 template the token can see: the user downloads it as root (the pveam line of the preparation)")
 
