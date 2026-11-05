@@ -43,16 +43,23 @@ Or ask in plain words: "set up Urbex on my Proxmox node". What happens:
    pings each address of the LAN once.
 2. **It asks one question**: whether you use Cloudflare. The choices are
    none, a Quick Tunnel, or your own zone.
-3. **It gives you the Proxmox commands**, to run as root on the node.
-   They pick the storage, the bridge and the template by themselves, and
-   create the token. With your own zone, it also tells you how to create
-   the Cloudflare token. Meanwhile, it builds `urbex-op` and creates the
-   workspace in `~/urbex-work`.
-4. **You store the tokens** in another terminal, not in the chat:
+3. **It builds `urbex-op`** and creates the workspace in `~/urbex-work`.
+4. **You prepare Proxmox with one script**, in your own terminal, not in
+   the chat. It asks for the password of `root@pam` without showing it,
+   and for a two-factor code if you have one. If the node's certificate
+   is self-signed, it first shows you its fingerprint to check. Then it
+   lists what it will create and waits for your yes. It picks the
+   storage, the bridge and the template by itself, and stores the token
+   in the workspace without showing it. The password is used only to log
+   in. If you'd rather not give a script the password, ask for the root
+   commands instead: you run them on the node, and store the token with
+   `urbex-op set proxmoxToken`.
+
+   With your own zone, it also tells you how to create the Cloudflare
+   token, which you store in another terminal:
    ```sh
    export URBEX_WORKSPACE=~/urbex-work
-   urbex-op set proxmoxToken        # urbex@pve!cli=<value>
-   urbex-op set cloudflareToken     # only with your own zone
+   urbex-op set cloudflareToken
    ```
 5. **It reads the rest from the APIs** with your tokens, without
    printing them: node, storage, bridge, template, pool, and your zone's

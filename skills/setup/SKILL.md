@@ -3,9 +3,10 @@ name: setup
 description: >
   Set up Urbex from scratch on the user's Proxmox VE node: find the node,
   the LAN, free addresses, storage, bridge, template and Cloudflare zone
-  by itself, give the user the commands to prepare Proxmox and create the
-  Proxmox and Cloudflare tokens, prepare the workspace with urbex-op,
-  propose a complete urbex.platform.yaml for one confirmation, run urbex
+  by itself, prepare the workspace with urbex-op, have the user run a
+  script that prepares Proxmox and stores its token (or give them the
+  root commands), give the Cloudflare token's steps, propose a complete
+  urbex.platform.yaml for one confirmation, run urbex
   bootstrap, then take the first app to staging. Use when the user says
   "set up Urbex", "install Urbex", "bootstrap the platform", "I have a
   Proxmox node, get me started", "create the Proxmox token for Urbex", or
@@ -33,8 +34,10 @@ Proxmox nodes, several Cloudflare zones), and then propose a default.
 
 Say this up front, in a few lines:
 
-- **Root on Proxmox.** The commands that need root on the node are the
-  user's to run. Give them; never run them, never ask for root access.
+- **Root on Proxmox.** Preparing the node needs an administrator: the
+  user runs `prepare-proxmox.py` in their own terminal, where it asks for
+  the password, or the root block on the node. Never run either
+  yourself, and never ask for the password or root access in the chat.
 - **Tokens.** The user enters the Proxmox and Cloudflare tokens with
   `urbex-op set` in **their own terminal**, outside this chat. Never ask
   for a token, a password or a key in the chat, and never print
@@ -81,12 +84,65 @@ LAN, the free block you propose. Then ask only:
   own zone (public HTTPS on their domain, Gitea and Komodo behind
   Cloudflare Access). It can be added later.
 
-## 3. Prepare Proxmox and the tokens (the user)
+## 3. Get Urbex and the workspace
 
-Give the user this block, to run as `root` on the node: a shell from the
-web UI (*node* → *Shell*) works. It picks the storage, the bridge and the
-latest Debian 13 template by itself and prints them, and the token's
-value comes last.
+`urbex-cli` is private until the first release: the user needs access to
+`github.com/urbforge/urbex-cli`. Clone it, by default in
+`~/src/urbex-cli`, with the protocol that works (`gh repo clone
+urbforge/urbex-cli`, or SSH). Then:
+
+```sh
+cd ~/src/urbex-cli
+tools/operator/urbex-op build                  # a few minutes the first time
+mkdir -p ~/.local/bin && ln -sf "$PWD/tools/operator/urbex-op" ~/.local/bin/urbex-op
+urbex-op -w ~/urbex-work init
+```
+
+- Check that `~/.local/bin` is on their `PATH`, and have them add
+  `export URBEX_WORKSPACE=~/urbex-work` to their shell's profile. Your
+  own shell doesn't keep variables between commands: use `urbex-op -w
+  ~/urbex-work` or prefix `URBEX_WORKSPACE=~/urbex-work`.
+- `init` creates the SSH key (`~/urbex-work/home/.ssh/urbex.pub` goes in
+  `proxmox.sshPublicKey`) and the age key. Tell the user to **back up
+  `~/urbex-work/home/age.key`** outside the workspace: every secret is
+  encrypted to it, and it can't be recovered.
+
+While the build runs, go on with step 4: the user can read it meanwhile.
+
+## 4. Prepare Proxmox and the tokens (the user)
+
+**The default: one script, in the user's own terminal.** It logs in to
+the Proxmox API as an administrator, shows what it will do and waits for
+a yes, then creates the pool, group, user and template, and stores the
+token in the workspace with `urbex-op set proxmoxToken`, without
+showing it. Resolve the script's absolute path and give the user the
+command with it, the node's address and the workspace filled in:
+
+```sh
+python3 <absolute path of ${CLAUDE_SKILL_DIR}>/prepare-proxmox.py --host <node address> --workspace ~/urbex-work
+```
+
+Tell them, in a few lines:
+
+- Run it in **their own terminal**, not with `!` in this chat: it asks
+  for the password of `root@pam` (`--user` for another administrator)
+  without echoing it, and for a TOTP code if the account has one. The
+  password is used only to log in, for this run, and isn't stored.
+- With Proxmox's own self-signed certificate, it shows the certificate's
+  fingerprint and asks them to compare it with the node's (*node* →
+  *System* → *Certificates*) before sending the password.
+- It changes nothing until they answer yes to the list it prints, and
+  can be run again: what exists is kept, the token is replaced only if
+  they say so.
+
+When they say it's done, go to step 5: `discover-platform.py` finds the
+token in the workspace.
+
+**Instead, the root block**, when they'd rather not give the script a
+password, or it can't log in (no Python, an account it can't use): give
+them this block, to run as `root` on the node, from a shell in the web UI
+(*node* → *Shell*). It picks the storage, the bridge and the latest Debian
+13 template by itself and prints them, and the token's value comes last.
 
 ```sh
 STORAGE=$(pvesm status --content rootdir --enabled 1 | awk 'NR>1 && $3=="active" && $2!="dir" {print $1; exit}')
@@ -110,8 +166,7 @@ pveum user token add urbex@pve cli --privsep 0 --comment "urbex"
 Tell them:
 
 - The last command prints the token's `value` **once**. The token is
-  `urbex@pve!cli=<value>`: they keep it for step 4, and don't paste it
-  here.
+  `urbex@pve!cli=<value>`: they keep it, and don't paste it here.
 - If a line says the pool, group or user already exists, an earlier run
   got that far: the rest still applies.
 - What each line does, and the web-UI way:
@@ -125,7 +180,7 @@ recommended: say so if they propose it.
 1. A Zero Trust organization must exist: the first visit to *Zero
    Trust* in the dashboard creates it (the Free plan is enough).
 2. The token: *Manage account* → *Account API tokens* → *Create token* →
-   *Custom token*, with these permissions; they keep it for step 4.
+   *Custom token*, with these permissions; they keep it for the next step.
 
    | Scope | Permission |
    |---|---|
@@ -141,37 +196,13 @@ recommended: say so if they propose it.
    also creates it with Terraform or `curl`. The account and zone IDs
    aren't needed: the token finds them.
 
-While the user does this, do step 4's build: it takes a few minutes.
-
-## 4. Get Urbex and the workspace
-
-`urbex-cli` is private until the first release: the user needs access to
-`github.com/urbforge/urbex-cli`. Clone it, by default in
-`~/src/urbex-cli`, with the protocol that works (`gh repo clone
-urbforge/urbex-cli`, or SSH). Then:
-
-```sh
-cd ~/src/urbex-cli
-tools/operator/urbex-op build                  # a few minutes the first time
-mkdir -p ~/.local/bin && ln -sf "$PWD/tools/operator/urbex-op" ~/.local/bin/urbex-op
-urbex-op -w ~/urbex-work init
-```
-
-- Check that `~/.local/bin` is on their `PATH`, and have them add
-  `export URBEX_WORKSPACE=~/urbex-work` to their shell's profile. Your
-  own shell doesn't keep variables between commands: use `urbex-op -w
-  ~/urbex-work` or prefix `URBEX_WORKSPACE=~/urbex-work`.
-- `init` creates the SSH key (`~/urbex-work/home/.ssh/urbex.pub` goes in
-  `proxmox.sshPublicKey`) and the age key. Tell the user to **back up
-  `~/urbex-work/home/age.key`** outside the workspace: every secret is
-  encrypted to it, and it can't be recovered.
-
-Then ask the user to run, in another terminal (not with `!` in this
-chat: `set` reads the value from the terminal without echoing it):
+Then ask the user to store what they kept in another terminal (not with
+`!` in this chat: `set` reads the value from the terminal without echoing
+it). After the script, only the Cloudflare one is left:
 
 ```sh
 export URBEX_WORKSPACE=~/urbex-work
-urbex-op set proxmoxToken        # urbex@pve!cli=<value>
+urbex-op set proxmoxToken        # only after the root block: urbex@pve!cli=<value>
 urbex-op set cloudflareToken     # only with their own Cloudflare zone
 ```
 
