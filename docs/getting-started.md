@@ -2,9 +2,9 @@
 
 From an empty Proxmox server to an app in staging and production. This
 page has what every way of doing it shares: how Urbex works, and the
-prerequisites. Then pick a guide: let an AI agent do the setup, or type
-the commands yourself. Allow an hour the first time, most of it spent
-waiting for downloads.
+prerequisites. Then pick a guide: Claude Code with the Urbex plugin,
+any other AI agent, or the commands typed by you. Allow an hour the
+first time, most of it spent waiting for downloads.
 
 > ⚠️ Urbex is early-stage. Everything here has been run end to end on a
 > real Proxmox VE 9.2 node - see [`status.md`](status.md) and
@@ -109,7 +109,8 @@ same `urbex ...` commands directly, after the extra setup in
 
 | Guide | For you if |
 |---|---|
-| [With an AI agent](getting-started/with-an-ai-agent.md) | You use an agent such as Claude Code, Codex or another one that runs commands: you paste one prompt, it finds your network and Proxmox settings, asks you to confirm them, and sets everything up. |
+| [With Claude Code](getting-started/with-claude-code.md) | You use Claude Code: install the `urbex` plugin, run `/urbex:setup`, and confirm what it proposes. Then ask in plain words: "deploy to staging", "release and promote". |
+| [With an AI agent](getting-started/with-an-ai-agent.md) | You use another agent that runs commands, such as Codex, or Claude Code without the plugin: you paste one prompt, it finds your network and Proxmox settings, asks you to confirm them, and sets everything up. |
 | [With the CLI](getting-started/with-the-cli.md) | You want to type every command yourself and see what each does. |
 
 Either way, two things stay yours: the commands that need root on

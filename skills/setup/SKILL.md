@@ -15,7 +15,8 @@ description: >
 # Set up Urbex
 
 Take the user from an empty Proxmox node to an app in staging. The
-procedure is the getting started, `${CLAUDE_PLUGIN_ROOT}/docs/getting-started.md`;
+prerequisites are in `${CLAUDE_PLUGIN_ROOT}/docs/getting-started.md`,
+the procedure in `${CLAUDE_PLUGIN_ROOT}/docs/getting-started/with-the-cli.md`;
 every value and command is explained in `${CLAUDE_PLUGIN_ROOT}/docs/reference/`.
 For running a command, and the rules on what needs the user's
 confirmation, follow the `cli` skill of this plugin.
@@ -57,7 +58,7 @@ python3 ${CLAUDE_SKILL_DIR}/discover-network.py
   For a missing tool, say how to install it on the user's OS. podman or
   docker is all Urbex needs; the native path (Go, Terraform, Ansible,
   sops, age, through mise) is for users who can't run containers: see
-  *Native tools* in the getting started.
+  *Native tools* in `${CLAUDE_PLUGIN_ROOT}/docs/getting-started/with-the-cli.md`.
 - `discover-network.py` pings the LAN's addresses once (a /24 at most) and
   prints, as JSON, this machine's address, the LAN's CIDR, gateway and
   DNS servers, the hosts answering on Proxmox's port 8006

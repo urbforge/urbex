@@ -41,7 +41,7 @@ urbex promote              # production runs the very images staging ran
 Each of these is a single command an agent like Claude Code or Codex can
 run for you. With Claude Code, the `urbex` plugin in this repository
 sets Urbex up and runs it for you - see
-[Use Urbex from Claude Code](#use-urbex-from-claude-code). A short video of the whole flow is coming; meanwhile,
+[Getting started with Claude Code](docs/getting-started/with-claude-code.md). A short video of the whole flow is coming; meanwhile,
 [Getting started](docs/getting-started.md) shows every command and what
 it prints. And this is what you see in Grafana - the logs of every
 service, the platform's and your apps':
@@ -159,7 +159,8 @@ Then ask in plain words, or call its skills directly:
 
 The skills follow this repository's documentation, which ships with the
 plugin. Until `urbex-cli` is public, you need access to it to build
-`urbex`.
+`urbex`. The whole walkthrough:
+[Getting started with Claude Code](docs/getting-started/with-claude-code.md).
 
 ## Try it early, tell us what's missing
 
