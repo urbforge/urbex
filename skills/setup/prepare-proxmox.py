@@ -215,6 +215,19 @@ def wait_task(api, node, upid, what):
         time.sleep(2)
 
 
+def pool_storages(api):
+    """The storages already in the pool (PUT refuses to add one twice)."""
+    for path, params in ((f"/pools/{POOL}", None), ("/pools", {"poolid": POOL})):
+        try:
+            data = api.call("GET", path, params)
+        except ApiError:
+            continue
+        if isinstance(data, list):
+            data = data[0] if data else {}
+        return {m.get("storage") for m in (data or {}).get("members", []) if m.get("type") == "storage"}
+    return set()
+
+
 def exists(fn):
     try:
         fn()
@@ -261,6 +274,8 @@ def main():
         stored = [c.get("volid", "") for c in
                   api.call("GET", f"/nodes/{node}/storage/{templates}/content", {"content": "vztmpl"})]
         have_template = any(v.endswith("/" + template) for v in stored)
+        in_pool = pool_storages(api) if have_pool else set()
+        to_add = [st for st in dict.fromkeys((disks, templates)) if st not in in_pool]
         urbex_op = shutil.which("urbex-op")
         can_store = bool(urbex_op) and os.path.isdir(os.path.join(ws, "home", ".urbex"))
 
@@ -270,12 +285,12 @@ def main():
         print(f"""
 On node {node} ({host}), this will:
 
-  pool {POOL:<12} {state(have_pool)}; storages {disks} (disks) and {templates} (templates) added to it
+  pool {POOL:<12} {state(have_pool)}; storages {disks} (disks) and {templates} (templates): {"add " + ", ".join(to_add) if to_add else "already in it"}
   group {GROUP:<11} {state(have_group)}; roles {POOL_ROLES} on /pool/{POOL},
                      PVESDNUser on /sdn/zones/localnetwork/{bridge}: nothing else on the node
   user {USER:<12} {state(have_user)}; in group {GROUP}, no password (it can only use its token)
   template           {template} on {templates}: {"already there" if have_template else "download"}
-  token {USER}!{TOKEN:<4} {"exists: you'll be asked whether to replace it" if have_token else "create"}, privilege separation off
+  token              {USER}!{TOKEN}: {"exists: you'll be asked whether to replace it" if have_token else "create"}, privilege separation off
                      (it has the group's rights, no more)
   then               {"store it with `urbex-op set proxmoxToken` in " + ws if can_store
                       else "print it once (no urbex-op workspace at " + ws + ")"}
@@ -286,11 +301,14 @@ It changes nothing else, and logs out when done.""")
 
         if not have_pool:
             api.call("POST", "/pools", {"poolid": POOL, "comment": "Urbex"})
-        try:
-            api.call("PUT", f"/pools/{POOL}", {"storage": f"{disks},{templates}"})
-        except ApiError:
-            api.call("PUT", "/pools", {"poolid": POOL, "storage": f"{disks},{templates}"})
-        print(f"✔ pool {POOL}")
+        add = [st for st in dict.fromkeys((disks, templates)) if st not in pool_storages(api)]
+        if add:
+            try:
+                api.call("PUT", f"/pools/{POOL}", {"storage": ",".join(add)})
+            except ApiError as e:
+                if "already a pool member" not in str(e):
+                    api.call("PUT", "/pools", {"poolid": POOL, "storage": ",".join(add)})
+        print(f"✔ pool {POOL}" + (f", storages {', '.join(add)} added" if add else ", storages already in it"))
         if not have_group:
             api.call("POST", "/access/groups", {"groupid": GROUP, "comment": "Urbex operators: pool urbex only"})
         api.call("PUT", "/access/acl", {"path": f"/pool/{POOL}", "groups": GROUP, "roles": POOL_ROLES})
