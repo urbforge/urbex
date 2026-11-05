@@ -142,10 +142,13 @@ supported/not-supported breakdown and implementation priorities, and
 ## Use Urbex from Claude Code
 
 This repository is also a [Claude Code](https://claude.com/claude-code)
-plugin. In Claude Code:
+plugin. In Claude Code, run these two commands one at a time:
 
 ```
 /plugin marketplace add urbforge/urbex
+```
+
+```
 /plugin install urbex@urbex
 ```
 

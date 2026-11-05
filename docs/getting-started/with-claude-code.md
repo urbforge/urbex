@@ -9,12 +9,18 @@ prepare anything yet: the plugin gives you each command when it's needed.
 
 ## 1. Install the plugin
 
-In Claude Code:
+In Claude Code, run these two commands one at a time:
 
 ```
 /plugin marketplace add urbforge/urbex
+```
+
+```
 /plugin install urbex@urbex
 ```
+
+From the `/plugin` menu instead, choose *Add Marketplace* and enter only
+`urbforge/urbex`; then install `urbex` from the marketplace's list.
 
 It also needs `python3` on your machine, for the scripts that find your
 settings. Until `urbex-cli` is public, you need access to
