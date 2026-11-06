@@ -727,14 +727,15 @@ First every project's environments, then the platform:
 ```sh
 cd ~/src/acme-app && urbex destroy staging && urbex destroy prod   # each project
 urbex teardown            # says what it will destroy and lose
-urbex teardown --yes      # destroys the base-service LXCs
+urbex teardown --yes      # destroys the base-service LXCs and urbex's LXC template
 ```
 
 `teardown` refuses while any project environment exists. It destroys
 Gitea's LXC, and with it every repository and image there: make sure
-project repos are pushed somewhere else first. Afterwards the GitOps
-repo's working copy is the only copy left - keep it - and
-`~/.urbex/credentials.yaml` keeps only what you provided. `urbex
+project repos are pushed somewhere else first. urbex's LXC template
+(`vmIdBase+90` onwards) goes too. Afterwards the GitOps repo's working
+copy is the only copy left - keep it - and `~/.urbex/credentials.yaml`
+keeps only what you provided. `urbex
 bootstrap` builds a new platform from that working copy.
 
 ## Find every endpoint
