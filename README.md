@@ -39,7 +39,9 @@ urbex promote              # production runs the very images staging ran
 ```
 
 Each of these is a single command an agent like Claude Code or Codex can
-run for you. A short video of the whole flow is coming; meanwhile,
+run for you. With Claude Code, the `urbex` plugin in this repository
+sets Urbex up and runs it for you - see
+[Getting started with Claude Code](docs/getting-started/with-claude-code.md). A short video of the whole flow is coming; meanwhile,
 [Getting started](docs/getting-started.md) shows every command and what
 it prints. And this is what you see in Grafana - the logs of every
 service, the platform's and your apps':
@@ -136,6 +138,32 @@ supported/not-supported breakdown and implementation priorities, and
 - Cloud providers beyond Proxmox: Azure, GCP, AWS.
 - Git servers beyond Gitea: GitHub, GitLab.
 - Secrets management: optional HashiCorp Vault support alongside SOPS+age.
+
+## Use Urbex from Claude Code
+
+This repository is also a [Claude Code](https://claude.com/claude-code)
+plugin. In Claude Code, run these two commands one at a time:
+
+```
+/plugin marketplace add urbforge/urbex
+```
+
+```
+/plugin install urbex@urbex
+```
+
+Then ask in plain words, or call its skills directly:
+
+| Skill | What it does |
+|---|---|
+| `/urbex:setup` | From an empty Proxmox node to your app in staging: the prerequisites, the Proxmox and Cloudflare tokens (you create and enter them yourself, never in the chat), the workspace, `urbex.platform.yaml`, `urbex bootstrap`. |
+| `/urbex:manifest` | Writes `urbex.yaml` from your app's code, changes it (a database, a volume, a public service, more memory) and validates it. |
+| `/urbex:cli` | Every `urbex` command, through `urbex-op` or natively: "deploy to staging", "release and promote", "set a secret", "roll back prod". It asks before touching production or deleting anything. |
+
+The skills follow this repository's documentation, which ships with the
+plugin. Until `urbex-cli` is public, you need access to it to build
+`urbex`. The whole walkthrough:
+[Getting started with Claude Code](docs/getting-started/with-claude-code.md).
 
 ## Try it early, tell us what's missing
 
