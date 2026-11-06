@@ -622,7 +622,8 @@ Destroys the platform `urbex bootstrap` created: the inverse of
 4. With Cloudflare: removes the platform's Access applications and
    policy, DNS records, and the tunnel. Then `terraform destroy` in
    `terraform/base/` (LXCs already gone are dropped from the state
-   first).
+   first), and deletes urbex's LXC templates (`urbex-template`, VMID
+   `vmIdBase+90` to `+99`): `bootstrap` builds a new one.
 5. Removes the credentials bootstrap generated from
    `~/.urbex/credentials.yaml`; the ones you provide (Proxmox token, age
    key, Cloudflare token) stay.
@@ -635,7 +636,8 @@ Destroys the platform `urbex bootstrap` created: the inverse of
 | `--yes` | Confirm. Without it, nothing is destroyed. |
 
 Needs: `URBEX_PROXMOX_TOKEN`, `URBEX_AGE_KEY`, `terraform`. The Proxmox
-resource pool, its storages and the token are left as they are.
+resource pool, its storages, the token and the Debian template
+(`proxmox.lxcTemplate`) are left as they are.
 
 ## `urbex users`
 

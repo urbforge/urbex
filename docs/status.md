@@ -40,7 +40,7 @@ Proxmox VE 9.2 node, see [What has been validated](#what-has-been-validated).
 | `urbex release` | Tags the next release on the commit staging runs (or `main`, or `--ref`) and waits for its images |
 | `urbex deploy` | Sets an environment's version in the GitOps repo (latest release, `--version` with a release or commit - also how to roll back - or `--follow-main`), pushes, waits for Komodo to run it |
 | `urbex promote` | Sets prod to the release staging runs: prod runs the very images staging ran; refuses an unreleased commit |
-| `urbex teardown` | Destroys the base-service LXCs (refusing while project environments exist), forgets the generated credentials, keeps the GitOps repo locally |
+| `urbex teardown` | Destroys the base-service LXCs and urbex's LXC template (refusing while project environments exist), forgets the generated credentials, keeps the GitOps repo locally |
 | `urbex destroy` | Takes the environment's Stacks down, removes its folder, `terraform destroy`, clears the allocation ledger; the project's Builds go with its last environment |
 | `urbex status` | Proxmox container presence, allocation ledger and, per service, the version the GitOps repo asks for against what Komodo runs |
 | **Public endpoints (Cloudflare)** | One tunnel for the platform, `cloudflared` on `urbex-tunnel`; Keycloak public, Gitea and Komodo behind Cloudflare Access (one-time PIN for listed e-mails), Komodo's webhook listener public; services with `public: true` published per environment; flat or nested hostnames ([ADR-0022](decisions/0022-cloudflare-tunnel-access-workers.md)) |
