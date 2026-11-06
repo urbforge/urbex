@@ -15,12 +15,20 @@ Every environment, from a homelab to the cloud, should give applications the sam
 ## Who it's for - today
 
 **You have a Proxmox node** - a homelab, a server at home or in a rack -
-and **a domain**, and you want your apps on it the way a company would
+and you want your apps on it the way a company would
 run them: staging and production, builds on every push, releases you
 promote, login, logs and metrics, secrets that are never in plain text,
 admin tools that aren't open to the internet. Without wiring all of it by
 hand, and with an AI agent able to drive it: "deploy to staging",
 "promote to production".
+
+You don't need a Cloudflare account: `cloudflare.quickTunnel: true` gives
+every public service a `*.trycloudflare.com` address
+([ADR-0025](docs/decisions/0025-cloudflare-quick-tunnel.md)); it is for
+trying Urbex, not for production. `domain` in `urbex.platform.yaml` is
+still required (the Gitea admin's e-mail, the default of `dns.zone`). A
+domain on Cloudflare gives you stable public names and Access in front of
+the admin tools.
 
 **Not yet for you if** you don't want to own a server: if "deploy" should
 just work, on a cloud you don't manage, wait for cloud VM support - it's
@@ -69,7 +77,7 @@ Think of it as an operating system for applications: what an OS gives a program,
 | processes | an isolated environment per service (LXC), staging and production | available |
 | users and permissions | an identity provider (Keycloak): login, roles, a client per frontend | available |
 | network and DNS | internal DNS, a public tunnel, protected access (Cloudflare) | available |
-| filesystem | storage, databases, backups | roadmap |
+| filesystem | named volumes, node shares, a PostgreSQL your apps link to (`provides`/`uses`); backups are the roadmap | available, backups roadmap |
 | system logs and monitor | logs and resources in Grafana, every container in Komodo | available |
 | package manager | the platform's standard services, the same in every environment | available |
 | system restore | disaster recovery and high availability | roadmap |
@@ -103,8 +111,23 @@ secrets - deployed by Komodo on every change. With Cloudflare, public
 APIs go out through a Cloudflare Tunnel, web frontends are deployed to
 Cloudflare Workers, Keycloak is public, and Gitea and Komodo sit behind
 Cloudflare Access; every service also gets an internal DNS name in
-Technitium, independently of Cloudflare. Validated on a real Proxmox
-VE 9.2 node and Cloudflare account - see
+Technitium, independently of Cloudflare. Without a Cloudflare account,
+`cloudflare.quickTunnel: true` exposes every public service on a
+`*.trycloudflare.com` hostname. Beyond services built from a repository:
+
+- applications from published images, pinned to a digest and updated on
+  demand;
+- volumes (mount points of the LXC, in Proxmox's backups) and shares of
+  the node;
+- linked applications - a PostgreSQL that `provides` a database and
+  applications that `use` it - started in order, and brought back by a
+  reconciler after a failure or a reboot;
+- `urbex status --progress`, which follows `bootstrap` and `apply` phase
+  by phase, and `urbex users` for the test users of staging;
+- `urbex-op`, the CLI and its tools in a container, on Linux and on macOS
+  with docker or colima.
+
+Validated on a real Proxmox VE 9.2 node and Cloudflare account - see
 [`docs/known-limitations.md`](docs/known-limitations.md) for what's
 still missing.
 See [`docs/status.md`](docs/status.md) for the full
@@ -187,11 +210,14 @@ roadmap.
 
 Start here:
 
-- [**Getting started**](docs/getting-started.md) — from an empty Proxmox
-  server to a service in production, every command and its output.
+- [**Getting started**](docs/getting-started.md) — how Urbex works and
+  the prerequisites, then one guide per way of setting up: the
+  [CLI](docs/getting-started/with-the-cli.md), [any AI
+  agent](docs/getting-started/with-an-ai-agent.md) or [Claude
+  Code](docs/getting-started/with-claude-code.md).
 - [**Cookbook**](docs/cookbook.md) — recipes: releasing, rolling back,
   pinning staging, secrets, adding services, troubleshooting, driving
-  Urbex from an LLM agent.
+  Urbex from an LLM agent (the Claude Code plugin included).
 
 Reference ([index](docs/reference/)):
 
