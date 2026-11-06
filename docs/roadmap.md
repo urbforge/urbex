@@ -22,7 +22,9 @@ works today and its limits, see [`status.md`](status.md) and
 - Base services created on-demand: **Gitea, Komodo, Technitium, Keycloak,
   Prometheus + Grafana + Loki**.
 - Ingress: **Cloudflare Tunnel**, with **Cloudflare Access** in front of
-  the admin UIs ([ADR-0022](decisions/0022-cloudflare-tunnel-access-workers.md)).
+  the admin UIs ([ADR-0022](decisions/0022-cloudflare-tunnel-access-workers.md)),
+  or, without a Cloudflare account, a **Quick Tunnel** per public service
+  for evaluation ([ADR-0025](decisions/0025-cloudflare-quick-tunnel.md)).
 - Secrets: **SOPS + age**.
 - Topology: **one LXC per service per environment** (staging/prod
   separated).

@@ -1046,6 +1046,13 @@ updates the LXCs and Ansible picks up where it stopped.
 
 ## Drive Urbex from an LLM agent
 
+With Claude Code, install this repository's plugin instead - its skills
+set Urbex up and run every command for you, asking before production or
+anything destructive
+([Getting started with Claude Code](getting-started/with-claude-code.md)).
+For any other agent, see
+[Getting started with an AI agent](getting-started/with-an-ai-agent.md).
+
 The CLI is built for it: plain output, every command idempotent or
 explicit about what it changes, nothing interactive. A minimal briefing
 for an agent working on a project:
