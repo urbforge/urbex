@@ -15,17 +15,20 @@ Every environment, from a homelab to the cloud, should give applications the sam
 ## Who it's for - today
 
 **You have a Proxmox node** - a homelab, a server at home or in a rack -
-and you want your apps on it the way a company would run them: staging and production, builds on every push, releases you
+and you want your apps on it the way a company would
+run them: staging and production, builds on every push, releases you
 promote, login, logs and metrics, secrets that are never in plain text,
 admin tools that aren't open to the internet. Without wiring all of it by
 hand, and with an AI agent able to drive it: "deploy to staging",
 "promote to production".
 
-A domain is optional. Without one, `cloudflare.quickTunnel: true` gives
-every public service a `*.trycloudflare.com` address, with no Cloudflare
-account ([ADR-0025](docs/decisions/0025-cloudflare-quick-tunnel.md)); it
-is for trying Urbex, not for production. With a domain on Cloudflare you
-get stable names and Access in front of the admin tools.
+You don't need a Cloudflare account: `cloudflare.quickTunnel: true` gives
+every public service a `*.trycloudflare.com` address
+([ADR-0025](docs/decisions/0025-cloudflare-quick-tunnel.md)); it is for
+trying Urbex, not for production. `domain` in `urbex.platform.yaml` is
+still required (the Gitea admin's e-mail, the default of `dns.zone`). A
+domain on Cloudflare gives you stable public names and Access in front of
+the admin tools.
 
 **Not yet for you if** you don't want to own a server: if "deploy" should
 just work, on a cloud you don't manage, wait for cloud VM support - it's
@@ -124,8 +127,7 @@ Technitium, independently of Cloudflare. Without a Cloudflare account,
 - `urbex-op`, the CLI and its tools in a container, on Linux and on macOS
   with docker or colima.
 
-Validated on a real Proxmox
-VE 9.2 node and Cloudflare account - see
+Validated on a real Proxmox VE 9.2 node and Cloudflare account - see
 [`docs/known-limitations.md`](docs/known-limitations.md) for what's
 still missing.
 See [`docs/status.md`](docs/status.md) for the full
