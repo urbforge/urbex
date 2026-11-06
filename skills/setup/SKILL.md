@@ -265,8 +265,8 @@ urbex-op -w ~/urbex-work 'urbex bootstrap'
 ```
 
 It takes about twenty minutes: run it in the background and follow it
-with `urbex-op -w ~/urbex-work 'urbex status --progress'`, telling the
-user the phase it's in. Re-running it is safe, and is how a failed run
+with the `cli` skill's `follow-progress.py` (*Following a long command*),
+telling the user each phase as it ends. Re-running it is safe, and is how a failed run
 resumes. When an error names a cause, fix it and run it again; the
 [cookbook](${CLAUDE_PLUGIN_ROOT}/docs/cookbook.md) has the usual ones
 (*Bootstrap was interrupted*, *Ansible refuses an LXC*, *The LXCs can't

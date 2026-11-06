@@ -44,9 +44,31 @@ Find out once per session which way the user runs Urbex:
 
 Neither: use the `setup` skill.
 
-`bootstrap` and `apply` take minutes, up to twenty. Run them in the
-background and follow them with `urbex status --progress`, which needs no
-credentials.
+## Following a long command
+
+`bootstrap` and `apply` take minutes, up to twenty. Run the command in
+the background, then follow it with this script, also in the background
+(a background task, or a watch whose events are the script's lines):
+
+```sh
+python3 ${CLAUDE_SKILL_DIR}/follow-progress.py --workspace ~/urbex-work   # --native without urbex-op
+```
+
+It polls `urbex status --progress` every 15 seconds and prints one line
+per change, and nothing else: `▶ <phase> (about 2m left)` when a phase
+starts, `✓ <phase> 56s` when it ends, `✗ <phase> failed after 30s`, a
+skipped phase with its reason, and last the run's own line (`urbex
+bootstrap: done in 21m40s`). It exits when the run ends: 0 done, 1
+failed, 2 stopped without finishing, 3 no run found within two minutes.
+Tell the user each phase as it ends, in a few words.
+
+- Don't watch `urbex status --progress --watch`: it redraws the screen
+  every 2 seconds, which matches no line filter.
+- Don't grep the table yourself to wait for the end: the script already
+  prints only changes, so every line is worth reading.
+- On `✗`, read the command's own output (the background task's) for the
+  error: the progress shows only where it stopped.
+- Asked for the status in between, run `urbex status --progress` once.
 
 ## Ask the user before
 
