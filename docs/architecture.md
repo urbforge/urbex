@@ -208,9 +208,13 @@ realm used for admin SSO. See
 
 ### Observability: Prometheus + Grafana + Loki
 
-Prometheus/Grafana cover the explicitly requested metrics. **Loki +
-Promtail** complete the stack for the explicitly requested "logging",
-running on the same base-services LXC. See
+Prometheus/Grafana cover the explicitly requested metrics. **Loki**
+completes the stack for the explicitly requested "logging", running on
+the same base-services LXC. A Grafana Alloy agent on every LXC, the base
+services' and the projects', sends each container's logs to Loki and the
+LXC's and containers' resources to Prometheus, labelled by `kind`,
+`service`, `host` and, for applications, `project` and `env`. See
+[ADR-0023](decisions/0023-service-logs-to-loki.md) and
 [ADR-0004](decisions/0004-gitops-gitea-komodo.md#logging-note).
 
 ### Environment topology
