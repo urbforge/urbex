@@ -37,10 +37,11 @@ flowchart TB
 
     subgraph Edge["Public ingress"]
         CF[Cloudflare Tunnel]
+        QT[Quick Tunnel - no account]
     end
 
     subgraph Frontend["Frontend"]
-        Pages[Cloudflare Pages - web]
+        Workers[Cloudflare Workers - web]
         FB[Firebase - mobile]
     end
 
@@ -67,7 +68,9 @@ flowchart TB
     Keycloak -->|OIDC + roles| SvcP
     CF -->|routes without exposed ports| Staging
     CF -->|routes without exposed ports| Prod
-    Code -->|build| Pages
+    QT -->|a trycloudflare.com hostname per public service| Staging
+    QT -->|a trycloudflare.com hostname per public service| Prod
+    Code -->|build| Workers
     Code -->|build| FB
 ```
 
@@ -135,9 +138,42 @@ repo's layout and files in the [GitOps repo reference](reference/gitops-repo.md)
 ### Ingress: Cloudflare Tunnel
 
 No ports are publicly exposed on the Proxmox server: traffic to
-staging/prod goes through a Cloudflare tunnel to the internal LXCs.
-Consistent with using Cloudflare Pages for the web frontend. See
-[ADR-0005](decisions/0005-cloudflare-tunnel-ingress.md).
+staging/prod goes through a Cloudflare tunnel to the internal LXCs, with
+Cloudflare Access in front of the admin UIs. Web frontends are deployed
+to Cloudflare Workers with static assets, the successor of Pages. See
+[ADR-0005](decisions/0005-cloudflare-tunnel-ingress.md) and
+[ADR-0022](decisions/0022-cloudflare-tunnel-access-workers.md).
+
+Without a Cloudflare account, `cloudflare.quickTunnel: true` puts a
+`cloudflared` sidecar on the LXC of each `public: true` service, which
+gets its own `https://*.trycloudflare.com` hostname, read back by
+`urbex apply` and `urbex status`. It has no authentication and its
+hostname changes if the sidecar is recreated: for trying Urbex, not for
+production, and not for web frontends. See
+[ADR-0025](decisions/0025-cloudflare-quick-tunnel.md).
+
+### Applications, volumes and linked applications
+
+A service is built from the project's repo (`runtime`) or is an
+application from a published image (`image` and `version`): the image is
+pulled, and each environment runs the digest its tag was resolved to,
+recorded in `version.env`, until `urbex deploy` updates it.
+
+An application's named volumes are mount points of its LXC on the
+platform's storage, in Proxmox's backups, and Docker named volumes in its
+container; shares of the Proxmox node, declared in `storage.shares`, are
+bound by the operator. `urbex apply` refuses a change that would replace
+or delete an LXC with volumes, and `--delete-data` is the only way to
+delete one.
+
+`provides: postgres` and `uses` link applications: a provider gets a
+generated user, password and database, and an application that uses it
+gets its connection in generated files whose passwords are encrypted. Its
+Stack starts once what it uses answers its probe, and after a reboot of
+the node Proxmox starts the LXCs in the order of `uses`. See
+[ADR-0028](decisions/0028-application-model.md),
+[ADR-0030](decisions/0030-postgresql-application.md) and
+[ADR-0031](decisions/0031-readiness-between-stacks.md).
 
 ### Internal DNS: Technitium
 
