@@ -61,7 +61,9 @@ What it means for an agent, in practice:
   `skills/`). The skills point to the docs instead of copying them; when
   a command, a flag, a credential or a confirmation rule changes, check
   `skills/*/SKILL.md` too, and bump `version` in
-  `.claude-plugin/plugin.json`.
+  `.claude-plugin/plugin.json`. The skills' Python scripts use the
+  standard library only and run on Python 3.8 or later: check them with
+  `tests/plugin-scripts.sh`.
 - `schemas/urbex.schema.json` is the source of truth for the manifest;
   `urbex-cli` keeps a copy that must match it.
 - Write for the reader who runs the commands: real commands and output,
