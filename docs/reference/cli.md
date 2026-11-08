@@ -464,8 +464,8 @@ Endpoints:
   Prometheus                   http://prometheus.urbex.example.com:9090     http://192.168.1.204:9090              https://prometheus-urbex.example.com  (public: behind Cloudflare Access; remote write internal only)
   Loki                         http://loki.urbex.example.com:3100           http://192.168.1.204:3100              https://loki-urbex.example.com  (public: behind Cloudflare Access; push internal only)
 
-Logins: Gitea and Komodo urbex-admin, Grafana admin, Keycloak admin; passwords in ~/.urbex/credentials.yaml
-(giteaAdminPassword, komodoAdminPassword, grafanaAdminPassword, keycloakAdminPassword).
+Logins: Gitea and Komodo urbex-admin, Grafana admin, Keycloak admin, Technitium admin; passwords in ~/.urbex/credentials.yaml
+(giteaAdminPassword, komodoAdminPassword, grafanaAdminPassword, keycloakAdminPassword, technitiumAdminPassword).
 
 Projects:
   acme-app (staging)
@@ -477,6 +477,10 @@ Projects:
 
 Both forms first update the GitOps repo from Gitea (the release Action
 commits there too), and say so if they can't.
+
+Through `urbex-op`, the credentials file is shown at its path on your
+machine, `<workspace>/home/.urbex/credentials.yaml`, not at the
+container's `/work/home/...`.
 
 With `--progress`: how the latest `urbex bootstrap` or `urbex apply` run
 on this machine is getting on - from another terminal while it runs, or
