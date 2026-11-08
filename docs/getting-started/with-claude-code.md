@@ -22,8 +22,8 @@ In Claude Code, run these two commands one at a time:
 From the `/plugin` menu instead, choose *Add Marketplace* and enter only
 `urbforge/urbex`; then install `urbex` from the marketplace's list.
 
-It also needs `python3` on your machine, for the scripts that find your
-settings. Until `urbex-cli` is public, you need access to
+It also needs `python3`, 3.8 or later, on your machine, for the scripts
+that find your settings. Until `urbex-cli` is public, you need access to
 [`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli) to build
 `urbex`.
 

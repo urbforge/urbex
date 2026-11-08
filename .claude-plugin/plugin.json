@@ -1,6 +1,6 @@
 {
   "name": "urbex",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Set up Urbex on a Proxmox node, write and change urbex.yaml, and run every urbex command: bootstrap, apply, release, deploy, promote, secrets, status.",
   "author": {
     "name": "urbforge",

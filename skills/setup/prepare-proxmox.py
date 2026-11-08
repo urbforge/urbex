@@ -236,6 +236,15 @@ def exists(fn):
         return False
 
 
+def parse_host(arg):
+    """The node's host and API port, from an address, a name or a URL."""
+    host = arg.split("://", 1)[-1].split("/")[0]
+    if ":" in host:
+        host, port = host.rsplit(":", 1)
+        return host, int(port)
+    return host, 8006
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--host", required=True, help="the node's address or name")
@@ -246,11 +255,7 @@ def main():
     if not sys.stdin.isatty():
         sys.exit("Run this in your own terminal: it asks for a password.")
     ws = os.path.expanduser(args.workspace)
-    host = args.host.removeprefix("https://").split("/")[0]
-    port = 8006
-    if ":" in host:
-        host, port = host.rsplit(":", 1)
-        port = int(port)
+    host, port = parse_host(args.host)
 
     api = Proxmox(host, port)
     try:

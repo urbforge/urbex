@@ -56,8 +56,9 @@ bash ${CLAUDE_SKILL_DIR}/check-prerequisites.sh
 python3 ${CLAUDE_SKILL_DIR}/discover-network.py
 ```
 
-- `check-prerequisites.sh`: git, ssh-keygen, python3, podman or docker,
-  an existing `urbex-op`, workspace or `urbex`, access to `urbex-cli`.
+- `check-prerequisites.sh`: git, ssh-keygen, python3 (3.8 or later),
+  podman or docker, an existing `urbex-op`, workspace or `urbex`, access
+  to `urbex-cli`.
   For a missing tool, say how to install it on the user's OS. podman or
   docker is all Urbex needs; the native path (Go, Terraform, Ansible,
   sops, age, through mise) is for users who can't run containers: see
