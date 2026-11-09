@@ -12,6 +12,7 @@
     {
       "name": "urbex",
       "source": "./",
+      "license": "Apache-2.0",
       "description": "Set up Urbex on a Proxmox node, write and change urbex.yaml, and run every urbex command: bootstrap, apply, release, deploy, promote, secrets, status."
     }
   ]

@@ -242,3 +242,9 @@ Design and planning:
 - [`docs/known-limitations.md`](docs/known-limitations.md) — every known
   limitation, with what to do meanwhile.
 - [`docs/roadmap.md`](docs/roadmap.md) — v1 vs v2+ scope.
+
+## License
+
+Urbex is licensed under the [Apache License 2.0](LICENSE), and so is
+[urbex-cli](https://github.com/urbforge/urbex-cli). The license doesn't
+grant use of the name "Urbex".
