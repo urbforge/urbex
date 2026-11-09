@@ -246,5 +246,4 @@ Design and planning:
 ## License
 
 Urbex is licensed under the [Apache License 2.0](LICENSE), and so is
-[urbex-cli](https://github.com/urbforge/urbex-cli). The license doesn't
-grant use of the name "Urbex".
+[urbex-cli](https://github.com/urbforge/urbex-cli).
