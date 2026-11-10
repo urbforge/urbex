@@ -1,4 +1,4 @@
-# ADR-0032: A VM for workloads that need keyctl, mount or fuse
+# ADR-0033: A VM for workloads that need keyctl, mount or fuse
 
 ## Status
 
