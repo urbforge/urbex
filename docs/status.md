@@ -111,7 +111,9 @@ base services are real. It covers:
     replaced; a bigger
     `size` grows it, a smaller one is refused; `urbex destroy` refuses
     without `--delete-data`. What Proxmox does with it (allocating the
-    volume, mounting it after a restart, the backup) is not in the e2e.
+    volume, mounting it after a restart, the backup) is not in the e2e;
+    the backup and its restore were tested by hand on a Proxmox node
+    ([how](cookbook.md#back-up-and-restore-an-applications-data)).
 12. Linked applications, a PostgreSQL, an api that uses it and a web
     that uses both. Each starts once what it uses is healthy, with no
     restart, and gets its connection with no password in plaintext in

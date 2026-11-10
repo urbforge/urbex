@@ -43,6 +43,7 @@ copy of the GitOps repo.
 - [Change a port or the healthcheck](#change-a-port-or-the-healthcheck)
 - [Give a service more CPU, memory, or disk](#give-a-service-more-cpu-memory-or-disk)
 - [Keep an application's data](#keep-an-applications-data)
+- [Back up and restore an application's data](#back-up-and-restore-an-applications-data)
 - [Mount a NAS share](#mount-a-nas-share)
 - [Link a database to the applications that use it](#link-a-database-to-the-applications-that-use-it)
 - [Several projects on one platform](#several-projects-on-one-platform)
@@ -507,6 +508,76 @@ volume with it, and so is removing the application from `urbex.yaml`.
 `urbex destroy prod` refuses too, until you add `--delete-data`, and
 `urbex apply prod --delete-data` deletes an application you removed from
 `urbex.yaml`, with its volumes. See [volumes](reference/manifest.md#volumes).
+
+## Back up and restore an application's data
+
+Urbex doesn't take backups itself. Proxmox's do the job: a backup
+(`vzdump`) of the application's LXC includes its named volumes, because
+Urbex mounts them with `backup=1`. Shares are not included; the NAS
+backs those up. In the backup's log:
+
+```text
+INFO: including mount point rootfs ('/') in backup
+INFO: including mount point mp0 ('/srv/volumes/vault/data') in backup
+```
+
+Back up from the Proxmox UI (the LXC, *Backup*, *Backup now*), with a
+backup job of the node, or with `vzdump`:
+
+```sh
+vzdump <vmid> --storage local --mode snapshot --compress zstd
+```
+
+`snapshot` mode stops the application for only a few seconds. The LXC
+is `<project>-<application>-<env>` in Proxmox, in the pool `urbex`, and
+its VMID is shown next to it.
+
+**Look at the data without touching the application**: restore to a new
+VMID, in the platform's pool. From the UI: the archive on the backup
+storage, *Restore*, a free CT ID. Or as root on the node (9198 is a
+free VMID):
+
+```sh
+pct restore 9198 local:backup/vzdump-lxc-<vmid>-<date>.tar.zst \
+  --storage local-zfs --pool urbex
+```
+
+The volume comes back as a mount point at
+`/srv/volumes/<application>/<name>`, with the data it held at backup
+time. The copy has the same hostname, IP address and MAC address as the
+original, so don't start the two together: stop the original first, or
+give the copy another address (*Network* on the copy) before starting
+it. Urbex doesn't know about the copy, so delete it when you are done.
+
+**Put the application back as it was at backup time**: shut down its
+LXC, then restore over it. From the UI: the LXC, *Backup*, the
+archive, *Restore*. Or:
+
+```sh
+pct shutdown <vmid>
+pct restore <vmid> local:backup/vzdump-lxc-<vmid>-<date>.tar.zst \
+  --storage local-zfs --force
+pct start <vmid>
+```
+
+The restore deletes the LXC's disks, its volume included, and writes
+the archive's in their place. Whatever the application wrote after the
+backup is lost. The disks get new names, and the LXC's root disk no
+longer shares blocks with the template, so it takes its full size on
+the storage. Then:
+
+```sh
+urbex apply prod
+```
+
+`apply` finds the volume where it expects it: Terraform has no changes,
+no mount point is added, and the application runs on the restored data.
+
+With an API token instead of root, the same restore is a `POST` to
+`/nodes/<node>/lxc` with `ostemplate=<archive>`, `restore=1`, `vmid`,
+`storage` and, for a new VMID, `pool`; add `force=1` to restore over an
+existing LXC. The token needs to allocate the LXC in the pool and read
+the backup storage.
 
 ## Mount a NAS share
 
