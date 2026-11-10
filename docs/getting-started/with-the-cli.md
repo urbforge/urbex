@@ -53,7 +53,6 @@ proxmox:
   lxcTemplate: local:vztmpl/debian-13-standard_13.6-1_amd64.tar.zst
   sshPublicKey: "ssh-ed25519 AAAA... urbex"   # the key init printed
   pool: urbex
-  keyctl: false
   network:
     cidr: 192.168.1.0/24
     gateway: 192.168.1.1
