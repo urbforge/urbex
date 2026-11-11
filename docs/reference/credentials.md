@@ -56,7 +56,7 @@ they do need the
   For a person who should operate the platform too, add their user to the
   group (`pveum user modify <user>@pve --groups urbex --append 1`) rather
   than granting anything to the user. Then in `urbex.platform.yaml`:
-  `proxmox.pool: urbex`, `proxmox.keyctl: false`, and the bridge in
+  `proxmox.pool: urbex` and the bridge in
   `proxmox.network.bridge` (the ACL above names `vmbr0`).
 - **What each permission is for:** `PVEVMAdmin` manages the pool's LXCs,
   `PVEDatastoreUser` allocates disks and reads templates on the pool's
@@ -80,11 +80,13 @@ they do need the
   resource pool, set `proxmox.pool` in `urbex.platform.yaml` so every
   LXC is created in it - otherwise the token can't see or manage the
   containers it just created.
-- **keyctl:** Docker inside an unprivileged LXC needs the `nesting` and,
-  on most hosts, `keyctl` features. Proxmox only lets `root@pam` change
-  features other than `nesting`, so with any other token set
-  `proxmox.keyctl: false` and, if Docker then fails with overlayfs
-  `permission denied` errors, have an administrator enable it once per
+- **keyctl:** Docker inside an unprivileged LXC needs the `nesting`
+  feature and, on some hosts, `keyctl`. Proxmox only lets `root@pam`
+  change features other than `nesting`, so Urbex leaves `keyctl` off
+  (`proxmox.keyctl`, default `false`) and works with any token. Docker
+  runs without it on Proxmox 9.2. If Docker fails with overlayfs
+  `permission denied` errors, set `proxmox.keyctl: true` with a
+  `root@pam` token, or have an administrator enable it once per
   container (`pct set <vmid> --features nesting=1,keyctl=1`).
 - **Self-signed certificate:** set `proxmox.insecure: true` if the node
   still uses Proxmox's default certificate.

@@ -17,8 +17,8 @@ for finding your way in the UIs, and for knowing what is safe to touch.
 | Named volumes | A mount point of the application's LXC (`mp<n>`, mounted at `/srv/volumes/<application>/<name>`), on `proxmox.storagePool`, with `backup=1`; in the container, a Docker volume (`driver: local`, `o: bind`) on that folder | `urbex apply <env>` | `urbex destroy <env> --delete-data`, or `urbex apply <env> --delete-data` once its application is out of `urbex.yaml` |
 | Share mounts | A mount point of the application's LXC binding `storage.shares.<name>.path` at `/srv/shares/<name>`; the folder itself is never touched | the operator, with the `pct set` command `urbex apply` prints | `urbex destroy <env>`, with the LXC |
 
-All are unprivileged Debian 13 LXCs with `nesting` (and `keyctl`, unless
-disabled), on `proxmox.node`, in `proxmox.pool` if set, with the VMIDs
+All are unprivileged Debian 13 LXCs with `nesting` (and `keyctl`, if
+`proxmox.keyctl` is `true`), on `proxmox.node`, in `proxmox.pool` if set, with the VMIDs
 and IPs described in [addresses](platform-config.md#addresses). Docker
 runs inside each.
 

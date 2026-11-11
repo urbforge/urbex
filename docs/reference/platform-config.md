@@ -23,7 +23,6 @@ proxmox:
   sshPublicKey: "ssh-ed25519 AAAA... urbex"
   vmIdBase: 9000
   pool: urbex
-  keyctl: false
   network:
     cidr: 192.168.1.0/24
     gateway: 192.168.1.1
@@ -63,7 +62,7 @@ cloudflare:
 | `proxmox.sshPublicKey` | required | Public key installed for `root` on every LXC; Ansible connects with the matching private key, from your SSH agent. |
 | `proxmox.vmIdBase` | `9000` | First VMID: base services get `vmIdBase` to `+4`, project LXCs `vmIdBase+100` onwards. |
 | `proxmox.pool` | none | Resource pool every LXC goes in. Required when the API token's permissions are on a pool. |
-| `proxmox.keyctl` | `true` | Enable the LXC `keyctl` feature Docker needs on most hosts. Only `root@pam` may set it: with any other token, set `false`. |
+| `proxmox.keyctl` | `false` | Enable the LXC `keyctl` feature, which Docker needs on some hosts. Only `root@pam` may set it, so leave it off with any other token; turn it on only with a `root@pam` token and if Docker fails with overlayfs `permission denied` errors ([upgrading](#keyctl-on-a-platform-created-before-it-was-off)). |
 | `proxmox.network.cidr` | required | LAN the LXCs are on; their static IPs are taken from it. |
 | `proxmox.network.gateway` | required | Default gateway of the LXCs. |
 | `proxmox.network.baseHostOffset` | `200` | Host number of the first base service's IP (`.200` in a /24). Base services take 5 addresses from there; project LXCs start 10 after it (`.210`). |
@@ -152,3 +151,19 @@ Edit, commit, and run `urbex bootstrap` again. What changes on existing
 LXCs is what Terraform plans: a different storage pool replaces them,
 which `urbex apply` refuses for an LXC with named volumes. `network.cidr`, `baseHostOffset`, and `vmIdBase` should
 not change once LXCs exist.
+
+### keyctl on a platform created before it was off
+
+`proxmox.keyctl` used to default to `true`. A platform created with a
+`root@pam` token and no `keyctl` line has the feature on its LXCs, and
+the next `urbex bootstrap` or `urbex apply` turns it off. The change is
+made in place, with no new LXC, and takes effect when each LXC next
+restarts. To keep it on, add the line before running either command:
+
+```yaml
+proxmox:
+  keyctl: true
+```
+
+A platform created with a non-root token already had `keyctl: false`,
+and nothing changes for it; the line can go.

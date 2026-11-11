@@ -238,7 +238,7 @@ in from the two scripts' output (every field:
 
 | Field | From |
 |---|---|
-| `proxmox.apiUrl`, `insecure`, `node`, `storagePool`, `lxcTemplate`, `pool`, `keyctl`, `network.bridge`, `vmIdBase` | `discover-platform.py` |
+| `proxmox.apiUrl`, `insecure`, `node`, `storagePool`, `lxcTemplate`, `pool`, `network.bridge`, `vmIdBase` | `discover-platform.py` |
 | `proxmox.network.cidr`, `gateway`, `dnsServers`, `baseHostOffset` | `discover-network.py` |
 | `proxmox.sshPublicKey` | `~/urbex-work/home/.ssh/urbex.pub` |
 | `domain`, `cloudflare.accountId`, `cloudflare.zoneId` | the zone, with Cloudflare; without, propose `home.arpa` (the name reserved for home networks): it's only used for internal names and the admin's e-mail |

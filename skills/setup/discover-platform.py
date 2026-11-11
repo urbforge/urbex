@@ -64,7 +64,6 @@ def proxmox(url, token, out):
     out["apiUrl"] = url
     tokenid = token.split("=", 1)[0]
     out["tokenId"] = tokenid  # user@realm!name: not secret
-    out["keyctl"] = tokenid.startswith("root@pam")
     headers = {"Authorization": "PVEAPIToken=" + token}
 
     api = Api(url, headers)
