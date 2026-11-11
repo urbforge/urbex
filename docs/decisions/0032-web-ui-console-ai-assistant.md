@@ -2,7 +2,10 @@
 
 ## Status
 
-Proposed. Tracked by [urbforge/urbex#60](https://github.com/urbforge/urbex/issues/60).
+Accepted. Decided by Teg79 on
+[urbforge/urbex#61](https://github.com/urbforge/urbex/pull/61) on
+2026-11-11, after Stefano's review. Tracked by
+[urbforge/urbex#60](https://github.com/urbforge/urbex/issues/60).
 Part of [urbforge/redemptor#47](https://github.com/urbforge/redemptor/issues/47)
 (E14 Web UI and AI assistant). Adds a base service under
 [ADR-0027](0027-service-conventions.md)'s conventions.
