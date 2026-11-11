@@ -112,5 +112,5 @@ Cloudflare Quick Tunnel
 | Limitation | Workaround / consequence |
 |---|---|
 | **Gitea and its registry are plain HTTP on the LAN**, trusted by the LXCs' Docker as an insecure registry. | Keep the LAN trusted. |
-| **No backups** of Gitea, Komodo, Keycloak or the services' data. | Proxmox's own backups of the LXCs, which include the applications' named volumes (`backup=1`). |
+| **No backups** of Gitea, Komodo, Keycloak or the services' data. | Proxmox's own backups of the LXCs, which include the applications' named volumes (`backup=1`); a restore brings them back and `urbex apply` takes it as it is ([how](cookbook.md#back-up-and-restore-an-applications-data)). |
 | **No fleet-wide status**: `urbex status <env>` is per project. | Komodo's UI; `grep -r '^VERSION' environments/` in the GitOps repo. |
