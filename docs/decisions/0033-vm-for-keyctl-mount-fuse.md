@@ -2,7 +2,9 @@
 
 ## Status
 
-Proposed. Drafted for
+Accepted. Decided by Teg79 on
+[urbforge/urbex#66](https://github.com/urbforge/urbex/pull/66) on
+2026-11-11, after Stefano's review. Drafted for
 [urbforge/urbex#65](https://github.com/urbforge/urbex/issues/65), split
 from [urbforge/urbex-cli#40](https://github.com/urbforge/urbex-cli/issues/40),
 where a VM was agreed as the answer. It adds a second kind of machine
