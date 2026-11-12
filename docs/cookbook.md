@@ -501,9 +501,11 @@ The VM is `<project>-<service>-<env>` in the pool, with its address from
 the allocation ledger, Periphery, its internal DNS name, and its logs and
 resources in Grafana, like an LXC. The next VMs reuse the template and
 take about half a minute. A VM has 1 core, 1 GiB of memory with
-ballooning and an 8 GiB disk unless `resources` says otherwise. Named
-volumes and shares are not available in a VM yet, and a VM has no boot
-order ([known limitations](known-limitations.md)).
+ballooning and an 8 GiB disk unless `resources` says otherwise. Its
+named volumes are disks of the VM, mounted at the same paths as in an
+LXC ([volumes](reference/manifest.md#volumes)); shares are not available
+in a VM yet, and a VM has no boot order
+([known limitations](known-limitations.md)).
 
 ## Keep an application's data
 
