@@ -6,6 +6,7 @@ the [cookbook](../cookbook.md).
 
 - [Conventions](#conventions)
 - [`urbex doctor`](#urbex-doctor)
+- [`urbex discover`](#urbex-discover)
 - [`urbex init`](#urbex-init)
 - [`urbex bootstrap`](#urbex-bootstrap)
 - [`urbex plan`](#urbex-plan)
@@ -128,6 +129,84 @@ It exits non-zero when a check failed. `--output json` prints the report
 as one JSON document, `{"checks": [{"group", "name", "status", "detail",
 "fix"}], "ok": true}`, for the setup UI and the plugin
 ([ADR-0032](../decisions/0032-web-ui-console-ai-assistant.md)).
+
+## `urbex discover`
+
+```
+urbex discover [--proxmox https://<host>:8006] [--no-scan] [--write] [--gitops-repo <dir>] [--output text|json]
+```
+
+Finds what `urbex.platform.yaml` needs and proposes it, each value with
+where it comes from. It reads with the stored tokens and changes
+nothing on Proxmox or Cloudflare; it prints no secret.
+
+- **Proxmox** (`--proxmox`, or `proxmox.apiUrl` of an existing config):
+  the version, the nodes, the token's pool and bridge, the storages for
+  LXC and VM disks (a thin pool such as `local-zfs` or `local-lvm` first,
+  then the most room), the newest amd64 Debian 13 LXC template, whether
+  the platform's VMIDs are free, and an Urbex platform already in the
+  pool. Whether to check the certificate (`insecure`) comes from whether
+  it is trusted.
+- **The LAN**, from the bridge's address on the node: its CIDR and
+  gateway, then a block of 20 free addresses nearest `.200`, scanned by
+  ping and by TCP on the usual ports (22, 80, 443, 53, 8006, 445).
+  `--no-scan` skips the scan. A host that answers neither looks free:
+  keep the block outside your DHCP range.
+- **Cloudflare**, with a token: its zones, the first one proposed, and
+  whether the token is active.
+
+```
+Proxmox VE 9.2.21 at https://192.168.1.10:8006/api2/json, node pve, pool urbex
+  storages for disks: local-zfs (zfspool, 881 GB free)
+  Debian 13 templates: local:vztmpl/debian-13-standard_13.6-1_amd64.tar.zst
+LAN 192.168.1.0/24, gateway 192.168.1.1, 29 addresses answer
+Cloudflare: token active true, zones example.com
+warning: the scan sees only what answers (ping, or a TCP port): keep the proposed block outside the DHCP range
+
+Proposed urbex.platform.yaml (save it with --write):
+
+# Proposed by 'urbex discover' - check every value, then run 'urbex bootstrap'.
+# See docs/reference/platform-config.md in urbforge/urbex.
+domain: example.com   # the Cloudflare zone
+
+git:
+  giteaUrl: https://git-urbex.example.com
+  org: urbex
+
+cloudflare:   # public HTTPS on example.com; Gitea and Komodo behind Cloudflare Access
+  accountId: 0123456789abcdef0123456789abcdef
+  zoneId: fedcba9876543210fedcba9876543210
+  access:
+    emails: [you@example.com]   # FILL IN: who may open Gitea and Komodo (a one-time PIN goes to the address)
+
+proxmox:
+  apiUrl: https://192.168.1.10:8006/api2/json
+  insecure: true   # the node's certificate is Proxmox's own, self-signed
+  node: pve
+  storagePool: local-zfs   # zfspool, 881 of 896 GB free
+  lxcTemplate: local:vztmpl/debian-13-standard_13.6-1_amd64.tar.zst
+  sshPublicKey: "ssh-ed25519 AAAA... urbex"   # the workspace's home/.ssh/urbex.pub
+  vmIdBase: 9000   # base services from here, projects from +100: free
+  pool: urbex   # the token's pool
+  network:
+    cidr: 192.168.1.0/24   # bridge vmbr0 on pve
+    gateway: 192.168.1.1
+    baseHostOffset: 200   # .200-.219 answered nothing in the scan; keep them out of the DHCP range
+    bridge: vmbr0
+    dnsServers: [192.168.1.1]   # the gateway; set your LAN's resolver if it isn't
+```
+
+Without a Cloudflare token the proposal keeps everything on the LAN,
+with `domain: home.arpa` (the name reserved for home networks; set yours
+if you have one). What it can't know is marked `FILL IN`. `--write` saves
+the proposal as `urbex.platform.yaml` in the GitOps repo, and refuses to
+replace one that exists. Then `urbex doctor` checks it.
+
+It exits non-zero when it can't propose a config (the token is refused,
+no storage or Debian 13 template the token can use, no Cloudflare zone).
+`--output json` prints what it found (`proxmox`, `network`,
+`cloudflare`, `sshPublicKey`), the `proposal` as text, and the
+`warnings` and `errors`.
 
 ## `urbex init`
 
