@@ -672,12 +672,12 @@ An environment whose applications have named volumes, declared in
 them:
 
 ```
-acme-vault (prod) has named volumes: vault/data. Destroying it deletes them with their LXCs: run 'urbex destroy prod --delete-data' to do so
+acme-vault (prod) has named volumes: vault/data. Destroying it deletes them with their machines: run 'urbex destroy prod --delete-data' to do so
 ```
 
 | Flag | Meaning |
 |---|---|
-| `--delete-data` | Delete the named volumes with their LXCs. Nothing is kept. Shares are never touched. |
+| `--delete-data` | Delete the named volumes with their machines. Nothing is kept. Shares are never touched. |
 
 The project's repo and images stay on Gitea. Services that were never
 applied are skipped; if none were, nothing happens. Base services are
