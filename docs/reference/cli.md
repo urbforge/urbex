@@ -227,7 +227,7 @@ urbex init                      # urbex.yaml is valid.
 ## `urbex bootstrap`
 
 ```
-urbex bootstrap [--gitops-repo <dir>] [--dry-run]
+urbex bootstrap [--gitops-repo <dir>] [--dry-run] [--events json]
 ```
 
 Creates the platform: the base-service LXCs, and Gitea and Komodo wired
@@ -336,7 +336,7 @@ Needs: `URBEX_PROXMOX_TOKEN`, `URBEX_AGE_KEY`, `terraform`.
 ## `urbex apply`
 
 ```
-urbex apply <env> [--file urbex.yaml] [--gitops-repo <dir>] [--repo-dir .] [--delete-data]
+urbex apply <env> [--file urbex.yaml] [--gitops-repo <dir>] [--repo-dir .] [--delete-data] [--events json]
 ```
 
 Creates or updates an environment of the project - its infrastructure,
@@ -586,7 +586,7 @@ credentials.
 
 ```
 urbex status [<env>] [--file urbex.yaml] [--gitops-repo <dir>] [--output text|json]
-urbex status --progress [--watch]
+urbex status --progress [--watch] [--events json]
 ```
 
 Without `<env>`: the platform and everything on it - which base-service
@@ -713,7 +713,7 @@ or `error` (with `detail`). A manifest that fails validation exits
 non-zero with its errors on standard error. `--output json` doesn't
 apply to `--progress`.
 
-With `--progress`: how the latest `urbex bootstrap` or `urbex apply` run
+With `--progress`: how the latest `urbex bootstrap`, `apply`, `destroy` or `teardown` run
 on this machine is getting on - from another terminal while it runs, or
 afterwards - phase by phase ([startup sequence](startup.md)): each
 finished phase with the time it took, the one running with its time so
@@ -740,6 +740,9 @@ in `~/.urbex/progress/` (the last ten of each command, never in the
 GitOps repo); a run that stopped without finishing - killed, a lost
 terminal - shows as such after 2 minutes without news. `--progress`
 needs no platform, credentials or GitOps repo, and takes no `<env>`.
+With `--events json` it prints the run's [progress events](#progress-events)
+instead, from the first, and with `--watch` follows them until the run
+ends.
 
 With `<env>`, for each service of the project:
 
@@ -785,7 +788,7 @@ columns.
 ## `urbex destroy`
 
 ```
-urbex destroy <env> [--file urbex.yaml] [--gitops-repo <dir>] [--delete-data]
+urbex destroy <env> [--file urbex.yaml] [--gitops-repo <dir>] [--delete-data] [--events json]
 ```
 
 Removes an environment of the project, in this order:
@@ -839,7 +842,7 @@ Needs: `URBEX_PROXMOX_TOKEN`, `URBEX_AGE_KEY`, the platform credentials,
 ## `urbex teardown`
 
 ```
-urbex teardown [--gitops-repo <dir>] [--yes]
+urbex teardown [--gitops-repo <dir>] [--yes] [--events json]
 ```
 
 Destroys the platform `urbex bootstrap` created: the inverse of
@@ -909,6 +912,54 @@ command is for:
   "users": [ { "username": "test-member", "password": "4f0c9b..." } ]
 }
 ```
+
+## Progress events
+
+`urbex bootstrap`, `apply`, `destroy` and `teardown --yes` record their
+progress as events, one JSON object per line, in `~/.urbex/progress/`
+next to the run's record: what a program - the setup UI, the MCP
+server, the plugin - follows instead of reading the output
+([ADR-0032](../decisions/0032-web-ui-console-ai-assistant.md)).
+
+With `--events json` the command prints its events on standard output
+as they happen, and everything else - its own messages, Terraform's and
+Ansible's output - goes to a log file named in the first event. The run
+then ignores the loss of its terminal or of whoever reads its events
+(`SIGHUP`, `SIGPIPE`): it goes on, and `urbex status --progress --events
+json --watch` follows it again, from its first event, until it ends.
+Through `urbex-op`, the container goes on running when the `urbex-op`
+that started it is gone.
+
+From the Cubotto lab, an `apply` whose reader stopped after three lines
+and was followed again from another terminal:
+
+```json
+{"time":"2026-11-12T07:58:39.348481224Z","run":"apply-20261112-075839.348","kind":"apply","type":"run-start","command":"urbex apply prod (acme-app)","log":"/work/home/.urbex/progress/apply-20261112-075839.342.log"}
+{"time":"2026-11-12T07:58:39.943780159Z","run":"apply-20261112-075839.348","kind":"apply","type":"phase-start","phase":"lxcs","title":"Create or update the LXCs (Terraform)","estimate":13}
+{"time":"2026-11-12T07:58:57.578079707Z","run":"apply-20261112-075839.348","kind":"apply","type":"phase-end","phase":"lxcs","title":"Create or update the LXCs (Terraform)","seconds":18}
+{"time":"2026-11-12T07:58:58.249714555Z","run":"apply-20261112-075839.348","kind":"apply","type":"step","phase":"configure","step":"Gathering Facts"}
+{"time":"2026-11-12T07:59:49.575906508Z","run":"apply-20261112-075839.348","kind":"apply","type":"phase-skip","phase":"build","title":"Build main (Komodo)","note":"its version is built"}
+{"time":"2026-11-12T08:00:12.532634795Z","run":"apply-20261112-075839.348","kind":"apply","type":"run-end","seconds":93,"result":"ok"}
+```
+
+| `type` | When | Fields besides `time`, `run`, `kind` |
+|---|---|---|
+| `run-start` | the run starts | `command`; `log`, with `--events json` |
+| `phase-start` | a phase starts | `phase`, `title`, `estimate` (seconds) |
+| `step` | an Ansible task starts, Terraform is done with a machine | `phase`, `step` |
+| `phase-end` | a phase is done | `phase`, `title`, `seconds` |
+| `phase-skip` | a phase won't run | `phase`, `title`, `note` (why) |
+| `phase-fail` | the running phase failed | `phase`, `title`, `seconds`, `error` |
+| `run-end` | the run ended | `result` (`ok`, `failed`, or `stopped` when the run stopped sending news without finishing), `error`, `seconds` |
+
+`run` identifies the run (its record's name); `kind` is the command.
+The phases are those of `urbex status --progress` and the
+[startup sequence](startup.md) for `bootstrap` and `apply`; `destroy`
+has `check`, `stacks`, `unlink`, `machines`, `servers` and `gitops`;
+`teardown` has `check`, `cloudflare`, `lxcs`, `templates` and `forget`.
+An error before the run starts - an invalid config, a missing
+credential - is only on standard error, with the non-zero exit status,
+as without `--events`.
 
 ## Environment variables
 
