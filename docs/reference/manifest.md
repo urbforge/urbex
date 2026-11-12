@@ -93,12 +93,53 @@ nor an image of its own: its LXC pulls the image it declares (see
 | `provides` | `postgres` | none | The interface the application implements, so that Urbex configures it and passes its connection to the applications that use it. See [linked applications](#linked-applications). |
 | `uses` | list of names | | The applications of the stack this one needs. Its Stack waits until they are healthy before it starts, and it gets their connection. See [linked applications](#linked-applications). |
 | `ready_within` | `<n>s` or `<n>m` | `60s` | How long the application may take to be healthy after it starts. The applications that use it wait for it that long, and after a reboot Proxmox waits that long, up to 5 minutes, before it starts their LXCs. |
-| `resources.cpu` | integer ≥ 1 | `1` | Cores of the LXC. |
-| `resources.memory` | `<n>Mi` or `<n>Gi` | `1Gi` | Memory of the LXC. |
-| `resources.disk` | `<n>Mi` or `<n>Gi` | `5Gi` | Root disk of the LXC, rounded up to whole GiB. |
+| `machine` | `lxc`, `vm` | `lxc` | What the application runs on: an unprivileged LXC, or a VM in the platform's pool for what an LXC can't do without root - the `keyctl`, `mount` or `fuse` features. See [machine](#machine). |
+| `resources.cpu` | integer ≥ 1 | `1` | Cores of the LXC or VM. |
+| `resources.memory` | `<n>Mi` or `<n>Gi` | `1Gi` | Memory of the LXC or VM. A VM gets at least `1Gi`, and gives back what it doesn't use down to half of it (ballooning). |
+| `resources.disk` | `<n>Mi` or `<n>Gi` | `5Gi`, `8Gi` for a VM | Root disk of the LXC or VM, rounded up to whole GiB. A VM's is at least `5Gi`, the size of its template. |
 | `env.staging`, `env.prod` | map of strings | | **Initial** configuration of the service in that environment: written to its `config.env` in the GitOps repo when the environment is first applied, and never again. Change `config.env` after that. Never put secrets here - use `urbex secret`. |
 | `auth.keycloak` | boolean | `false` | The service authenticates users with Keycloak: it gets `KEYCLOAK_REALM`, `KEYCLOAK_ISSUER` and `KEYCLOAK_JWKS_URL` (its environment's realm, the issuer the tokens carry, the signing keys) to validate tokens ([ADR-0024](../decisions/0024-keycloak-realm-per-environment.md)). |
 | `auth.roles` | list | | Realm roles the service checks: created in each environment's realm (`<project>-<env>`); in staging, a test user per role (`test-<role>`, see `urbex users`). |
+
+## Machine
+
+Every application runs in an unprivileged LXC unless it says
+`machine: vm` ([ADR-0033](../decisions/0033-vm-for-keyctl-mount-fuse.md)):
+
+```yaml
+services:
+  - name: backup
+    image: rclone/rclone
+    version: "1.71"
+    machine: vm
+```
+
+An LXC is enough for almost every application, Docker included. A VM is
+for what an unprivileged LXC can't get without `root@pam`: the `keyctl`,
+`mount` (NFS or SMB from inside the machine) or `fuse` features (rclone
+mounts, sshfs, some backup tools). It has its own kernel, so it can do
+all of that with nothing asked of the Proxmox node.
+
+A VM is a linked clone of urbex's VM template, which `urbex apply` builds
+the first time an application asks for one, from the cloud image named
+by [`proxmox.vmImage`](platform-config.md#a-vm-image) in the platform
+config. It is otherwise like an LXC: its own VMID and IP from the
+allocation ledger, Docker and Komodo Periphery, a record in the internal
+DNS zone, its logs and resources in Grafana, and its Stack deployed by
+Komodo. `apply` names the applications that run in a VM.
+
+It costs more: about 300-400 MB of memory more than an LXC (a kernel and
+its page cache) and a boot of tens of seconds instead of a few. Ask for
+one only when the application needs it.
+
+- **Switching** an application between `lxc` and `vm` replaces its
+  machine: `urbex apply` deletes the old one and creates the new one.
+  It refuses to for a machine with named volumes, even with
+  `--delete-data`.
+- **Not yet in a VM:** named volumes and shares. `urbex apply` refuses
+  an application with `machine: vm` that declares either; they come
+  with [urbforge/urbex-cli#83](https://github.com/urbforge/urbex-cli/issues/83)
+  and a follow-up of #82.
 
 ## Runtimes
 
@@ -378,6 +419,7 @@ command uses them yet (see [`status.md`](../status.md)).
 | `version` of an application from an image | `urbex deploy <env> --app <name> --update` in each environment, or `urbex deploy staging --app <name> --update` followed by `urbex promote`. |
 | `environments` | `urbex apply <env>` for an environment added; an environment removed from the list is not destroyed: run `urbex destroy <env>` before removing it. |
 | `resources` | `urbex plan <env>`, then `urbex apply <env>`. |
+| `machine` | `urbex apply <env>`, which replaces the machine; refused for one with named volumes. |
 | `provides`, `uses`, `ready_within`, references in `env` | `urbex apply <env>`, which regenerates the generated files and the wait. |
 | `volumes` | `urbex apply <env>`, which adds a new named volume and grows a bigger one. A new share needs the operator's `pct set` first. |
 | A new service | `urbex apply <env>` in each environment. |

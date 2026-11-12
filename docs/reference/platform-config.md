@@ -23,6 +23,7 @@ proxmox:
   sshPublicKey: "ssh-ed25519 AAAA... urbex"
   vmIdBase: 9000
   pool: urbex
+  vmImage: local:import/debian-13-genericcloud-amd64.qcow2   # only for machine: vm
   network:
     cidr: 192.168.1.0/24
     gateway: 192.168.1.1
@@ -63,6 +64,7 @@ cloudflare:
 | `proxmox.vmIdBase` | `9000` | First VMID: base services get `vmIdBase` to `+4`, project LXCs `vmIdBase+100` onwards. |
 | `proxmox.pool` | none | Resource pool every LXC goes in. Required when the API token's permissions are on a pool. |
 | `proxmox.keyctl` | `false` | Enable the LXC `keyctl` feature, which Docker needs on some hosts. Only `root@pam` may set it, so leave it off with any other token; turn it on only with a `root@pam` token and if Docker fails with overlayfs `permission denied` errors ([upgrading](#keyctl-on-a-platform-created-before-it-was-off)). |
+| `proxmox.vmImage` | none | The Debian 13 cloud image urbex's VM template is built from, on a storage with the `import` content type, e.g. `local:import/debian-13-genericcloud-amd64.qcow2`. Required only once an application has `machine: vm`; see [a VM image](#a-vm-image). |
 | `proxmox.network.cidr` | required | LAN the LXCs are on; their static IPs are taken from it. |
 | `proxmox.network.gateway` | required | Default gateway of the LXCs. |
 | `proxmox.network.baseHostOffset` | `200` | Host number of the first base service's IP (`.200` in a /24). Base services take 5 addresses from there; project LXCs start 10 after it (`.210`). |
@@ -103,6 +105,39 @@ their root is user 100000 on the node, so the files must be readable,
 or writable, by that user, as the NAS mounts them. The cookbook has the steps, for NFS and SMB:
 [Mount a NAS share](../cookbook.md#mount-a-nas-share).
 
+## A VM image
+
+An application with [`machine: vm`](manifest.md#machine) runs in a VM, a
+linked clone of urbex's VM template. `urbex apply` builds the template
+the first time it is needed, from the Debian 13 cloud image that
+`proxmox.vmImage` names ([ADR-0033](../decisions/0033-vm-for-keyctl-mount-fuse.md)).
+Putting that image on the node needs more than a pool-scoped token
+(`Datastore.AllocateTemplate` on the storage), so you add it once, as
+you added the LXC template.
+
+The storage must have the `import` content type. In the web UI: the
+storage, *Import*, *Download from URL*. Or as root on the node:
+
+```sh
+pvesh create /nodes/<node>/storage/local/download-url \
+  --content import \
+  --filename debian-13-genericcloud-amd64.qcow2 \
+  --url https://cloud.debian.org/images/cloud/trixie/20261103-2651/debian-13-genericcloud-amd64-20261103-2651.qcow2
+```
+
+Take a dated build from <https://cloud.debian.org/images/cloud/trixie/>
+rather than `latest/`, which returns 404 while a new build is being
+published; its `SHA512SUMS` is next to it. Then name it in the config:
+
+```yaml
+proxmox:
+  vmImage: local:import/debian-13-genericcloud-amd64.qcow2
+```
+
+Without it, `urbex apply` of an application with `machine: vm` stops and
+says so. A different image makes a new template on the next `apply`;
+the VMs that exist keep theirs.
+
 ## Public hostnames
 
 With Cloudflare configured, Urbex publishes, under `domain`:
@@ -136,9 +171,11 @@ With the defaults and `cidr: 192.168.1.0/24`:
 | `urbex-keycloak` | 9003 | 192.168.1.203 (`:8080`) |
 | `urbex-observability` | 9004 | 192.168.1.204 (Grafana `:3000`, Prometheus `:9090`, Loki `:3100`) |
 | `urbex-tunnel` (with Cloudflare) | 9005 | 192.168.1.205 (`cloudflared`) |
-| first project LXC | 9100 | 192.168.1.210 |
+| VM template `urbex-vm-template` (if an application has `machine: vm`) | 9080-9089 | 192.168.1.208 while it is built |
+| LXC template `urbex-template` | 9090-9099 | 192.168.1.209 while it is built |
+| first project LXC or VM | 9100 | 192.168.1.210 |
 
-Project LXCs get the next free VMID and IP when first planned, recorded
+Project LXCs and VMs get the next free VMID and IP when first planned, recorded
 in `state/allocations.json` in the GitOps repo, and keep them. A
 destroyed LXC's addresses are not reused.
 

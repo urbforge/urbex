@@ -12,15 +12,18 @@ for finding your way in the UIs, and for knowing what is safe to touch.
 | Resource | Name | Created by | Removed by |
 |---|---|---|---|
 | LXC template | `urbex-template`, VMID `vmIdBase+90` to `+99`: the Debian template with Docker, sops and the compose wrapper and the Periphery and Alloy images; every new LXC is a linked clone of it. Rebuilt, at another VMID, when what builds it changes; an older one is removed once no LXC is a clone of it | `urbex bootstrap` | `urbex teardown` |
+| VM template | `urbex-vm-template`, VMID `vmIdBase+80` to `+89`: the Debian cloud image (`proxmox.vmImage`) with the same as the LXC template plus the QEMU guest agent; every VM is a linked clone of it. Built the first time an application has `machine: vm`, rebuilt at another VMID when what builds it changes; an older one is removed once no VM is a clone of it | `urbex apply <env>` | `urbex teardown` |
 | Base-service LXCs | `urbex-gitea`, `urbex-komodo`, `urbex-technitium`, `urbex-keycloak`, `urbex-observability`, and `urbex-tunnel` with Cloudflare | `urbex bootstrap` | `urbex teardown` |
 | Project LXCs | `<project>-<service>-<env>` | `urbex apply <env>` | `urbex destroy <env>` |
+| Project VMs | `<project>-<service>-<env>`, for an application with `machine: vm`: 1 core, 1 GiB with ballooning down to half, an 8 GiB disk by default; cloud-init gives it its address and root's SSH key | `urbex apply <env>` | `urbex destroy <env>` |
 | Named volumes | A mount point of the application's LXC (`mp<n>`, mounted at `/srv/volumes/<application>/<name>`), on `proxmox.storagePool`, with `backup=1`; in the container, a Docker volume (`driver: local`, `o: bind`) on that folder | `urbex apply <env>` | `urbex destroy <env> --delete-data`, or `urbex apply <env> --delete-data` once its application is out of `urbex.yaml` |
 | Share mounts | A mount point of the application's LXC binding `storage.shares.<name>.path` at `/srv/shares/<name>`; the folder itself is never touched | the operator, with the `pct set` command `urbex apply` prints | `urbex destroy <env>`, with the LXC |
 
 All are unprivileged Debian 13 LXCs with `nesting` (and `keyctl`, if
 `proxmox.keyctl` is `true`), on `proxmox.node`, in `proxmox.pool` if set, with the VMIDs
 and IPs described in [addresses](platform-config.md#addresses). Docker
-runs inside each.
+runs inside each. A project VM is the same Debian 13 host with Docker,
+in the same pool, with its own kernel ([ADR-0033](../decisions/0033-vm-for-keyctl-mount-fuse.md)).
 
 ## On the LXCs
 
@@ -32,7 +35,7 @@ runs inside each.
 | `urbex-keycloak` | Keycloak on `:8080`, in production mode, from an image the Stack builds once for PostgreSQL; its PostgreSQL 17, reachable only by Keycloak (no port published), with its data on the volume `urbex_keycloak-db` ([ADR-0029](../decisions/0029-keycloak-production-postgresql.md)). |
 | `urbex-observability` | Prometheus `:9090` (receiving the agents' metrics by remote write), Loki `:3100`, Grafana `:3000` (admin / `grafanaAdminPassword`), with Loki and Prometheus as data sources and the *Urbex logs* and *Urbex resources* dashboards (folder *Urbex*), and the reconciler's alerts (folder `urbex`, see [its runbook](../cookbook.md#the-reconciler-holds-applications-back)). |
 | `urbex-tunnel` | `cloudflared`, the connector of the platform's Cloudflare Tunnel, with its token in `/opt/urbex/cloudflared.env`. |
-| each project LXC | Komodo Periphery; `sops` and the compose wrapper in `/opt/urbex/bin/`; the service's container. |
+| each project LXC or VM | Komodo Periphery; `sops` and the compose wrapper in `/opt/urbex/bin/`; the service's container. |
 
 Every LXC - base and project - also runs the telemetry agent, Grafana
 Alloy in `/opt/urbex/telemetry`: every container's logs to Loki, and the
