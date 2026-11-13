@@ -435,7 +435,7 @@ credentials.
 ## `urbex status`
 
 ```
-urbex status [<env>] [--file urbex.yaml] [--gitops-repo <dir>]
+urbex status [<env>] [--file urbex.yaml] [--gitops-repo <dir>] [--output text|json]
 urbex status --progress [--watch]
 ```
 
@@ -481,6 +481,87 @@ commits there too), and say so if they can't.
 Through `urbex-op`, the credentials file is shown at its path on your
 machine, `<workspace>/home/.urbex/credentials.yaml`, not at the
 container's `/work/home/...`.
+
+### `--output json`
+
+`--output json` (`-o json`) prints the same as one JSON document on
+standard output, for a program to read - a web UI, an MCP server, the
+Claude Code plugin ([ADR-0032](../decisions/0032-web-ui-console-ai-assistant.md)).
+What couldn't be checked or updated (Gitea, Komodo) is in `warnings`
+instead of the text's bracketed lines; errors still go to standard error
+with a non-zero exit status. It holds no password: `logins` names each
+admin user and the key of its password in the credentials file.
+
+Without `<env>`:
+
+```json
+{
+  "baseServices": [
+    { "service": "gitea", "hostname": "urbex-gitea", "present": true }
+  ],
+  "endpoints": [
+    {
+      "service": "gitea",
+      "name": "Gitea (web, git, registry)",
+      "internal": "http://git.urbex.example.com:3000",
+      "lan": "http://192.168.1.200:3000",
+      "public": "https://git-urbex.example.com",
+      "note": "public: behind Cloudflare Access",
+      "dns": { "name": "git.urbex.example.com", "state": "ok", "pointsTo": ["192.168.1.200"], "expected": "192.168.1.200" }
+    }
+  ],
+  "logins": {
+    "credentialsFile": "/home/me/urbex-work/home/.urbex/credentials.yaml",
+    "users": [ { "service": "gitea", "user": "urbex-admin", "passwordKey": "giteaAdminPassword" } ]
+  },
+  "projects": [
+    {
+      "project": "acme-app",
+      "env": "prod",
+      "services": [
+        {
+          "service": "api",
+          "lan": "http://192.168.1.211:8080",
+          "public": "https://api-acme-app-urbex.example.com",
+          "version": "1.4.0",
+          "stack": "running",
+          "dns": { "name": "api.acme-app.urbex.example.com", "state": "ok", "pointsTo": ["192.168.1.211"], "expected": "192.168.1.211" }
+        }
+      ]
+    }
+  ]
+}
+```
+
+With `<env>`, per service its machine (`hostname`, `allocated`,
+`provisioned`; `web: true` and its Worker for a web frontend), what the
+GitOps repo asks for and Komodo runs (`version`, `followsMain`,
+`stack`, `image`, when Komodo answered), the reconciler (`state` -
+`running`, `stale` or `never-run` - `lastRun`, `open`, `looping`,
+`unstable`, only for an environment whose applications use each other)
+and the endpoints:
+
+```json
+{
+  "project": "acme-app",
+  "env": "prod",
+  "services": [
+    { "service": "api", "hostname": "acme-app-api-prod", "allocated": true, "provisioned": true,
+      "version": "1.4.0", "stack": "running", "image": "192.168.1.200:3000/urbex/acme-app-api:1.4.0" }
+  ],
+  "reconciler": { "state": "running", "lastRun": "2026-11-12T07:36:02.411Z" },
+  "endpoints": [
+    { "service": "api", "lan": "http://192.168.1.211:8080",
+      "dns": { "name": "api.acme-app.urbex.example.com", "state": "ok", "pointsTo": ["192.168.1.211"], "expected": "192.168.1.211" } }
+  ]
+}
+```
+
+A DNS record's `state` is `ok`, `missing`, `elsewhere` (`pointsTo`
+isn't `expected`), `not-checked` (no Technitium token), `unreachable`
+or `error` (with `detail`). A manifest that fails validation exits
+non-zero with its errors on standard error. `--output json` doesn't
+apply to `--progress`.
 
 With `--progress`: how the latest `urbex bootstrap` or `urbex apply` run
 on this machine is getting on - from another terminal while it runs, or
@@ -646,7 +727,7 @@ resource pool, its storages, the token and the Debian template
 ## `urbex users`
 
 ```
-urbex users <env> [--file urbex.yaml] [--gitops-repo <dir>]
+urbex users <env> [--file urbex.yaml] [--gitops-repo <dir>] [--output text|json]
 ```
 
 Shows the environment's Keycloak realm and issuer and, in staging, the
@@ -664,6 +745,20 @@ A token for one of them:
 ```
 
 Needs `sops` and `URBEX_AGE_KEY`. Production has no test users.
+
+With `--output json`, the same as one JSON document; `users` is empty
+in production. The passwords are the test users', which is what the
+command is for:
+
+```json
+{
+  "realm": "hello-staging",
+  "issuer": "https://auth-urbex.example.com/realms/hello-staging",
+  "tokenUrl": "https://auth-urbex.example.com/realms/hello-staging/protocol/openid-connect/token",
+  "client": "urbex-test",
+  "users": [ { "username": "test-member", "password": "4f0c9b..." } ]
+}
+```
 
 ## Environment variables
 
@@ -683,3 +778,5 @@ standard error otherwise; the error says what to do when there is
 something to do (`run 'urbex apply staging' first`, `release it first`).
 Commands that run Terraform or Ansible stream their output. Nothing is
 interactive: every command can run in a script or an agent session.
+`urbex status` and `urbex users` take `--output json` for a program to
+read.
