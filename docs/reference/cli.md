@@ -5,6 +5,8 @@ flags. For walkthroughs see [getting started](../getting-started.md) and
 the [cookbook](../cookbook.md).
 
 - [Conventions](#conventions)
+- [`urbex doctor`](#urbex-doctor)
+- [`urbex discover`](#urbex-discover)
 - [`urbex init`](#urbex-init)
 - [`urbex bootstrap`](#urbex-bootstrap)
 - [`urbex plan`](#urbex-plan)
@@ -58,6 +60,154 @@ Shared flags:
 
 ---
 
+## `urbex doctor`
+
+```
+urbex doctor [--gitops-repo <dir>] [--output text|json]
+```
+
+Checks that this machine, the workspace, Proxmox and Cloudflare have
+what urbex needs, and says what to do about what's missing. It changes
+nothing and prints no secret; run it first, and whenever something
+fails for no clear reason.
+
+- **tools**: `git`, `ssh`, `terraform`, `ansible-playbook`, `sops`, `age`,
+  with their versions. `urbex-op`'s image has them all.
+- **workspace**: the credentials file, the Proxmox token and age key, an
+  SSH key (an agent, or `~/.ssh/urbex`), the GitOps repo and its
+  `urbex.platform.yaml`, validated.
+- **proxmox**, with a valid platform config and a token: the API answers
+  with the token, the node, the pool, the token's privileges (on the
+  pool, the storage and the bridge, as in
+  [credentials](credentials.md#proxmox-api-token)), the storage holds
+  container and VM disks, the LXC template is on the node, the bridge
+  exists.
+- **cloudflare**, with an account in the config: the token is active and
+  sees the zone of `domain`.
+
+Each check is `ok`, `warn`, `fail` or `skip`; a check that isn't `ok`
+has its fix under it. On the lab:
+
+```
+tools:
+  ok    git                git version 2.47.3
+  ok    terraform          Terraform v1.13.3
+  ...
+
+workspace:
+  ok    credentials file   /home/me/urbex-work/home/.urbex/credentials.yaml
+  ok    credentials        the Proxmox token and the age key are set
+  ok    SSH key            an SSH agent
+  ok    GitOps repo        /work/gitops
+  ok    platform config    /work/gitops/urbex.platform.yaml
+
+proxmox:
+  ok    API                Proxmox VE 9.2.21 at https://192.168.1.10:8006/api2/json
+  ok    node               pve
+  ok    pool               urbex
+  ok    privileges         on /pool/urbex, storage local-zfs and bridge vmbr0
+  ok    storage            local-zfs (zfspool), 881 of 896 GB free
+  ok    LXC template       local:vztmpl/debian-13-standard_13.6-1_amd64.tar.zst
+  ok    bridge             vmbr0
+
+cloudflare:
+  ok    token              active
+  ok    zone               example.com
+
+Everything urbex needs is there.
+```
+
+A refused token, for instance:
+
+```
+proxmox:
+  fail  API                https://192.168.1.10:8006/api2/json: proxmox api GET /version returned 401 Authentication failed!:
+                           -> the token is refused: check it is user@realm!name=secret, and not expired or deleted; store it again with 'urbex-op set proxmoxToken'
+```
+
+It exits non-zero when a check failed. `--output json` prints the report
+as one JSON document, `{"checks": [{"group", "name", "status", "detail",
+"fix"}], "ok": true}`, for the setup UI and the plugin
+([ADR-0032](../decisions/0032-web-ui-console-ai-assistant.md)).
+
+## `urbex discover`
+
+```
+urbex discover [--proxmox https://<host>:8006] [--no-scan] [--write] [--gitops-repo <dir>] [--output text|json]
+```
+
+Finds what `urbex.platform.yaml` needs and proposes it, each value with
+where it comes from. It reads with the stored tokens and changes
+nothing on Proxmox or Cloudflare; it prints no secret.
+
+- **Proxmox** (`--proxmox`, or `proxmox.apiUrl` of an existing config):
+  the version, the nodes, the token's pool and bridge, the storages for
+  LXC and VM disks (a thin pool such as `local-zfs` or `local-lvm` first,
+  then the most room), the newest amd64 Debian 13 LXC template, whether
+  the platform's VMIDs are free, and an Urbex platform already in the
+  pool. Whether to check the certificate (`insecure`) comes from whether
+  it is trusted.
+- **The LAN**, from the bridge's address on the node: its CIDR and
+  gateway, then a block of 20 free addresses nearest `.200`, scanned by
+  ping and by TCP on the usual ports (22, 80, 443, 53, 8006, 445).
+  `--no-scan` skips the scan. A host that answers neither looks free:
+  keep the block outside your DHCP range.
+- **Cloudflare**, with a token: its zones, the first one proposed, and
+  whether the token is active.
+
+```
+Proxmox VE 9.2.21 at https://192.168.1.10:8006/api2/json, node pve, pool urbex
+  storages for disks: local-zfs (zfspool, 881 GB free)
+  Debian 13 templates: local:vztmpl/debian-13-standard_13.6-1_amd64.tar.zst
+LAN 192.168.1.0/24, gateway 192.168.1.1, 29 addresses answer
+Cloudflare: token active true, zones example.com
+warning: the scan sees only what answers (ping, or a TCP port): keep the proposed block outside the DHCP range
+
+Proposed urbex.platform.yaml (save it with --write):
+
+# Proposed by 'urbex discover' - check every value, then run 'urbex bootstrap'.
+# See docs/reference/platform-config.md in urbforge/urbex.
+domain: example.com   # the Cloudflare zone
+
+git:
+  giteaUrl: https://git-urbex.example.com
+  org: urbex
+
+cloudflare:   # public HTTPS on example.com; Gitea and Komodo behind Cloudflare Access
+  accountId: 0123456789abcdef0123456789abcdef
+  zoneId: fedcba9876543210fedcba9876543210
+  access:
+    emails: [you@example.com]   # FILL IN: who may open Gitea and Komodo (a one-time PIN goes to the address)
+
+proxmox:
+  apiUrl: https://192.168.1.10:8006/api2/json
+  insecure: true   # the node's certificate is Proxmox's own, self-signed
+  node: pve
+  storagePool: local-zfs   # zfspool, 881 of 896 GB free
+  lxcTemplate: local:vztmpl/debian-13-standard_13.6-1_amd64.tar.zst
+  sshPublicKey: "ssh-ed25519 AAAA... urbex"   # the workspace's home/.ssh/urbex.pub
+  vmIdBase: 9000   # base services from here, projects from +100: free
+  pool: urbex   # the token's pool
+  network:
+    cidr: 192.168.1.0/24   # bridge vmbr0 on pve
+    gateway: 192.168.1.1
+    baseHostOffset: 200   # .200-.219 answered nothing in the scan; keep them out of the DHCP range
+    bridge: vmbr0
+    dnsServers: [192.168.1.1]   # the gateway; set your LAN's resolver if it isn't
+```
+
+Without a Cloudflare token the proposal keeps everything on the LAN,
+with `domain: home.arpa` (the name reserved for home networks; set yours
+if you have one). What it can't know is marked `FILL IN`. `--write` saves
+the proposal as `urbex.platform.yaml` in the GitOps repo, and refuses to
+replace one that exists. Then `urbex doctor` checks it.
+
+It exits non-zero when it can't propose a config (the token is refused,
+no storage or Debian 13 template the token can use, no Cloudflare zone).
+`--output json` prints what it found (`proxmox`, `network`,
+`cloudflare`, `sshPublicKey`), the `proposal` as text, and the
+`warnings` and `errors`.
+
 ## `urbex init`
 
 ```
@@ -77,7 +227,7 @@ urbex init                      # urbex.yaml is valid.
 ## `urbex bootstrap`
 
 ```
-urbex bootstrap [--gitops-repo <dir>] [--dry-run]
+urbex bootstrap [--gitops-repo <dir>] [--dry-run] [--events json]
 ```
 
 Creates the platform: the base-service LXCs, and Gitea and Komodo wired
@@ -186,7 +336,7 @@ Needs: `URBEX_PROXMOX_TOKEN`, `URBEX_AGE_KEY`, `terraform`.
 ## `urbex apply`
 
 ```
-urbex apply <env> [--file urbex.yaml] [--gitops-repo <dir>] [--repo-dir .] [--delete-data]
+urbex apply <env> [--file urbex.yaml] [--gitops-repo <dir>] [--repo-dir .] [--delete-data] [--events json]
 ```
 
 Creates or updates an environment of the project - its infrastructure,
@@ -441,8 +591,8 @@ credentials.
 ## `urbex status`
 
 ```
-urbex status [<env>] [--file urbex.yaml] [--gitops-repo <dir>]
-urbex status --progress [--watch]
+urbex status [<env>] [--file urbex.yaml] [--gitops-repo <dir>] [--output text|json]
+urbex status --progress [--watch] [--events json]
 ```
 
 Without `<env>`: the platform and everything on it - which base-service
@@ -488,7 +638,88 @@ Through `urbex-op`, the credentials file is shown at its path on your
 machine, `<workspace>/home/.urbex/credentials.yaml`, not at the
 container's `/work/home/...`.
 
-With `--progress`: how the latest `urbex bootstrap` or `urbex apply` run
+### `--output json`
+
+`--output json` (`-o json`) prints the same as one JSON document on
+standard output, for a program to read - a web UI, an MCP server, the
+Claude Code plugin ([ADR-0032](../decisions/0032-web-ui-console-ai-assistant.md)).
+What couldn't be checked or updated (Gitea, Komodo) is in `warnings`
+instead of the text's bracketed lines; errors still go to standard error
+with a non-zero exit status. It holds no password: `logins` names each
+admin user and the key of its password in the credentials file.
+
+Without `<env>`:
+
+```json
+{
+  "baseServices": [
+    { "service": "gitea", "hostname": "urbex-gitea", "present": true }
+  ],
+  "endpoints": [
+    {
+      "service": "gitea",
+      "name": "Gitea (web, git, registry)",
+      "internal": "http://git.urbex.example.com:3000",
+      "lan": "http://192.168.1.200:3000",
+      "public": "https://git-urbex.example.com",
+      "note": "public: behind Cloudflare Access",
+      "dns": { "name": "git.urbex.example.com", "state": "ok", "pointsTo": ["192.168.1.200"], "expected": "192.168.1.200" }
+    }
+  ],
+  "logins": {
+    "credentialsFile": "/home/me/urbex-work/home/.urbex/credentials.yaml",
+    "users": [ { "service": "gitea", "user": "urbex-admin", "passwordKey": "giteaAdminPassword" } ]
+  },
+  "projects": [
+    {
+      "project": "acme-app",
+      "env": "prod",
+      "services": [
+        {
+          "service": "api",
+          "lan": "http://192.168.1.211:8080",
+          "public": "https://api-acme-app-urbex.example.com",
+          "version": "1.4.0",
+          "stack": "running",
+          "dns": { "name": "api.acme-app.urbex.example.com", "state": "ok", "pointsTo": ["192.168.1.211"], "expected": "192.168.1.211" }
+        }
+      ]
+    }
+  ]
+}
+```
+
+With `<env>`, per service its machine (`hostname`, `allocated`,
+`provisioned`; `web: true` and its Worker for a web frontend), what the
+GitOps repo asks for and Komodo runs (`version`, `followsMain`,
+`stack`, `image`, when Komodo answered), the reconciler (`state` -
+`running`, `stale` or `never-run` - `lastRun`, `open`, `looping`,
+`unstable`, only for an environment whose applications use each other)
+and the endpoints:
+
+```json
+{
+  "project": "acme-app",
+  "env": "prod",
+  "services": [
+    { "service": "api", "hostname": "acme-app-api-prod", "allocated": true, "provisioned": true,
+      "version": "1.4.0", "stack": "running", "image": "192.168.1.200:3000/urbex/acme-app-api:1.4.0" }
+  ],
+  "reconciler": { "state": "running", "lastRun": "2026-11-12T07:36:02.411Z" },
+  "endpoints": [
+    { "service": "api", "lan": "http://192.168.1.211:8080",
+      "dns": { "name": "api.acme-app.urbex.example.com", "state": "ok", "pointsTo": ["192.168.1.211"], "expected": "192.168.1.211" } }
+  ]
+}
+```
+
+A DNS record's `state` is `ok`, `missing`, `elsewhere` (`pointsTo`
+isn't `expected`), `not-checked` (no Technitium token), `unreachable`
+or `error` (with `detail`). A manifest that fails validation exits
+non-zero with its errors on standard error. `--output json` doesn't
+apply to `--progress`.
+
+With `--progress`: how the latest `urbex bootstrap`, `apply`, `destroy` or `teardown` run
 on this machine is getting on - from another terminal while it runs, or
 afterwards - phase by phase ([startup sequence](startup.md)): each
 finished phase with the time it took, the one running with its time so
@@ -515,6 +746,9 @@ in `~/.urbex/progress/` (the last ten of each command, never in the
 GitOps repo); a run that stopped without finishing - killed, a lost
 terminal - shows as such after 2 minutes without news. `--progress`
 needs no platform, credentials or GitOps repo, and takes no `<env>`.
+With `--events json` it prints the run's [progress events](#progress-events)
+instead, from the first, and with `--watch` follows them until the run
+ends.
 
 With `<env>`, for each service of the project:
 
@@ -576,7 +810,7 @@ columns.
 ## `urbex destroy`
 
 ```
-urbex destroy <env> [--file urbex.yaml] [--gitops-repo <dir>] [--delete-data]
+urbex destroy <env> [--file urbex.yaml] [--gitops-repo <dir>] [--delete-data] [--events json]
 ```
 
 Removes an environment of the project, in this order:
@@ -613,12 +847,12 @@ An environment whose applications have named volumes, declared in
 them:
 
 ```
-acme-vault (prod) has named volumes: vault/data. Destroying it deletes them with their LXCs: run 'urbex destroy prod --delete-data' to do so
+acme-vault (prod) has named volumes: vault/data. Destroying it deletes them with their machines: run 'urbex destroy prod --delete-data' to do so
 ```
 
 | Flag | Meaning |
 |---|---|
-| `--delete-data` | Delete the named volumes with their LXCs. Nothing is kept. Shares are never touched. |
+| `--delete-data` | Delete the named volumes with their machines. Nothing is kept. Shares are never touched. |
 
 The project's repo and images stay on Gitea. Services that were never
 applied are skipped; if none were, nothing happens. Base services are
@@ -630,7 +864,7 @@ Needs: `URBEX_PROXMOX_TOKEN`, `URBEX_AGE_KEY`, the platform credentials,
 ## `urbex teardown`
 
 ```
-urbex teardown [--gitops-repo <dir>] [--yes]
+urbex teardown [--gitops-repo <dir>] [--yes] [--events json]
 ```
 
 Destroys the platform `urbex bootstrap` created: the inverse of
@@ -668,7 +902,7 @@ resource pool, its storages, the token and the Debian template
 ## `urbex users`
 
 ```
-urbex users <env> [--file urbex.yaml] [--gitops-repo <dir>]
+urbex users <env> [--file urbex.yaml] [--gitops-repo <dir>] [--output text|json]
 ```
 
 Shows the environment's Keycloak realm and issuer and, in staging, the
@@ -686,6 +920,68 @@ A token for one of them:
 ```
 
 Needs `sops` and `URBEX_AGE_KEY`. Production has no test users.
+
+With `--output json`, the same as one JSON document; `users` is empty
+in production. The passwords are the test users', which is what the
+command is for:
+
+```json
+{
+  "realm": "hello-staging",
+  "issuer": "https://auth-urbex.example.com/realms/hello-staging",
+  "tokenUrl": "https://auth-urbex.example.com/realms/hello-staging/protocol/openid-connect/token",
+  "client": "urbex-test",
+  "users": [ { "username": "test-member", "password": "4f0c9b..." } ]
+}
+```
+
+## Progress events
+
+`urbex bootstrap`, `apply`, `destroy` and `teardown --yes` record their
+progress as events, one JSON object per line, in `~/.urbex/progress/`
+next to the run's record: what a program - the setup UI, the MCP
+server, the plugin - follows instead of reading the output
+([ADR-0032](../decisions/0032-web-ui-console-ai-assistant.md)).
+
+With `--events json` the command prints its events on standard output
+as they happen, and everything else - its own messages, Terraform's and
+Ansible's output - goes to a log file named in the first event. The run
+then ignores the loss of its terminal or of whoever reads its events
+(`SIGHUP`, `SIGPIPE`): it goes on, and `urbex status --progress --events
+json --watch` follows it again, from its first event, until it ends.
+Through `urbex-op`, the container goes on running when the `urbex-op`
+that started it is gone.
+
+From the Cubotto lab, an `apply` whose reader stopped after three lines
+and was followed again from another terminal:
+
+```json
+{"time":"2026-11-12T07:58:39.348481224Z","run":"apply-20261112-075839.348","kind":"apply","type":"run-start","command":"urbex apply prod (acme-app)","log":"/work/home/.urbex/progress/apply-20261112-075839.342.log"}
+{"time":"2026-11-12T07:58:39.943780159Z","run":"apply-20261112-075839.348","kind":"apply","type":"phase-start","phase":"lxcs","title":"Create or update the LXCs (Terraform)","estimate":13}
+{"time":"2026-11-12T07:58:57.578079707Z","run":"apply-20261112-075839.348","kind":"apply","type":"phase-end","phase":"lxcs","title":"Create or update the LXCs (Terraform)","seconds":18}
+{"time":"2026-11-12T07:58:58.249714555Z","run":"apply-20261112-075839.348","kind":"apply","type":"step","phase":"configure","step":"Gathering Facts"}
+{"time":"2026-11-12T07:59:49.575906508Z","run":"apply-20261112-075839.348","kind":"apply","type":"phase-skip","phase":"build","title":"Build main (Komodo)","note":"its version is built"}
+{"time":"2026-11-12T08:00:12.532634795Z","run":"apply-20261112-075839.348","kind":"apply","type":"run-end","seconds":93,"result":"ok"}
+```
+
+| `type` | When | Fields besides `time`, `run`, `kind` |
+|---|---|---|
+| `run-start` | the run starts | `command`; `log`, with `--events json` |
+| `phase-start` | a phase starts | `phase`, `title`, `estimate` (seconds) |
+| `step` | an Ansible task starts, Terraform is done with a machine | `phase`, `step` |
+| `phase-end` | a phase is done | `phase`, `title`, `seconds` |
+| `phase-skip` | a phase won't run | `phase`, `title`, `note` (why) |
+| `phase-fail` | the running phase failed | `phase`, `title`, `seconds`, `error` |
+| `run-end` | the run ended | `result` (`ok`, `failed`, or `stopped` when the run stopped sending news without finishing), `error`, `seconds` |
+
+`run` identifies the run (its record's name); `kind` is the command.
+The phases are those of `urbex status --progress` and the
+[startup sequence](startup.md) for `bootstrap` and `apply`; `destroy`
+has `check`, `stacks`, `unlink`, `machines`, `servers` and `gitops`;
+`teardown` has `check`, `cloudflare`, `lxcs`, `templates` and `forget`.
+An error before the run starts - an invalid config, a missing
+credential - is only on standard error, with the non-zero exit status,
+as without `--events`.
 
 ## Environment variables
 
@@ -705,3 +1001,5 @@ standard error otherwise; the error says what to do when there is
 something to do (`run 'urbex apply staging' first`, `release it first`).
 Commands that run Terraform or Ansible stream their output. Nothing is
 interactive: every command can run in a script or an agent session.
+`urbex status` and `urbex users` take `--output json` for a program to
+read.

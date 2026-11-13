@@ -42,6 +42,7 @@ copy of the GitOps repo.
 - [Several services in one repo](#several-services-in-one-repo)
 - [Change a port or the healthcheck](#change-a-port-or-the-healthcheck)
 - [Give a service more CPU, memory, or disk](#give-a-service-more-cpu-memory-or-disk)
+- [Run an application in a VM](#run-an-application-in-a-vm)
 - [Keep an application's data](#keep-an-applications-data)
 - [Back up and restore an application's data](#back-up-and-restore-an-applications-data)
 - [Mount a NAS share](#mount-a-nas-share)
@@ -464,6 +465,47 @@ urbex apply prod
 CPU and memory change in place; growing a disk usually does too, but
 read the plan. If the LXC is replaced, `apply` redeploys onto it. An LXC
 with named volumes is never replaced: `apply` refuses the change.
+
+## Run an application in a VM
+
+For an application that needs what an unprivileged LXC can't do without
+root - `keyctl`, mounting NFS or SMB itself, FUSE - ask for a VM
+([ADR-0033](decisions/0033-vm-for-keyctl-mount-fuse.md)). Everything
+else stays in LXCs.
+
+1. Once per platform, put the Debian 13 cloud image on the node and name
+   it in `urbex.platform.yaml` as `proxmox.vmImage` - see
+   [a VM image](reference/platform-config.md#a-vm-image).
+2. In `urbex.yaml`:
+   ```yaml
+   services:
+     - name: web
+       image: docker.io/library/nginx
+       version: "1.29"
+       port: 80
+       healthcheck: /
+       machine: vm
+   ```
+3. `urbex apply prod`. The first time, it builds urbex's VM template
+   (about five minutes), then the VM, a linked clone of it:
+   ```
+   Running in a VM (machine: vm): web.
+   Preparing the VM template urbex-vm-template (version 80099cbbca4d) from local:import/debian-13-genericcloud-amd64.qcow2...
+   VM template ready: new VMs are linked clones of urbex-vm-template (9080).
+   ...
+   Deployed acme-app (prod):
+     web              http://192.168.1.233:80  1.29@sha256:1881968a...
+   ```
+
+The VM is `<project>-<service>-<env>` in the pool, with its address from
+the allocation ledger, Periphery, its internal DNS name, and its logs and
+resources in Grafana, like an LXC. The next VMs reuse the template and
+take about half a minute. A VM has 1 core, 1 GiB of memory with
+ballooning and an 8 GiB disk unless `resources` says otherwise. Its
+named volumes are disks of the VM, mounted at the same paths as in an
+LXC ([volumes](reference/manifest.md#volumes)); shares are not available
+in a VM yet, and a VM has no boot order
+([known limitations](known-limitations.md)).
 
 ## Keep an application's data
 

@@ -54,20 +54,27 @@ epics. Every epic is an issue in `urbforge/redemptor`, its tasks are
 sub-issues there or in `urbex` / `urbex-cli`, and the same milestones
 exist in the three repos. A milestone opens when the previous one
 closes, and closes when every task of its epics is done. No dates yet.
+The milestones on GitHub are the reference: when this table and them
+disagree, GitHub wins.
 
 | Milestone | Goal | Epics |
 | --- | --- | --- |
 | M1 · v1.0 Platform conventions (done) | Every service operated the same way | E1 Service conventions ([redemptor#23](https://github.com/urbforge/redemptor/issues/23), [ADR-0027](decisions/0027-service-conventions.md)) |
-| M2 · v1.1 Data | Projects that store data, safely - and a platform that runs without a homelab | E2 Databases ([redemptor#17](https://github.com/urbforge/redemptor/issues/17), [ADR-0030](decisions/0030-postgresql-application.md)) · E3 Backups and restore ([redemptor#31](https://github.com/urbforge/redemptor/issues/31)) · E3-bis VPS support ([redemptor#32](https://github.com/urbforge/redemptor/issues/32)) |
-| M3 · v1.2 Production-ready | Run real apps and sleep at night | E4 Observability, next step ([redemptor#33](https://github.com/urbforge/redemptor/issues/33)) · E5 Security and isolation ([redemptor#34](https://github.com/urbforge/redemptor/issues/34)) · E6 Transactional email ([redemptor#13](https://github.com/urbforge/redemptor/issues/13)) |
-| M4 · v1.3 Team operations | Several people on one platform | E7 Operators and identity ([redemptor#35](https://github.com/urbforge/redemptor/issues/35)) · E8 Bootstrap performance ([redemptor#18](https://github.com/urbforge/redemptor/issues/18)) |
+| M2 · v1.1 Data | Projects that store data | E2 Databases ([redemptor#17](https://github.com/urbforge/redemptor/issues/17), [ADR-0030](decisions/0030-postgresql-application.md)) |
+| M3 · v1.2 Production-ready | Run real apps and sleep at night - and a platform that runs without a homelab | E3 Backups and restore ([redemptor#31](https://github.com/urbforge/redemptor/issues/31)) · E3-bis VPS support ([redemptor#32](https://github.com/urbforge/redemptor/issues/32)) · E4 Observability, next step ([redemptor#33](https://github.com/urbforge/redemptor/issues/33)) · E5 Security and isolation ([redemptor#34](https://github.com/urbforge/redemptor/issues/34)) · E6 Transactional email ([redemptor#13](https://github.com/urbforge/redemptor/issues/13)) |
+| M4 · v1.3 Team operations | Several people on one platform | E7 Operators and identity ([redemptor#35](https://github.com/urbforge/redemptor/issues/35)) · E8 Bootstrap performance ([redemptor#18](https://github.com/urbforge/redemptor/issues/18)) · E14's console and AI assistant ([urbex-cli#76](https://github.com/urbforge/urbex-cli/issues/76), [urbex-cli#78](https://github.com/urbforge/urbex-cli/issues/78)) |
 | M5 · v1.4 Richer projects | More of what an app needs | E9 Frontends ([redemptor#36](https://github.com/urbforge/redemptor/issues/36)) · E10 Project lifecycle ([redemptor#37](https://github.com/urbforge/redemptor/issues/37)) |
 | M6 · v2 Beyond the homelab | Other people, other stacks | E11 Modular architecture ([redemptor#16](https://github.com/urbforge/redemptor/issues/16)) · E12 End-user docs site ([redemptor#15](https://github.com/urbforge/redemptor/issues/15)) |
 
 Alongside the milestones, **E13 First users**
 ([redemptor#38](https://github.com/urbforge/redemptor/issues/38)): a
 demo of the full flow and the first ~20 self-hosters from homelab
-communities, whose feedback reorders the milestones.
+communities, whose feedback reorders the milestones. And **E14 Web UI
+and AI assistant**
+([redemptor#47](https://github.com/urbforge/redemptor/issues/47),
+[ADR-0032](decisions/0032-web-ui-console-ai-assistant.md)): the CLI's
+JSON commands, `urbex mcp`, a local setup wizard and project templates
+from now; the console in the platform and the AI assistant in M4.
 
 What the planned additions of v1 became:
 
@@ -88,9 +95,9 @@ What the planned additions of v1 became:
   (M4).
 - **Hosts beyond Proxmox**: a server you bring over SSH, then Hetzner
   Cloud, then DigitalOcean (ADR in
-  [urbex#24](https://github.com/urbforge/urbex/issues/24)) - E3-bis (M2).
+  [urbex#24](https://github.com/urbforge/urbex/issues/24)) - E3-bis (M3).
 - **Backups and restore** of Gitea, Komodo, Keycloak, databases and
-  volumes - E3 (M2).
+  volumes - E3 (M3).
 
 ## v2+ — future evolutions
 
@@ -111,8 +118,8 @@ What the planned additions of v1 became:
   for more resource-constrained hardware. Images pinned by digest,
   single-environment stacks, volumes, NAS shares and linked applications
   (`uses`, `provides: postgres`) are implemented.
-- Optional layers on top of the CLI: a dedicated Claude Code skill/plugin,
-  an MCP server.
+- Optional layers on top of the CLI: a dedicated Claude Code skill/plugin
+  (done), an MCP server (E14).
 - **Schema sync automation**: a CI check (or codegen step) so the
   manifest schema vendored in `urbforge/urbex-cli` can't silently drift
   from `urbforge/urbex/schemas/urbex.schema.json` (see
