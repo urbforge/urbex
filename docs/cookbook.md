@@ -800,18 +800,62 @@ What happens.
    gives `api` its `DATABASE_URL` and `PG*`, and `web` the address of
    `api` in `BACKEND_URL`. The passwords are kept encrypted in the
    GitOps repo, in each application's `urbex.sops.env`.
-2. Every Stack is deployed at once. The Stacks of `api` and `web` start
-   a `wait` first, which probes `db` with `pg_isready` and `api` on its
-   healthcheck, and starts the application once what it uses has
-   answered for 20 seconds without a failure.
-3. If `db` takes longer than its `ready_within` on the first start,
+2. `db` is deployed first. Once it takes connections, Urbex makes the
+   role and the schema `api` on it, with `api`'s password, and says what
+   it made (`db: created the role api.`); a later apply changes only
+   what is missing.
+3. The other Stacks follow. The Stack of `api` starts a `wait` first,
+   which logs in to `db` as `api`, and the Stack of `web` one that probes
+   `api` on its healthcheck; each starts the application once what it
+   uses has answered for 20 seconds without a failure.
+4. If `db` takes longer than its `ready_within` on the first start,
    raise it, since what uses `db` waits for it that long.
 
 `api` must have a `port` and a `healthcheck`, since `web` uses it; without
-them `apply` refuses the manifest. Urbex does not create the role of
-`api` on the database yet: create it once by hand, as
-[known limitations](known-limitations.md#projects-and-deploys) shows. See
+them `apply` refuses the manifest. `api` creates its tables in its own
+schema, `api`, without naming it; another application on `db` gets its
+own, and neither can read the other's. `urbex status prod` lists them. See
 [linked applications](reference/manifest.md#linked-applications).
+
+When an application stops using `db`, or leaves `urbex.yaml`, its role
+and schema stay, with their data, and `apply` names them as unused.
+`urbex apply prod --delete-data` drops them.
+
+To look at the data, decrypt an application's credentials from the
+GitOps repo (`sops decrypt environments/prod/<project>/api/urbex.sops.env`)
+and connect from the LAN with its `DATABASE_URL`, or to the address
+`urbex status prod` shows.
+
+## Upgrade PostgreSQL to a new major version
+
+A new major (`17` to `18`) can't open the data directory of the old
+one, so `urbex deploy` refuses it, `--allow-major` or not, while the
+data directory is the old major's. By hand, in staging first, with `db`
+the PostgreSQL of `<project>`:
+
+1. In Komodo, stop the Stacks of the applications that use `db`, so that
+   nothing writes.
+2. Dump everything, on `db`'s LXC (`ssh root@<its address>`, which
+   `urbex status <env>` shows):
+   `docker exec <project>-db-<env>-app-1 pg_dumpall -U urbex > /root/dump.sql`.
+3. In Komodo, stop the Stack `<project>-db-<env>`. Then, on the LXC, move
+   the data directory aside, inside the volume:
+   `mv /srv/volumes/db/data/pgdata /srv/volumes/db/data/pgdata-17`.
+4. `urbex deploy <env> --app db --version 18 --allow-major`. It can't read
+   the data directory of a stopped PostgreSQL, says so and deploys: the
+   new major initialises an empty data directory, with the same user and
+   password.
+5. Restore: `docker exec -i <project>-db-<env>-app-1 psql -U urbex -d postgres < /root/dump.sql`.
+   The deploy has made the applications' roles and schemas already, so
+   the errors saying a role or a schema already exists are expected; the
+   tables and their data are restored into them.
+6. `urbex apply <env>`: it checks every role and schema and starts the
+   applications again. Set `version: "18"` in `urbex.yaml`.
+7. Once the applications are fine, delete `pgdata-17` and the dump. For
+   production, do the same around `urbex promote --allow-major`.
+
+To go back instead, stop the Stack, put `pgdata-17` back as `pgdata` and
+`urbex deploy <env> --app db --version 17 --allow-major`.
 
 ## Several projects on one platform
 

@@ -333,7 +333,7 @@ What an application gets from what it uses.
 
 | Provider | The provider gets | An application that uses it gets |
 |---|---|---|
-| `provides: postgres` | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `PGDATA` in its volume | `DATABASE_URL`, `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`, for a role of its own named after it ([ADR-0030](../decisions/0030-postgresql-application.md)); Urbex does not create that role yet, see [known limitations](../known-limitations.md#projects-and-deploys) |
+| `provides: postgres` | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `PGDATA` in its volume | `DATABASE_URL`, `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`, for a role and a schema of its own, named after it ([ADR-0030](../decisions/0030-postgresql-application.md)) |
 | any other application | nothing | `<APP>_HOST`, `<APP>_PORT`, `<APP>_URL`, where `<APP>` is the name in capitals with `_` for `-` |
 
 An application that uses two providers of the same interface gets each
@@ -359,10 +359,27 @@ Rules that `urbex apply` enforces.
 - The variables Urbex generates cannot be set with `urbex secret`, since
   `apply` would overwrite them.
 
+What a `postgres` provider holds. One server and one database, named
+after the project (`-` turned into `_`), per environment. Each
+application that uses it has a role and a schema named after it (`-`
+turned into `_`, so `admin-ui` gets `admin_ui`), the schema owned by the
+role and first in its `search_path`: the application reads and writes its
+own tables without naming the schema, and has no rights on the other
+applications' schemas nor on `public`. `urbex apply` makes them on every
+run, once the provider takes connections and before the applications
+start, through a Komodo exec in the provider's container, and changes
+only what is missing; the password is sent as a SCRAM-SHA-256 verifier,
+never in clear. The server's own user, `urbex`, is for Urbex only. An
+application that needs a database to itself declares a provider of its
+own. An application removed, or that stops using the provider, keeps its
+role and schema, with their data, until `urbex apply <env> --delete-data`
+drops them, naming them first.
+
 How the order holds. Each application that uses others has, in its
 compose file, a service `wait` that probes them as the application will
-reach them, a `postgres` provider with `pg_isready` and any other with
-its healthcheck. A provider counts as healthy once it has answered every
+reach them, a `postgres` provider by logging in with the application's
+own role (so the role must exist too) and any other with its
+healthcheck. A provider counts as healthy once it has answered every
 probe for 20 seconds; a single failure starts the 20 seconds again. The
 wait gives up after the longest chain of `ready_within` upstream, plus
 20 s per level, and the application then does not start. The
