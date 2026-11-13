@@ -85,6 +85,9 @@ creating the platform and the environments, releasing, promoting.
   thin storage (ZFS, LVM-thin) a disk takes only what is written on it.
   The node needs what is actually used, plus room for builds; on a
   storage that isn't thin (plain LVM), each disk takes its full size.
+
+  > These figures aren't optimised yet: trimming the platform's
+  > resources will be planned once its base services are settled.
 - **A free block of IPs on the LAN**: 10 for the platform, then one per
   service per environment.
 - **A domain name.** With Cloudflare, it's your Cloudflare zone.

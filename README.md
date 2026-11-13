@@ -201,7 +201,8 @@ homelab, try it on yours.
 **What to try**, on a Proxmox VE 9 node with about 6 GiB of free memory
 and 30 GiB of free disk (see the
 [prerequisites](docs/getting-started.md#prerequisites); a quick tunnel
-needs no Cloudflare account):
+needs no Cloudflare account; the platform's resources will be
+trimmed once its base services are settled):
 
 1. Set up the platform: [Getting started](docs/getting-started.md), with
    the CLI or with an AI agent such as Claude Code.
