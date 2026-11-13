@@ -63,6 +63,7 @@ copy of the GitOps repo.
 - [A build or a deploy failed](#a-build-or-a-deploy-failed)
 - [The reconciler holds applications back](#the-reconciler-holds-applications-back)
 - [The reconciler is not running](#the-reconciler-is-not-running)
+- [A disk is filling up, or a machine is running out of memory](#a-disk-is-filling-up-or-a-machine-is-running-out-of-memory)
 - [An LXC was recreated](#an-lxc-was-recreated)
 - [Bootstrap was interrupted](#bootstrap-was-interrupted)
 - [Ansible refuses an LXC: host key changed](#ansible-refuses-an-lxc-host-key-changed)
@@ -930,7 +931,11 @@ In Grafana - its address and login are in `urbex status` - open
 - **Urbex resources**: a table of every LXC's current CPU, memory and
   disk, and their history, then the same per container (CPU and
   memory), with the same filters - choose `agent` to see what Periphery
-  and Alloy cost.
+  and Alloy cost. An LXC's memory is what it uses less the page cache,
+  as `free` and Proxmox show it.
+
+Grafana also warns when a disk is filling up or a machine is running
+out of memory: see [its runbook](#a-disk-is-filling-up-or-a-machine-is-running-out-of-memory).
 
 ![The Urbex resources dashboard: a table of every LXC's current CPU and
 memory, labelled by kind (platform or app), service, environment and
@@ -1101,6 +1106,39 @@ an application that uses another and goes down stays down. `urbex
 status <env>` says the same. Check that Komodo Core is up, and that the
 Action is scheduled in Komodo ("Actions", `urbex-reconcile`, schedule
 `0 * * * * *`, enabled). `urbex bootstrap` installs it again.
+
+## A disk is filling up, or a machine is running out of memory
+
+Grafana warns before an LXC runs out of disk or memory (folder `urbex`,
+group `urbex-resources`), for the platform's LXCs and the applications':
+
+| Alert | When | Severity |
+|---|---|---|
+| A disk is filling up | a filesystem above 85% for 10 minutes | `warning` |
+| A disk is almost full | a filesystem above 95% for 5 minutes | `critical` |
+| A machine is running out of memory | less than 10% of its memory available for 10 minutes | `warning` |
+
+Every real filesystem counts: the LXC's root disk and its named volumes
+(`/srv/volumes/<service>/<volume>`), not `tmpfs`. Each alert carries the
+LXC's `host`, `kind`, `service` and, for an application, `project` and
+`env`, and the alert's summary names the filesystem and how full it is.
+An LXC that stops reporting, stopped or destroyed, raises nothing.
+
+- **A disk.** See what takes the space in the *Urbex resources*
+  dashboard and on the LXC (`du -xh / | sort -h | tail`). For an
+  application, give it a bigger disk with `resources.disk`, or a bigger
+  volume with its `size`, and `urbex apply`
+  ([more resources](#give-a-service-more-cpu-memory-or-disk)). Komodo's
+  LXC fills with the build cache: a scheduled clean-up is planned
+  ([urbex-cli#92](https://github.com/urbforge/urbex-cli/issues/92)).
+- **Memory.** An LXC's memory is what it uses less the page cache, as
+  `free` and Proxmox show it, against its limit. Give an application
+  more with `resources.memory`; find what grows in *Urbex resources*,
+  per container.
+
+The alerts show in Grafana only (Alerting, Alert rules). To be notified,
+add a contact point and a notification policy in Grafana; urbex leaves
+them alone.
 
 ## An LXC was recreated
 
