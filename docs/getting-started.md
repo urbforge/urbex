@@ -10,10 +10,9 @@ first time, most of it spent waiting for downloads.
 > real Proxmox VE 9.2 node - see [`status.md`](status.md) and
 > [`known-limitations.md`](known-limitations.md).
 >
-> ⚠️ The CLI's repository, [`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli),
-> isn't public yet: it will be, as open source, with the first release.
-> Until then, cloning it needs access to it. This repository,
-> `urbforge/urbex`, is public and holds the documentation.
+> The CLI is open source (Apache-2.0), in
+> [`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli); this
+> repository, `urbforge/urbex`, holds the documentation.
 
 ## How Urbex works
 

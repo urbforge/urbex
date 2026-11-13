@@ -8,9 +8,12 @@ Every environment, from a homelab to the cloud, should give applications the sam
 
 > **Status: working prototype, not released yet.** The whole flow - from an
 > empty Proxmox node to an app in staging and production - runs end to end
-> and has been validated on a real server. The CLI's repository isn't
-> public yet: it will be, as open source, with the first release. Watch
-> this repository to hear about it.
+> and has been validated on a real server. The CLI is open source
+> ([Apache-2.0](LICENSE)) and public:
+> [`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli). You build
+> it from its repository - see [Get Urbex](docs/getting-started/with-the-cli.md#1-get-urbex).
+> We are looking for testers: see
+> [Try it early, tell us what's missing](#try-it-early-tell-us-whats-missing).
 
 ## Who it's for - today
 
@@ -49,7 +52,7 @@ urbex promote              # production runs the very images staging ran
 Each of these is a single command an agent like Claude Code or Codex can
 run for you. With Claude Code, the `urbex` plugin in this repository
 sets Urbex up and runs it for you - see
-[Getting started with Claude Code](docs/getting-started/with-claude-code.md). A short video of the whole flow is coming; meanwhile,
+[Getting started with Claude Code](docs/getting-started/with-claude-code.md).
 [Getting started](docs/getting-started.md) shows every command and what
 it prints. And this is what you see in Grafana - the logs of every
 service, the platform's and your apps':
@@ -184,27 +187,41 @@ Then ask in plain words, or call its skills directly:
 | `/urbex:cli` | Every `urbex` command, through `urbex-op` or natively: "deploy to staging", "release and promote", "set a secret", "roll back prod". It asks before touching production or deleting anything. |
 
 The skills follow this repository's documentation, which ships with the
-plugin. Until `urbex-cli` is public, you need access to it to build
-`urbex`. The whole walkthrough:
+plugin; `urbex` itself is built from
+[`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli). The whole
+walkthrough:
 [Getting started with Claude Code](docs/getting-started/with-claude-code.md).
 
 ## Try it early, tell us what's missing
 
-Urbex is meant to be free and open source, for everyone - it isn't a
-product we sell. What we need most now are the people it's for: if you
-run a homelab and would try it on yours, or if you help people take their
-apps to production and see what's missing, open an
-[issue](https://github.com/urbforge/urbex/issues) - what you would
-deploy, what stops you, what you'd expect it to do. It shapes the
-roadmap.
+Urbex is free and open source, for everyone - it isn't a product we
+sell. What we need most now are the people it's for: if you run a
+homelab, try it on yours.
+
+**What to try**, on a Proxmox VE 9 node (see the
+[prerequisites](docs/getting-started.md#prerequisites); a quick tunnel
+needs no Cloudflare account):
+
+1. Set up the platform: [Getting started](docs/getting-started.md), with
+   the CLI or with an AI agent such as Claude Code.
+2. Deploy an app of yours to staging, then promote it to production.
+3. Break something: a secret, a rollback, a reboot of the node.
+
+**How to tell us**: open an
+[issue](https://github.com/urbforge/urbex/issues) - what you deployed,
+where it stopped, what you expected, and the output of the command that
+failed. A problem with the CLI itself can also go to
+[urbex-cli's issues](https://github.com/urbforge/urbex-cli/issues). If
+you help people take their apps to production and see what's missing,
+tell us too: it shapes the roadmap.
 
 ## Repositories
 
 - [`urbforge/urbex`](https://github.com/urbforge/urbex) (this repo) —
   architecture, ADRs, manifest spec/schema, roadmap.
-- `urbforge/urbex-cli` — the `urbex` CLI implementation (Go); not public
-  yet, published with the first release. See
-  [ADR-0016](docs/decisions/0016-cli-repo-split.md).
+- [`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli) — the
+  `urbex` CLI implementation (Go), and `urbex-op`, the CLI in a container.
+  See [ADR-0016](docs/decisions/0016-cli-repo-split.md).
 
 ## Documentation
 
