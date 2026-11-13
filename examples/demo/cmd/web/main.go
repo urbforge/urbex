@@ -38,7 +38,7 @@ var page = template.Must(template.New("page").Parse(`<!doctype html>
   <div class="card">
     {{if .Err}}<p class="tip">The API didn't answer: {{.Err}}</p>
     {{else}}<p class="tip">{{.Tip}}</p>
-    <p class="meta"><span class="env">{{.Env}}</span> &nbsp; api {{.Version}}</p>{{end}}
+    <p class="meta"><span class="env">{{.Env}}</span></p>{{end}}
   </div>
 </main>
 </body>
@@ -46,8 +46,8 @@ var page = template.Must(template.New("page").Parse(`<!doctype html>
 `))
 
 type tip struct {
-	Tip, Env, Version string
-	Err               string
+	Tip, Env string
+	Err      string
 }
 
 func main() {
@@ -69,7 +69,7 @@ func main() {
 				fmt.Fprintf(w, "Urbex demo: the API didn't answer: %s\n", t.Err)
 				return
 			}
-			fmt.Fprintf(w, "Urbex demo (%s, api %s)\n  %s\n", t.Env, t.Version, t.Tip)
+			fmt.Fprintf(w, "Urbex demo (%s)\n  %s\n", t.Env, t.Tip)
 			return
 		}
 		page.Execute(w, t)

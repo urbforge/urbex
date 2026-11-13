@@ -1,5 +1,5 @@
-// api answers the web page with a tip about Urbex, the environment it
-// runs in and its version.
+// api answers the web page with a tip about Urbex and the environment it
+// runs in.
 package main
 
 import (
@@ -9,8 +9,6 @@ import (
 	"net/http"
 	"os"
 )
-
-const version = "1.0.0"
 
 var tips = []string{
 	"Every push to main is deployed to staging.",
@@ -24,12 +22,11 @@ func main() {
 	http.HandleFunc("/tip", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{
-			"tip":     tips[rand.IntN(len(tips))],
-			"env":     os.Getenv("DEMO_ENV"),
-			"version": version,
+			"tip": tips[rand.IntN(len(tips))],
+			"env": os.Getenv("DEMO_ENV"),
 		})
 	})
 	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
-	log.Printf("demo api %s listening on :%s", version, os.Getenv("PORT"))
+	log.Printf("demo api listening on :%s", os.Getenv("PORT"))
 	log.Fatal(http.ListenAndServe(":"+os.Getenv("PORT"), nil))
 }

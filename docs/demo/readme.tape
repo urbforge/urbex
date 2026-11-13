@@ -5,7 +5,7 @@
 # addresses are the Cubotto lab platform's (zone urbex.cubotto.net, flat
 # hostnames): change them for another platform.
 
-Output demo/readme.gif
+Output readme.gif
 
 Set Shell "bash"
 Set FontFamily "JetBrains Mono"
@@ -28,11 +28,11 @@ Sleep 1.5s
 Hide
 Wait
 Show
-Sleep 4s
+Sleep 3s
 
 Type "curl https://web-staging-demo-urbex.cubotto.net" Sleep 400ms Enter
 Wait
-Sleep 3s
+Sleep 2.5s
 
 # A release of what staging runs, then the same images in production.
 Type "clear; urbex release" Sleep 400ms Enter
@@ -53,4 +53,4 @@ Sleep 2s
 
 Type "urbex status" Sleep 400ms Enter
 Wait
-Sleep 5s
+Sleep 4s
