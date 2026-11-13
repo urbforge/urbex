@@ -71,20 +71,23 @@ creating the platform and the environments, releasing, promoting.
   ```
   The token is `urbex@pve!cli=<value>`, with the value the last command
   prints.
-- **Memory and disk**: about **6 GiB of free memory** and **30 GiB of
-  free disk** for the platform and a first app in two environments.
-  Measured over a month on the test node (Proxmox VE 9.2, ZFS storage),
-  with the platform and a three-service app in production:
+- **Memory, disk and CPU**: about **6 GiB of free memory** (8 to be
+  comfortable) and **30 GiB of free disk** for the platform and a first
+  app in two environments. Measured on the test node (Proxmox VE 9.2,
+  ZFS storage), with the platform and a three-service app in production:
 
-  | | Memory used, at its peak | Disk used | Limits urbex sets |
+  | | Memory used, at its peak | Disk | Limits urbex sets |
   |---|---|---|---|
-  | The six platform LXCs together | 4 GiB (Keycloak alone up to 1.75) | about 20 GiB (Komodo's build cache included) | 11.5 GiB memory, 79 GiB disk |
-  | Each service, per environment | 0.25 GiB | 2 GiB | 1 GiB memory, 5 GiB disk (`resources`) |
+  | The six platform LXCs together | 4 GiB; 5.4 GiB with the page cache (Keycloak and observability alone up to 1.3) | 16 GiB of files; 11 GiB written on ZFS, with the 1.5 GiB template the LXCs are linked clones of | 11.5 GiB memory, 79 GiB disk |
+  | Each service, per environment | 0.25 GiB; 0.55 GiB with the page cache | 2 GiB of files; 0.5 GiB written on ZFS, plus a 1.5 GiB template shared by every service | 1 GiB memory, 5 GiB disk (`resources`) |
 
   The limits aren't reserved: an LXC's memory is a ceiling, and on a
   thin storage (ZFS, LVM-thin) a disk takes only what is written on it.
   The node needs what is actually used, plus room for builds; on a
   storage that isn't thin (plain LVM), each disk takes its full size.
+  The page cache is given back when memory runs short. The test node
+  has 8 threads of a 2012 low-power Xeon (E3-1265L v2): over a month,
+  urbex and the node's other guests used 43% of it at most.
 
   > These figures aren't optimised yet: trimming the platform's
   > resources will be planned once its base services are settled.
