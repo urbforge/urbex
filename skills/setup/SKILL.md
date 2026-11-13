@@ -56,6 +56,10 @@ bash ${CLAUDE_SKILL_DIR}/check-prerequisites.sh
 python3 ${CLAUDE_SKILL_DIR}/discover-network.py
 ```
 
+These two run on the user's machine, before Urbex is installed and
+before there is a token; from step 5, `urbex doctor` and `urbex
+discover` take over.
+
 - `check-prerequisites.sh`: git, ssh-keygen, python3 (3.8 or later),
   podman or docker, an existing `urbex-op`, workspace or `urbex`, access
   to `urbex-cli`.
@@ -69,6 +73,8 @@ python3 ${CLAUDE_SKILL_DIR}/discover-network.py
   (`proxmoxCandidates`), the addresses in use, and a proposed block of
   free addresses (`proposal.baseHostOffset`). With `--proxmox <host>` it
   also checks the node is on the same LAN. `--no-scan` skips the pings.
+  What you need from it now is the node; `urbex discover` proposes the
+  addresses again, from the node's side, in step 5.
 
 An existing workspace (`~/urbex-work`, `$URBEX_WORKSPACE`) with a
 `gitops/urbex.platform.yaml` means a platform may already exist: read
@@ -144,7 +150,7 @@ Tell them, in a few lines:
   can be run again: what exists is kept, the token is replaced only if
   they say so.
 
-When they say it's done, go to step 5: `discover-platform.py` finds the
+When they say it's done, go to step 5: `urbex discover` finds the
 token in the workspace.
 
 **B. The commands by hand**, when they choose them, or the script can't
@@ -216,45 +222,44 @@ urbex-op set cloudflareToken     # only with their own Cloudflare zone
 
 ## 5. Propose the platform config
 
-With the tokens stored, ask the APIs (GET requests only; the tokens are
-read from the workspace and never printed):
+With the tokens stored, check them and the workspace, then ask the APIs
+for the config (only reads; the tokens are never printed):
 
 ```sh
-python3 ${CLAUDE_SKILL_DIR}/discover-platform.py --workspace ~/urbex-work --proxmox https://<node>:8006 [--cloudflare]
+urbex-op -w ~/urbex-work 'urbex doctor'
+urbex-op -w ~/urbex-work 'urbex discover --proxmox https://<node>:8006'
 ```
 
-It prints, as JSON: whether TLS needs `insecure`, the token's id and
-permissions, the node, the bridge, the storages and the one to use, the
-latest Debian 13 template, the pool and what is in it, whether the
-platform's VMIDs are free, and with `--cloudflare` the zones the token
-sees with their account and zone IDs. `errors` and `warnings` say what
-to fix: a missing permission, the template not downloaded, an existing
-platform. Fix them with the user and run it again.
+- `urbex doctor` checks the tools, the credentials, the SSH key and,
+  once a config exists, the node, the token's privileges, the template
+  and Cloudflare: each check `ok`, `warn`, `fail` or `skip`, with what
+  to do. Here only the workspace counts; fix a `fail` with the user.
+- `urbex discover` reads the node (version, pool, bridge, storages, the
+  newest Debian 13 template, free VMIDs, an Urbex platform already in
+  the pool), the LAN from the node's bridge with a scan for 20 free
+  addresses, and with a Cloudflare token its zones; then it prints a
+  complete `urbex.platform.yaml`, each value with a comment saying where
+  it comes from. `warning:` and `error:` lines say what to fix: a
+  missing permission, no template, an existing platform. `-o json` gives
+  the same as data. Without Cloudflare it proposes `domain: home.arpa`
+  (the name reserved for home networks).
 
-Then run `urbex-op -w ~/urbex-work 'urbex bootstrap'` once: the first run
-only writes `~/urbex-work/gitops/urbex.platform.yaml` and stops. Fill it
-in from the two scripts' output (every field:
-[platform config](${CLAUDE_PLUGIN_ROOT}/docs/reference/platform-config.md)):
-
-| Field | From |
-|---|---|
-| `proxmox.apiUrl`, `insecure`, `node`, `storagePool`, `lxcTemplate`, `pool`, `network.bridge`, `vmIdBase` | `discover-platform.py` |
-| `proxmox.network.cidr`, `gateway`, `dnsServers`, `baseHostOffset` | `discover-network.py` |
-| `proxmox.sshPublicKey` | `~/urbex-work/home/.ssh/urbex.pub` |
-| `domain`, `cloudflare.accountId`, `cloudflare.zoneId` | the zone, with Cloudflare; without, propose `home.arpa` (the name reserved for home networks): it's only used for internal names and the admin's e-mail |
-| `git.giteaUrl` | `https://git.<domain>` (not used yet) |
-| `cloudflare.access.emails` | `git config user.email` |
-| `cloudflare.quickTunnel: true` | with a Quick Tunnel, instead of the IDs |
-
-Show the user the file, with a short line per value saying where it
-comes from, and ask for one confirmation. Say explicitly the one thing
-no script can check: **the address block must be outside the DHCP range
-and unused** (a device that's off looks free). Change what they correct,
-then check the file and the credentials without creating anything:
+What it can't know is marked `FILL IN`: `cloudflare.access.emails`
+(propose `git config user.email`). Show the user the proposal, with a
+short line per value, and ask for one confirmation. Say explicitly the
+one thing no scan can check: **the address block must be outside the
+DHCP range and unused** (a device that's off looks free). Then write it,
+fill in what they said, and check everything without creating anything:
 
 ```sh
+urbex-op -w ~/urbex-work 'urbex discover --proxmox https://<node>:8006 --write'
+# edit ~/urbex-work/gitops/urbex.platform.yaml: FILL IN, and what the user corrected
+urbex-op -w ~/urbex-work 'urbex doctor'
 urbex-op -w ~/urbex-work 'urbex bootstrap --dry-run'
 ```
+
+`--write` never replaces an existing file. Every field:
+[platform config](${CLAUDE_PLUGIN_ROOT}/docs/reference/platform-config.md).
 
 ## 6. Bootstrap
 
@@ -262,11 +267,11 @@ Ask for confirmation, naming the node and the addresses it will take,
 then:
 
 ```sh
-urbex-op -w ~/urbex-work 'urbex bootstrap'
+urbex-op -w ~/urbex-work 'urbex bootstrap --events json'
 ```
 
-It takes about twenty minutes: run it in the background and follow it
-with the `cli` skill's `follow-progress.py` (*Following a long command*),
+It takes about twenty minutes: run it with `--events json` in the
+background, as the `cli` skill says (*Following a long command*),
 telling the user each phase as it ends. Re-running it is safe, and is how a failed run
 resumes. When an error names a cause, fix it and run it again; the
 [cookbook](${CLAUDE_PLUGIN_ROOT}/docs/cookbook.md) has the usual ones
