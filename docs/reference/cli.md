@@ -5,6 +5,7 @@ flags. For walkthroughs see [getting started](../getting-started.md) and
 the [cookbook](../cookbook.md).
 
 - [Conventions](#conventions)
+- [`urbex doctor`](#urbex-doctor)
 - [`urbex init`](#urbex-init)
 - [`urbex bootstrap`](#urbex-bootstrap)
 - [`urbex plan`](#urbex-plan)
@@ -57,6 +58,76 @@ Shared flags:
 | `--file <path>` | `urbex.yaml` | The project's manifest. |
 
 ---
+
+## `urbex doctor`
+
+```
+urbex doctor [--gitops-repo <dir>] [--output text|json]
+```
+
+Checks that this machine, the workspace, Proxmox and Cloudflare have
+what urbex needs, and says what to do about what's missing. It changes
+nothing and prints no secret; run it first, and whenever something
+fails for no clear reason.
+
+- **tools**: `git`, `ssh`, `terraform`, `ansible-playbook`, `sops`, `age`,
+  with their versions. `urbex-op`'s image has them all.
+- **workspace**: the credentials file, the Proxmox token and age key, an
+  SSH key (an agent, or `~/.ssh/urbex`), the GitOps repo and its
+  `urbex.platform.yaml`, validated.
+- **proxmox**, with a valid platform config and a token: the API answers
+  with the token, the node, the pool, the token's privileges (on the
+  pool, the storage and the bridge, as in
+  [credentials](credentials.md#proxmox-api-token)), the storage holds
+  container and VM disks, the LXC template is on the node, the bridge
+  exists.
+- **cloudflare**, with an account in the config: the token is active and
+  sees the zone of `domain`.
+
+Each check is `ok`, `warn`, `fail` or `skip`; a check that isn't `ok`
+has its fix under it. On the lab:
+
+```
+tools:
+  ok    git                git version 2.47.3
+  ok    terraform          Terraform v1.13.3
+  ...
+
+workspace:
+  ok    credentials file   /home/me/urbex-work/home/.urbex/credentials.yaml
+  ok    credentials        the Proxmox token and the age key are set
+  ok    SSH key            an SSH agent
+  ok    GitOps repo        /work/gitops
+  ok    platform config    /work/gitops/urbex.platform.yaml
+
+proxmox:
+  ok    API                Proxmox VE 9.2.21 at https://192.168.1.10:8006/api2/json
+  ok    node               pve
+  ok    pool               urbex
+  ok    privileges         on /pool/urbex, storage local-zfs and bridge vmbr0
+  ok    storage            local-zfs (zfspool), 881 of 896 GB free
+  ok    LXC template       local:vztmpl/debian-13-standard_13.6-1_amd64.tar.zst
+  ok    bridge             vmbr0
+
+cloudflare:
+  ok    token              active
+  ok    zone               example.com
+
+Everything urbex needs is there.
+```
+
+A refused token, for instance:
+
+```
+proxmox:
+  fail  API                https://192.168.1.10:8006/api2/json: proxmox api GET /version returned 401 Authentication failed!:
+                           -> the token is refused: check it is user@realm!name=secret, and not expired or deleted; store it again with 'urbex-op set proxmoxToken'
+```
+
+It exits non-zero when a check failed. `--output json` prints the report
+as one JSON document, `{"checks": [{"group", "name", "status", "detail",
+"fix"}], "ok": true}`, for the setup UI and the plugin
+([ADR-0032](../decisions/0032-web-ui-console-ai-assistant.md)).
 
 ## `urbex init`
 
