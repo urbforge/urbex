@@ -15,6 +15,7 @@
 #   addresses in cyan, the new versions in yellow, the plumbing (LAN
 #   addresses, image references) dimmed.
 export COLUMNS=100
+demo_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # The prompt in mauve, the command typed in bold; PS0 resets the colour
 # before the command's output.
 PS1='\[\e[1;35m\]> \[\e[0;1m\]'
@@ -60,8 +61,15 @@ urbex() {
   if [ "$1" = apply ]; then
     # Terraform's and Ansible's prose can't all be foreseen: of apply,
     # only urbex's own lines show.
-    command urbex "$@" 2>&1 | demo_filter | grep --line-buffered -E "$demo_apply_lines" | demo_color
-    return "${PIPESTATUS[0]}"
+    # The whole output goes to apply-<env>.log next to this file; when
+    # apply fails, its last lines show: a failure is never hidden.
+    local log=$demo_dir/apply-${2:-}.log rc
+    command urbex "$@" 2>&1 | tee "$log" | demo_filter | grep --line-buffered -E "$demo_apply_lines" | demo_color
+    rc=${PIPESTATUS[0]}
+    if [ "$rc" != 0 ]; then
+      demo_filter < "$log" | tail -n 8 | sed -E $'s/.*/\e[1;31m&\e[0m/'
+    fi
+    return "$rc"
   fi
   command urbex "$@" 2>&1 | demo_filter | demo_color
   return "${PIPESTATUS[0]}"
