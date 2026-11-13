@@ -694,8 +694,9 @@ With `<env>`, per service its machine (`hostname`, `allocated`,
 GitOps repo asks for and Komodo runs (`version`, `followsMain`,
 `stack`, `image`, when Komodo answered), the reconciler (`state` -
 `running`, `stale` or `never-run` - `lastRun`, `open`, `looping`,
-`unstable`, only for an environment whose applications use each other)
-and the endpoints:
+`unstable`, only for an environment whose applications use each other),
+the endpoints and, for each PostgreSQL provider, its roles and schemas
+(`databases`):
 
 ```json
 {
@@ -709,9 +710,18 @@ and the endpoints:
   "endpoints": [
     { "service": "api", "lan": "http://192.168.1.211:8080",
       "dns": { "name": "api.acme-app.urbex.example.com", "state": "ok", "pointsTo": ["192.168.1.211"], "expected": "192.168.1.211" } }
+  ],
+  "databases": [
+    { "service": "db", "database": "acme_app", "state": "listed",
+      "roles": [ { "role": "api", "schema": "api", "use": "used", "usedBy": "api" } ] }
   ]
 }
 ```
+
+A database's `state` is `listed`, `not-running` (its schemas can't be
+listed) or `error` (with `error`); a role's `use` is `used` (by
+`usedBy`), `unused` (`--delete-data` drops it), `missing` (the next
+apply makes it for `usedBy`) or `foreign` (not made by urbex).
 
 A DNS record's `state` is `ok`, `missing`, `elsewhere` (`pointsTo`
 isn't `expected`), `not-checked` (no Technitium token), `unreachable`
