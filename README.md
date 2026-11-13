@@ -2,6 +2,10 @@
 
 **Urbex - a self-hosted app platform: everything your apps need, on infrastructure you own.**
 
+![urbex apply staging, the app's URL, urbex release, urbex promote, urbex status](docs/demo/readme.gif)
+
+<!-- The full video, bootstrap included, goes here (urbforge/redemptor#28, step 2). -->
+
 Write the app; Urbex gives it everything else - repositories, builds, deploys, login, networking, logs, backups. On your server, not someone else's cloud.
 
 Every environment, from a homelab to the cloud, should give applications the same fundamental services, the same way. Urbex is that platform.
