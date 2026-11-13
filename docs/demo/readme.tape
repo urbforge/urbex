@@ -35,13 +35,19 @@ Wait
 Sleep 2.5s
 
 # A release of what staging runs, then the same images in production.
-Type "clear; urbex release" Sleep 400ms Enter
+Hide
+Type "clear" Enter
+Show
+Type "urbex release" Sleep 400ms Enter
 Hide
 Wait
 Show
 Sleep 3s
 
-Type "clear; urbex promote" Sleep 400ms Enter
+Hide
+Type "clear" Enter
+Show
+Type "urbex promote" Sleep 400ms Enter
 Hide
 Wait
 Show
@@ -51,6 +57,9 @@ Type "curl https://web-demo-urbex.cubotto.net" Sleep 400ms Enter
 Wait
 Sleep 2s
 
+Hide
+Type "clear" Enter
+Show
 Type "urbex status" Sleep 400ms Enter
 Wait
 Sleep 4s

@@ -4,9 +4,11 @@
 # - Ansible's and Terraform's own lines are left out: apply runs them,
 #   and the GIF cuts the wait while they run (Hide/Show in the tape).
 # - LAN addresses are replaced: nothing private on screen.
-# - `urbex status` (no environment) shows only the demo's lines of its
-#   Projects section, with the runs of spaces between columns shortened
-#   and the internal names left out, to fit the terminal.
+# - `urbex status` (no environment) shows the platform's services with
+#   their public addresses (its Endpoints section, without the internal
+#   and LAN columns), then the demo's lines of its Projects section, with
+#   the runs of spaces between columns shortened and the internal names
+#   left out, to fit the terminal.
 export PS1='> '
 export COLUMNS=100
 demo_filter() {
@@ -16,9 +18,20 @@ demo_filter() {
 }
 urbex() {
   if [ "$*" = status ]; then
-    command urbex status 2>&1 | sed -n '/^Projects:/,$p' |
-      awk '/^Projects:/ || /^  demo / { keep = 1 } /^  [a-z]/ && !/^  demo / { keep = 0 } keep' |
-      demo_filter | sed -E 's/ dns=[^ ]*//; s/ image=[^ ]*//; s/([^ ]) {3,}/\1  /g' | cut -c1-"$COLUMNS"
+    local out
+    out=$(command urbex status 2>&1)
+    {
+      echo "Platform:"
+      printf '%s\n' "$out" | sed -n '/^Endpoints:/,/^$/p' | grep '^  ' | grep -v 'webhooks' |
+        awk '{ name = $0; sub(/ +http:\/\/.*/, "", name); sub(/^ +/, "", name)
+               url = "-"; for (i = 1; i <= NF; i++) if ($i ~ /^https:\/\//) { url = $i; break }
+               printf "  %-28s %s\n", name, url }'
+      echo
+      printf '%s\n' "$out" | sed -n '/^Projects:/,$p' |
+        awk '/^Projects:/ || /^  demo / { keep = 1 } /^  [a-z]/ && !/^  demo / { keep = 0 } keep' |
+        sed -E 's/ dns=[^ ]*//; s/ image=[^ ]*//; s/([^ ]) {3,}/\1  /g'
+    } | demo_filter | cut -c1-"$COLUMNS"
+    return 0
     return "${PIPESTATUS[0]}"
   fi
   command urbex "$@" 2>&1 | demo_filter

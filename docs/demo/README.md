@@ -46,10 +46,14 @@ another platform. Keep the GIF under 5 MB.
 - **Output:** Ansible's and Terraform's own lines are left out. `apply`
   runs both, and their lines scroll by while the wait is cut anyway.
 - **Nothing private:** LAN addresses are replaced with `<lan>`. `urbex
-  status` without an environment is cut to its *Projects* section,
-  each line to the terminal's width: the platform's endpoints and logins
-  aren't shown. No password, token or `credentials.yaml` is ever printed
-  by these commands.
+  status` without an environment shows the platform's services with
+  their public addresses only (its *Endpoints* section without the
+  internal and LAN columns), then the demo's lines of *Projects*; the
+  logins section isn't shown. No password, token or `credentials.yaml`
+  is ever printed by these commands.
+- **Each command on a clean screen:** the screen is cleared, hidden,
+  before a command is typed, so the command and its output show
+  together.
 
 `demo-env.sh` does all of it, as a shell function `urbex` that calls the
 real one.
