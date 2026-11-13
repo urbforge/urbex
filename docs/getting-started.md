@@ -78,7 +78,7 @@ creating the platform and the environments, releasing, promoting.
 
   | | Memory used, at its peak | Disk | Limits urbex sets |
   |---|---|---|---|
-  | The six platform LXCs together | 4 GiB; 5.4 GiB with the page cache (Keycloak and observability alone up to 1.3) | 16 GiB of files; 11 GiB written on ZFS, with the 1.5 GiB template the LXCs are linked clones of | 11.5 GiB memory, 79 GiB disk |
+  | The six platform LXCs together | 4 GiB, 4.5 during a build; 5.6 GiB with the page cache (Komodo up to 1.2 while building) | 16 GiB of files; 11 GiB written on ZFS, with the 1.5 GiB template the LXCs are linked clones of; a first build adds 2.7 GiB of build cache on Komodo | 11.5 GiB memory, 79 GiB disk |
   | Each service, per environment | 0.25 GiB; 0.55 GiB with the page cache | 2 GiB of files; 0.5 GiB written on ZFS, plus a 1.5 GiB template shared by every service | 1 GiB memory, 5 GiB disk (`resources`) |
 
   The limits aren't reserved: an LXC's memory is a ceiling, and on a
@@ -87,7 +87,9 @@ creating the platform and the environments, releasing, promoting.
   storage that isn't thin (plain LVM), each disk takes its full size.
   The page cache is given back when memory runs short. The test node
   has 8 threads of a 2012 low-power Xeon (E3-1265L v2): over a month,
-  urbex and the node's other guests used 43% of it at most.
+  urbex and the node's other guests used 43% of it at most. Komodo
+  builds with the 2 cores of its LXC: the sample app, a Go API and a web
+  frontend, built in about 5 minutes, with 1.75 cores busy.
 
   > These figures aren't optimised yet: trimming the platform's
   > resources will be planned once its base services are settled.
