@@ -3,7 +3,8 @@
 #
 # - Ansible's and Terraform's own lines are left out: apply runs them,
 #   and the GIF cuts the wait while they run (Hide/Show in the tape).
-#   Their colours go first, or the patterns below miss the lines.
+#   Their colours go first, or the patterns below miss the lines; of
+#   apply, only urbex's own lines are kept (demo_apply_lines).
 # - LAN addresses are replaced: nothing private on screen.
 # - `urbex status` (no environment) shows the platform's services with
 #   their public addresses (its Endpoints section, without the internal
@@ -56,9 +57,16 @@ urbex() {
     } | demo_filter | cut -c1-"$COLUMNS" | demo_color
     return 0
   fi
+  if [ "$1" = apply ]; then
+    # Terraform's and Ansible's prose can't all be foreseen: of apply,
+    # only urbex's own lines show.
+    command urbex "$@" 2>&1 | demo_filter | grep --line-buffered -E "$demo_apply_lines" | demo_color
+    return "${PIPESTATUS[0]}"
+  fi
   command urbex "$@" 2>&1 | demo_filter | demo_color
   return "${PIPESTATUS[0]}"
 }
+demo_apply_lines='^(Keycloak:|Building |Waiting for |Deployed |staging follows|Created |Error|error)|^  [a-z][a-z0-9-]* +(http|[0-9a-f]{7}|[0-9]+\.)|^ {10,}https://'
 
 # The app's answer: its first line in green.
 curl() {
