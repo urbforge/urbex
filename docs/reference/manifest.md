@@ -136,10 +136,11 @@ one only when the application needs it.
   machine: `urbex apply` deletes the old one and creates the new one.
   It refuses to for a machine with named volumes, even with
   `--delete-data`.
-- **Not yet in a VM:** named volumes and shares. `urbex apply` refuses
-  an application with `machine: vm` that declares either; they come
-  with [urbforge/urbex-cli#83](https://github.com/urbforge/urbex-cli/issues/83)
-  and a follow-up of #82.
+- **Named volumes** are disks of the VM, mounted where an LXC mounts
+  them: see [volumes](#volumes).
+- **Not yet in a VM:** shares. `urbex apply` refuses an application with
+  `machine: vm` that declares one; the VM will mount them itself over
+  NFS or SMB ([urbforge/urbex-cli#83](https://github.com/urbforge/urbex-cli/issues/83)).
 
 ## Runtimes
 
@@ -256,6 +257,18 @@ application removed from `urbex.yaml`: without the flag it refuses, since
 Terraform deletes the LXC and Proxmox its volumes. A volume removed from
 `urbex.yaml` is no longer mounted in the container, but stays on the LXC
 until `urbex destroy --delete-data`.
+
+In a **VM** ([`machine: vm`](#machine)) a named volume is a disk of the
+VM instead, on the same storage, with `backup=1`, and the serial
+`<application>-<name>` (cut to Proxmox's 20 characters with a hash when
+longer), by which the VM finds it whatever its order. `urbex apply`
+plugs it in while the VM runs; Ansible formats it ext4 the first time
+and mounts it with a systemd unit, by its filesystem's UUID, at the same
+`/srv/volumes/<application>/<name>`, before Docker starts. Everything
+else holds as for an LXC: Docker fills it from the image, it grows when
+`size` grows (the disk, then the filesystem, online), it can't shrink,
+and it goes only with `--delete-data`. Switching an application with
+named volumes between `lxc` and `vm` is refused.
 
 A **share** is a folder of the Proxmox node that exists outside Urbex,
 such as a NAS's media library. The operator declares it once in
