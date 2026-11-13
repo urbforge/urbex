@@ -198,7 +198,8 @@ Urbex is free and open source, for everyone - it isn't a product we
 sell. What we need most now are the people it's for: if you run a
 homelab, try it on yours.
 
-**What to try**, on a Proxmox VE 9 node (see the
+**What to try**, on a Proxmox VE 9 node with about 6 GiB of free memory
+and 30 GiB of free disk (see the
 [prerequisites](docs/getting-started.md#prerequisites); a quick tunnel
 needs no Cloudflare account):
 
