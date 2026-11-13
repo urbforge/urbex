@@ -61,7 +61,7 @@ Proxmox VE 9.2 node, see [What has been validated](#what-has-been-validated).
 | Promotion by pull request | `urbex promote` commits to the GitOps repo directly; a PR-gated production folder is a Gitea setting Urbex doesn't manage (see the [cookbook](cookbook.md#gate-production-behind-a-pull-request)) | [0020](decisions/0020-trunk-releases-gitops-environments.md) |
 | Image cleanup | Every push to `main` leaves an image in the registry; nothing prunes them | [0021](decisions/0021-staging-follows-main.md) |
 | Service conventions | Every service should be deployed by Komodo, reached by internal name, tagged by kind (`platform`/`app`/`agent`) and exposed by its kind of endpoint; services reach each other by internal name; admin and internal UIs (Gitea, Komodo, Technitium, Grafana, Prometheus, Loki, Keycloak's `/admin` and `master` realm) behind Cloudflare Access; every service - the platform's included - is a Komodo Stack; a service catalog in the CLI generates names, routes and Access, and a test rejects a service that doesn't declare them | [0027](decisions/0027-service-conventions.md) |
-| Databases | A PostgreSQL runs as an application of the stack, and the applications that use it get their connection variables, but Urbex does not create their roles and schemas yet, nor guard the major version ([urbex-cli#9](https://github.com/urbforge/urbex-cli/issues/9), epic [redemptor#17](https://github.com/urbforge/redemptor/issues/17)). The `mysql` and `redis` interfaces, and `uses` between stacks, are not implemented | [0028](decisions/0028-application-model.md), [0030](decisions/0030-postgresql-application.md) |
+| Databases | A PostgreSQL runs as an application of the stack. Every application that uses it gets its own role, schema and password, made by `urbex apply` through a Komodo exec in the PostgreSQL's container before the application starts; it can't touch the other applications' schemas or `public`. An application removed keeps its schema until `urbex apply --delete-data`; `urbex status <env>` lists the schemas and who uses each; a new major version is refused while the data directory is the old one's ([urbex-cli#9](https://github.com/urbforge/urbex-cli/issues/9), epic [redemptor#17](https://github.com/urbforge/redemptor/issues/17)). The `mysql` and `redis` interfaces, `uses` between stacks, PostgreSQL's own metrics and automated major upgrades are not implemented | [0028](decisions/0028-application-model.md), [0030](decisions/0030-postgresql-application.md) |
 | Removing a service | Dropping a service from `urbex.yaml` has the next `apply` delete its LXC, and leaves its Stack, folder and internal DNS record behind; an application with named volumes is refused unless `urbex apply <env> --delete-data` | - |
 | Pre-releases | Only `vX.Y.Z` tags are releases; `-rc.1` and the like are ignored | [0020](decisions/0020-trunk-releases-gitops-environments.md) |
 | Pinned base-service images | Technitium, Prometheus, Loki, and Grafana still use `latest` | - |
@@ -117,7 +117,11 @@ base services are real. It covers:
 12. Linked applications, a PostgreSQL, an api that uses it and a web
     that uses both. Each starts once what it uses is healthy, with no
     restart, and gets its connection with no password in plaintext in
-    the repo; a provider without a healthcheck is refused. The order of
+    the repo; a provider without a healthcheck is refused. api and web
+    each write and read in their own schema with their `DATABASE_URL`,
+    and can touch neither the other's schema nor `public`; a second
+    apply changes nothing on the server and keeps the data; web stopping
+    to use the database keeps its schema and data, shown as unused. The order of
     the LXCs after a reboot of a real node is not in the e2e.
 13. The reconciler. A change pushed while the database is down leaves
     the running api alone and is deployed once the database is back; an
