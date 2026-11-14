@@ -1,0 +1,17 @@
+#!/bin/bash
+# What Claude Code runs as urbex in claude.tape: urbex through
+# demo-env.sh's views, plain - so Claude reads, and the GIF shows, no LAN
+# address and not the platform's domain.
+here=$(cd "$(dirname "$0")" && pwd)
+PATH=${PATH//$here:/}
+DEMO_PLAIN=1
+# shellcheck source=../demo-env.sh
+source "$here/../demo-env.sh"
+# claude/statusline.sh says "working" while this runs, and still after:
+# until Claude, told the command ended, stops.
+echo $$ >/tmp/claude-demo-urbex.pid
+urbex "$@"
+rc=$?
+echo '○ working' >/tmp/claude-demo-state
+rm -f /tmp/claude-demo-urbex.pid
+exit "$rc"

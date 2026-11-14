@@ -33,9 +33,11 @@ demo_filter() {
     demo_hide
 }
 
-# What no one outside should see: LAN addresses, the platform's domain.
+# What no one outside should see: LAN addresses, the platform's domain,
+# credentials in a URL.
 demo_hide() {
-  local e='s/192\.168\.[0-9]+\.[0-9]+/<lan>/g'
+  # A URL's user and password, if any, go too.
+  local e='s/192\.168\.[0-9]+\.[0-9]+/<lan>/g; s#://[^/@ ]+@#://#g'
   if [ -n "$demo_domain" ]; then
     e="$e; s/([./-])$demo_domain_re/\\1example.com/g"
   fi
@@ -43,6 +45,11 @@ demo_hide() {
 }
 
 demo_color() {
+  # bin/urbex, what Claude Code runs, wants its output plain.
+  if [ -n "${DEMO_PLAIN:-}" ]; then
+    cat
+    return
+  fi
   local G=$'\e[1;32m' C=$'\e[36m' Y=$'\e[1;33m' D=$'\e[90m' B=$'\e[1m' R=$'\e[0m'
   sed -u -E \
     -e "s/^((Deployed|Released) .*:)$/$G\1$R/" \
@@ -56,7 +63,8 @@ demo_color() {
 }
 
 urbex() {
-  if [ "$*" = status ]; then
+  # The view fits the terminal; Claude (DEMO_PLAIN) reads the whole of it.
+  if [ "$*" = status ] && [ -z "${DEMO_PLAIN:-}" ]; then
     local out
     out=$(command urbex status 2>&1)
     {
@@ -72,6 +80,12 @@ urbex() {
     } | demo_filter | cut -c1-"$COLUMNS" | demo_color
     return 0
   fi
+  if [[ " $* " == *" --events "* ]]; then
+    # Progress events, one JSON object a line (what the plugin's skill
+    # follows): nothing to leave out, only what no one should see.
+    command urbex "$@" 2>&1 | demo_hide
+    return "${PIPESTATUS[0]}"
+  fi
   if [ "$1" = apply ]; then
     # Terraform's and Ansible's prose can't all be foreseen: of apply,
     # only urbex's own lines show.
@@ -81,7 +95,7 @@ urbex() {
     command urbex "$@" 2>&1 | tee "$log" | demo_filter | grep --line-buffered -E "$demo_apply_lines" | demo_color
     rc=${PIPESTATUS[0]}
     if [ "$rc" != 0 ]; then
-      demo_filter < "$log" | tail -n 8 | sed -E $'s/.*/\e[1;31m&\e[0m/'
+      demo_filter < "$log" | tail -n 8 | if [ -n "${DEMO_PLAIN:-}" ]; then cat; else sed -E $'s/.*/\e[1;31m&\e[0m/'; fi
     fi
     return "$rc"
   fi
@@ -92,5 +106,7 @@ demo_apply_lines='^(Keycloak:|Building |Waiting for |Deployed |staging follows|C
 
 # The app's answer, from the real domain: its first line in green.
 curl() {
-  command curl -s "${@//example.com/${demo_domain:-example.com}}" | demo_hide | sed -E $'1s/.*/\e[1;32m&\e[0m/'
+  command curl -s "${@//example.com/${demo_domain:-example.com}}" | demo_hide |
+    if [ -n "${DEMO_PLAIN:-}" ]; then cat; else sed -E $'1s/.*/\e[1;32m&\e[0m/'; fi
+  return "${PIPESTATUS[0]}"
 }

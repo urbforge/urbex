@@ -2,7 +2,13 @@
 
 **Urbex - a self-hosted app platform: everything your apps need, on infrastructure you own.**
 
+With the CLI:
+
 ![urbex apply staging, the app's URL, urbex release, urbex promote, urbex status](docs/demo/readme.gif)
+
+Or asking Claude Code, with [Urbex's plugin](docs/getting-started/with-claude-code.md):
+
+![Claude Code asked to deploy the app to staging, to release and promote it after asking first, and what runs where](docs/demo/claude.gif)
 
 <!-- The full video, bootstrap included, goes here (urbforge/redemptor#28, step 2). -->
 

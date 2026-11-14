@@ -1,6 +1,7 @@
 # The image that records the README's GIF: the operator image of
 # urbex-cli (tools/operator, with urbex and its tools) plus VHS, the
-# terminal it records in (ttyd), Chromium it drives, and ffmpeg.
+# terminal it records in (ttyd), Chromium it drives, ffmpeg, and
+# Claude Code.
 ARG BASE=urbex-operator
 FROM ${BASE}
 USER root
@@ -13,5 +14,10 @@ RUN curl -fsSL -o /usr/local/bin/ttyd "https://github.com/tsl0922/ttyd/releases/
 ARG VHS_VERSION=0.12.1
 RUN curl -fsSL "https://github.com/charmbracelet/vhs/releases/download/v${VHS_VERSION}/vhs_${VHS_VERSION}_Linux_x86_64.tar.gz" \
     | tar -xz -C /usr/local/bin --strip-components=1 --wildcards '*/vhs'
+# Claude Code, for claude.tape: the native build, no auto-update.
+RUN curl -fsSL https://claude.ai/install.sh | bash \
+ && install -m 755 "$(readlink -f /root/.local/bin/claude)" /usr/local/bin/claude \
+ && rm -rf /root/.local/share/claude /root/.local/bin/claude
+ENV DISABLE_AUTOUPDATER=1
 # Chromium can't use its sandbox in a rootless container.
 ENV VHS_NO_SANDBOX=true
