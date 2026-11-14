@@ -12,4 +12,4 @@ if [ -f "$CLAUDE_CONFIG_DIR/oauth-token" ]; then
   export CLAUDE_CODE_OAUTH_TOKEN
   rm -f "$CLAUDE_CONFIG_DIR/oauth-token"
 fi
-rm -f /tmp/claude-demo-state
+rm -rf /tmp/claude-demo-state /tmp/claude-demo-busy /tmp/claude-demo-urbex

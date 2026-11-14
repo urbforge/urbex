@@ -7,11 +7,16 @@ PATH=${PATH//$here:/}
 DEMO_PLAIN=1
 # shellcheck source=../demo-env.sh
 source "$here/../demo-env.sh"
-# claude/statusline.sh says "working" while this runs, and still after:
-# until Claude, told the command ended, stops.
-echo $$ >/tmp/claude-demo-urbex.pid
+# 'urbex status' is quick, and the progress follower runs it every 15
+# seconds: only the other commands count as work.
+[ "$1" = status ] && exec urbex "$@"
+# claude/statusline.sh says "working" while this runs - one file per
+# process, as several may - and still after: until Claude, told the
+# command ended, stops.
+mkdir -p /tmp/claude-demo-urbex
+echo $$ >"/tmp/claude-demo-urbex/$$"
 urbex "$@"
 rc=$?
 echo '○ working' >/tmp/claude-demo-state
-rm -f /tmp/claude-demo-urbex.pid
+rm -f "/tmp/claude-demo-urbex/$$"
 exit "$rc"

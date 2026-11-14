@@ -86,9 +86,12 @@ real one.
 - **Claude works hidden.** Each request is typed, then the recording
   hides until Claude waits for the user again, and shows its answer. The
   status line says when: `● ready`, set by a `Stop` hook, `○ working`
-  from a `UserPromptSubmit` hook and while `bin/urbex` runs - also in
-  the background, as the plugin follows `apply` - until Claude, told the
-  command ended, stops (`claude/statusline.sh`, refreshed every second).
+  from a `UserPromptSubmit` hook, and while an urbex command other than
+  `status` or the plugin's progress follower runs - also in the
+  background, as the plugin follows `apply` - and for 10 seconds after,
+  until Claude, told the command ended, stops (`claude/statusline.sh`,
+  refreshed every second). The image adds python3, which the follower
+  needs.
 - **Each request on a clean screen:** `/clear`, hidden, before it.
 - **What Claude may run:** the session is in `bypassPermissions`, in a
   container that holds only the demo and the workspace, with deny rules

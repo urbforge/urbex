@@ -44,5 +44,6 @@
       }
     ]
   },
-  "spinnerTipsEnabled": false
+  "spinnerTipsEnabled": false,
+  "promptSuggestionEnabled": false
 }
