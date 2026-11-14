@@ -18,7 +18,8 @@
       "Bash(*/usr/local/bin/urbex*)",
       "Bash(*/usr/bin/curl*)",
       "Bash(*command urbex*)",
-      "Bash(*command curl*)"
+      "Bash(*command curl*)",
+      "AskUserQuestion"
     ]
   },
   "statusLine": {

@@ -97,7 +97,9 @@ real one.
   container that holds only the demo and the workspace, with deny rules
   for the workspace's credentials, the GitOps repo and `git push`. The
   plugin's own rule still applies: Claude asks before `release` and
-  `promote`, and the recording answers "yes".
+  `promote`, and the recording answers "yes". It asks in text:
+  `AskUserQuestion` is denied, as its dialog doesn't end the turn and
+  the recording would wait for `● ready` forever.
 - **Nothing private, for Claude either:** the `urbex`, `curl` and `git`
   Claude runs are those of `bin/`, which pass their output through the
   same filter as the CLI's recording, plain. Claude reads `<lan>` and
