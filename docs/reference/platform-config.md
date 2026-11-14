@@ -175,9 +175,12 @@ With the defaults and `cidr: 192.168.1.0/24`:
 | LXC template `urbex-template` | 9090-9099 | 192.168.1.209 while it is built |
 | first project LXC or VM | 9100 | 192.168.1.210 |
 
-Project LXCs and VMs get the next free VMID and IP when first planned, recorded
-in `state/allocations.json` in the GitOps repo, and keep them. A
-destroyed LXC's addresses are not reused.
+Project LXCs and VMs get a VMID and an IP when first planned, recorded
+in `state/allocations.json` in the GitOps repo, and keep them. The IP is
+the lowest free one from the first project address (`.210`), never the
+network's, its broadcast or the gateway: `urbex destroy` gives a
+destroyed LXC's IP back for the next one. VMIDs only go forwards. When
+no address is left in `network.cidr`, `urbex apply` says so.
 
 The IPs must be free on the LAN: Urbex doesn't check, and nothing else
 (DHCP included) should hand them out.
