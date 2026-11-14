@@ -14,7 +14,11 @@
       "Bash(*/work/gitops*)",
       "Bash(git push*)",
       "Bash(*&& git push*)",
-      "Bash(*; git push*)"
+      "Bash(*; git push*)",
+      "Bash(*/usr/local/bin/urbex*)",
+      "Bash(*/usr/bin/curl*)",
+      "Bash(*command urbex*)",
+      "Bash(*command curl*)"
     ]
   },
   "statusLine": {
@@ -45,5 +49,6 @@
     ]
   },
   "spinnerTipsEnabled": false,
-  "promptSuggestionEnabled": false
+  "promptSuggestionEnabled": false,
+  "feedbackSurveyRate": 0
 }

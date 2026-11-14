@@ -47,5 +47,17 @@ for arg, want in [
         failed = True
         print("FAIL parse_host(%r) = %r, want %r" % (arg, got, want))
 print("ok   prepare-proxmox.py parse_host")
+
+follow = load("/skills/cli/follow-progress.py")
+for line, want in [
+    ("urbex bootstrap: running for 2m, about 18m left (started 10:02)", "running"),
+    ("urbex apply staging (my-app): done in 9m12s", "done"),
+    ("urbex destroy prod (my-app): failed after 30s", "failed"),
+]:
+    m = follow.HEADER.match(line)
+    if not m or m.group(2) != want:
+        failed = True
+        print("FAIL HEADER on %r" % line)
+print("ok   follow-progress.py HEADER")
 sys.exit(1 if failed else 0)
 PY

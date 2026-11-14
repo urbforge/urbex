@@ -26,7 +26,8 @@ import time
 
 ANSI = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
 PHASE = re.compile(r"^\s*([✓✗▶·-])\s+(.+?)\s{2,}(.*?)\s*$")
-HEADER = re.compile(r"^urbex (\w+): (running|done|failed|stopped)")
+# "urbex bootstrap: running ...", "urbex apply staging (my-app): done ..."
+HEADER = re.compile(r"^urbex (\w+)[^:]*: (running|done|failed|stopped)")
 
 
 def snapshot(cmd):

@@ -8,8 +8,12 @@ DEMO_PLAIN=1
 # shellcheck source=../demo-env.sh
 source "$here/../demo-env.sh"
 # 'urbex status' is quick, and the progress follower runs it every 15
-# seconds: only the other commands count as work.
-[ "$1" = status ] && exec urbex "$@"
+# seconds: only the other commands count as work. (Not 'exec urbex':
+# that runs the binary, past demo-env.sh's urbex function and its views.)
+if [ "$1" = status ]; then
+  urbex "$@"
+  exit
+fi
 # claude/statusline.sh says "working" while this runs - one file per
 # process, as several may - and still after: until Claude, told the
 # command ended, stops.
