@@ -1,0 +1,48 @@
+{
+  "theme": "dark",
+  "skipDangerousModePermissionPrompt": true,
+  "permissions": {
+    "defaultMode": "bypassPermissions",
+    "deny": [
+      "Read(/work/home/**)",
+      "Edit(/work/home/**)",
+      "Read(/work/gitops/**)",
+      "Edit(/work/gitops/**)",
+      "Bash(*credentials*)",
+      "Bash(*age.key*)",
+      "Bash(*/work/home*)",
+      "Bash(*/work/gitops*)",
+      "Bash(git push*)",
+      "Bash(*&& git push*)",
+      "Bash(*; git push*)"
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash /work/demo/claude-home/statusline.sh",
+    "refreshInterval": 1
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '○ working' > /tmp/claude-demo-state"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '● ready' > /tmp/claude-demo-state"
+          }
+        ]
+      }
+    ]
+  },
+  "spinnerTipsEnabled": false
+}

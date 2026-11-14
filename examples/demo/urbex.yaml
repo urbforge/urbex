@@ -1,0 +1,21 @@
+# The demo of the README (docs/demo): a web page and the small API it
+# calls, both built from this folder's Go code. web is public; api is
+# reached by its internal name, which web gets as API_URL.
+apiVersion: urbex/v1
+project: demo
+services:
+  - name: api
+    runtime: go
+    port: 8080
+    healthcheck: /healthz
+    env:
+      staging:
+        DEMO_ENV: staging
+      prod:
+        DEMO_ENV: production
+  - name: web
+    runtime: go
+    port: 8080
+    healthcheck: /healthz
+    public: true
+    uses: [api]

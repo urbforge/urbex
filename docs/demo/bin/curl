@@ -1,0 +1,10 @@
+#!/bin/bash
+# What Claude Code runs as curl in claude.tape: curl through
+# demo-env.sh: example.com stands for the platform's domain, and the
+# answer shows no LAN address.
+here=$(cd "$(dirname "$0")" && pwd)
+PATH=${PATH//$here:/}
+DEMO_PLAIN=1
+# shellcheck source=../demo-env.sh
+source "$here/../demo-env.sh"
+curl "$@"
