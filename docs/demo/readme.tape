@@ -2,8 +2,9 @@
 # already there - apply staging, open it, release, promote, status. Run
 # it with record.sh, which says what it needs. The waits are cut: the
 # commands run hidden, and the recording shows how each one ends. The
-# addresses are the Cubotto lab platform's (zone urbex.cubotto.net, flat
-# hostnames): change them for another platform.
+# addresses are typed with example.com in place of the platform's domain
+# (flat hostnames: <name>-urbex.<domain>); demo-env.sh's curl asks the
+# real one.
 
 Output readme.gif
 
@@ -30,7 +31,7 @@ Wait
 Show
 Sleep 3s
 
-Type "curl https://web-staging-demo-urbex.cubotto.net" Sleep 400ms Enter
+Type "curl https://web-staging-demo-urbex.example.com" Sleep 400ms Enter
 Wait
 Sleep 2.5s
 
@@ -53,7 +54,7 @@ Wait
 Show
 Sleep 3s
 
-Type "curl https://web-demo-urbex.cubotto.net" Sleep 400ms Enter
+Type "curl https://web-demo-urbex.example.com" Sleep 400ms Enter
 Wait
 Sleep 2s
 

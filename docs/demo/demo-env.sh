@@ -5,7 +5,10 @@
 #   and the GIF cuts the wait while they run (Hide/Show in the tape).
 #   Their colours go first, or the patterns below miss the lines; of
 #   apply, only urbex's own lines are kept (demo_apply_lines).
-# - LAN addresses are replaced: nothing private on screen.
+# - LAN addresses are replaced, and the platform's domain shows as
+#   example.com: nothing private on screen. The tape types example.com
+#   too; curl asks the real domain, read from the workspace's
+#   gitops/urbex.platform.yaml.
 # - `urbex status` (no environment) shows the platform's services with
 #   their public addresses (its Endpoints section, without the internal
 #   and LAN columns), then the demo's lines of its Projects section,
@@ -16,6 +19,8 @@
 #   addresses, image references) dimmed.
 export COLUMNS=100
 demo_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+demo_domain=$(awk '/^domain:/ { print $2 }' "$demo_dir/../gitops/urbex.platform.yaml" 2>/dev/null)
+demo_domain_re=${demo_domain//./\\.}
 # The prompt in mauve, the command typed in bold; PS0 resets the colour
 # before the command's output.
 PS1='\[\e[1;35m\]> \[\e[0;1m\]'
@@ -25,7 +30,16 @@ demo_filter() {
   sed -u -E 's/\x1b\[[0-9;?]*[A-Za-z]//g' |
     grep --line-buffered -v -E '^(TASK|PLAY|ok:|changed:|skipping:|included:|\[WARNING\]|\s*$|.*: ok=[0-9]+ .*)' |
     grep --line-buffered -v -E '^(module\.|data\.|Apply complete|Outputs:|hostnames|ip_addresses|vmids|lxc_|\s+"|\s*\]\)?|\s*\}|Initializing|Terraform|- |Plan:|Saved the plan|To perform|Note:|plan\. |\s*[#+~-] |\s+[a-z_]+\s+= )' |
-    sed -u -E 's/192\.168\.[0-9]+\.[0-9]+/<lan>/g'
+    demo_hide
+}
+
+# What no one outside should see: LAN addresses, the platform's domain.
+demo_hide() {
+  local e='s/192\.168\.[0-9]+\.[0-9]+/<lan>/g'
+  if [ -n "$demo_domain" ]; then
+    e="$e; s/([./-])$demo_domain_re/\\1example.com/g"
+  fi
+  sed -u -E "$e"
 }
 
 demo_color() {
@@ -76,7 +90,7 @@ urbex() {
 }
 demo_apply_lines='^(Keycloak:|Building |Waiting for |Deployed |staging follows|Created |Error|error)|^  [a-z][a-z0-9-]* +(http|[0-9a-f]{7}|[0-9]+\.)|^ {10,}https://'
 
-# The app's answer: its first line in green.
+# The app's answer, from the real domain: its first line in green.
 curl() {
-  command curl -s "$@" | sed -E $'1s/.*/\e[1;32m&\e[0m/'
+  command curl -s "${@//example.com/${demo_domain:-example.com}}" | demo_hide | sed -E $'1s/.*/\e[1;32m&\e[0m/'
 }

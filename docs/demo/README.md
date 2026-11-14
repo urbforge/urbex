@@ -32,9 +32,11 @@ LXCs, Komodo, the build of `main`). Then remove the project:
 cd ~/urbex-workspace/demo/app && urbex destroy staging && urbex destroy prod
 ```
 
-The tape names the Cubotto lab platform's public addresses (zone
-`urbex.cubotto.net`, flat hostnames): change them in `readme.tape` for
-another platform. Keep the GIF under 5 MB.
+The GIF shows `example.com` in place of the platform's domain: the tape
+types it, `demo-env.sh` replaces the domain in every output with it, and
+its `curl` asks the real one, read from the workspace's
+`gitops/urbex.platform.yaml`. The tape assumes flat hostnames
+(`<name>-urbex.<domain>`). Keep the GIF under 5 MB.
 
 ## How the waits are cut, and what is hidden
 
