@@ -6,8 +6,9 @@ the CLI: `urbex apply staging`, the app's public URL, `urbex release`,
 `urbex promote`, `urbex status`. `claude.gif` asks the same of Claude
 Code with Urbex's plugin: "deploy this app to staging", "release it and
 promote it to production" (Claude asks first, the recording says yes),
-"what runs where? just a table, demo only" (the whole answer then fits
-on the screen). Each is recorded from a script, on a real platform, with the project in
+"what runs where? demo only, a table: env, service, version, URL" (four
+columns: a wider table is drawn as a list, taller than the screen; the
+font is smaller than `readme.gif`'s for the same reason). Each is recorded from a script, on a real platform, with the project in
 [`examples/demo`](../../examples/demo): a web page and the small API it
 calls, two Go services, `web` public and `api` reached by its internal
 name.

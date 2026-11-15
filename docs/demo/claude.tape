@@ -10,7 +10,7 @@ Output claude.gif
 
 Set Shell "bash"
 Set FontFamily "JetBrains Mono"
-Set FontSize 20
+Set FontSize 17
 Set Width 1240
 Set Height 760
 Set Padding 24
@@ -56,7 +56,7 @@ Hide
 Type "/clear" Enter
 Sleep 2s
 Show
-Type "what runs where? just a table, demo only" Sleep 400ms Enter
+Type "what runs where? demo only, a table: env, service, version, URL" Sleep 400ms Enter
 Sleep 3s
 Hide
 Wait+Screen /● ready/
