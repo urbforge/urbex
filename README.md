@@ -8,7 +8,7 @@ With the CLI:
 
 Or asking Claude Code, with [Urbex's plugin](docs/getting-started/with-claude-code.md):
 
-![Claude Code asked to deploy the app to staging, to release and promote it after asking first, and what runs where](docs/demo/claude.gif)
+![Claude Code asked to deploy the app to staging, to release and promote it after asking first, and what runs where, as a table](docs/demo/claude.gif)
 
 <!-- The full video, bootstrap included, goes here (urbforge/redemptor#28, step 2). -->
 

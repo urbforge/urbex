@@ -1,6 +1,6 @@
 # The README's second GIF: the same flow as readme.tape, asked of Claude
 # Code with Urbex's plugin - deploy to staging, release and promote
-# (Claude asks first), what runs where. Run it with record.sh (see
+# (Claude asks first), what runs where, as a table. Run it with record.sh (see
 # README.md). Claude works hidden; the status line says when it waits for
 # the user ("● ready", set by the hooks in claude/settings.json), and the
 # recording shows each answer. /clear, hidden, starts each request on a
@@ -56,9 +56,9 @@ Hide
 Type "/clear" Enter
 Sleep 2s
 Show
-Type "what runs where?" Sleep 400ms Enter
+Type "what runs where? just a table, demo only" Sleep 400ms Enter
 Sleep 3s
 Hide
 Wait+Screen /● ready/
 Show
-Sleep 7s
+Sleep 9s
