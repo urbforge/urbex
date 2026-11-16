@@ -40,7 +40,7 @@ else
   if [ "$native" = 1 ]; then
     warn "no podman or docker: the native tools are there, use the native path"
   else
-    miss "podman or docker (or the native tools: Go, terraform, ansible-core, sops, age)"
+    miss "podman or docker (or the native tools: urbex, terraform, ansible-core, sops, age)"
   fi
 fi
 
@@ -48,12 +48,17 @@ if command -v urbex-op >/dev/null; then
   ok "urbex-op on the PATH: $(command -v urbex-op)"
   ws=${URBEX_WORKSPACE:-$HOME/urbex-workspace}
   if [ -d "$ws/home" ]; then ok "workspace: $ws"; else warn "no workspace at $ws yet (urbex-op init)"; fi
-  if [ -n "$engine" ] && "$engine" image exists "${URBEX_OPERATOR_IMAGE:-urbex-operator}" 2>/dev/null; then
-    ok "operator image ${URBEX_OPERATOR_IMAGE:-urbex-operator}"
-  elif [ "$engine" = docker ] && docker image inspect "${URBEX_OPERATOR_IMAGE:-urbex-operator}" >/dev/null 2>&1; then
-    ok "operator image ${URBEX_OPERATOR_IMAGE:-urbex-operator}"
+  # A release's urbex-op names its image ("urbex-op 0.1.0, image ghcr.io/..."); one from
+  # before releases has no version command and runs the image urbex-op build makes.
+  image=$(urbex-op version 2>/dev/null | sed -n 's/^urbex-op .*, image //p')
+  image=${image:-${URBEX_OPERATOR_IMAGE:-urbex-operator}}
+  if [ -n "$engine" ] && "$engine" image inspect "$image" >/dev/null 2>&1; then
+    ok "operator image $image"
   else
-    warn "no operator image yet (urbex-op build)"
+    case "$image" in
+      */*) warn "operator image $image not pulled yet (urbex-op init pulls it)" ;;
+      *) warn "no operator image $image yet (urbex-op build in the urbex-cli checkout)" ;;
+    esac
   fi
 elif command -v urbex >/dev/null; then
   ok "urbex on the PATH (native): $(command -v urbex)"
@@ -61,11 +66,11 @@ else
   warn "urbex is not installed yet"
 fi
 
-# urbex-cli is private until the first release: cloning it needs access.
-if GIT_TERMINAL_PROMPT=0 git ls-remote https://github.com/urbforge/urbex-cli.git HEAD >/dev/null 2>&1; then
-  ok "access to github.com/urbforge/urbex-cli"
+# urbex-op and urbex come from urbex-cli's releases.
+if curl -fsS -o /dev/null --max-time 10 'https://api.github.com/repos/urbforge/urbex-cli/releases?per_page=1'; then
+  ok "urbex-cli's releases reachable on github.com"
 else
-  warn "can't read github.com/urbforge/urbex-cli over HTTPS without credentials: it is private until the first release (fine if you clone it with SSH or gh)"
+  warn "can't reach urbex-cli's releases (api.github.com): urbex-op is downloaded from there"
 fi
 
 if [ $# -ge 1 ] && [ -n "$1" ]; then

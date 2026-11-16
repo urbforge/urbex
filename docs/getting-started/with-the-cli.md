@@ -7,13 +7,17 @@ docker.
 
 ## 1. Get Urbex
 
+Download `urbex-op` from the [release](https://github.com/urbforge/urbex-cli/releases/tag/v0.1.0):
+one script, which runs that release's image,
+`ghcr.io/urbforge/urbex-op:0.1.0`, and pulls it the first time.
+
 ```sh
-git clone https://github.com/urbforge/urbex-cli.git ~/src/urbex-cli
-cd ~/src/urbex-cli
-tools/operator/urbex-op build           # builds the image, with urbex compiled from this checkout
-ln -s "$PWD/tools/operator/urbex-op" ~/bin/urbex-op
+mkdir -p ~/bin
+curl -fsSLo ~/bin/urbex-op https://github.com/urbforge/urbex-cli/releases/download/v0.1.0/urbex-op
+chmod +x ~/bin/urbex-op                 # ~/bin must be on your PATH
 export URBEX_WORKSPACE=~/urbex-work     # put this in your shell's profile
-urbex-op init
+urbex-op init                           # pulls the image the first time
+urbex-op 'urbex version'                # urbex 0.1.0 (commit ..., built ..., linux/amd64)
 ```
 
 `init` creates the **workspace**: one folder with the SSH key Urbex
@@ -136,12 +140,17 @@ That's it. For configuration and secrets see
 
 ## Native tools
 
-Without the container, build `urbex` and set up what the container does
-for you:
+Without the container, download `urbex` from the
+[release](https://github.com/urbforge/urbex-cli/releases/tag/v0.1.0) - the
+archive for your system (Linux or macOS, amd64 or arm64), checked against
+`checksums.txt` - and set up what the container does for you:
 
 ```sh
-cd ~/src/urbex-cli
-mise install && mise run build && mv urbex ~/bin/          # or: go build -o ~/bin/urbex ./cmd/urbex
+v=0.1.0 os=linux arch=amd64                                 # or darwin, arm64
+curl -fsSLO https://github.com/urbforge/urbex-cli/releases/download/v$v/urbex_${v}_${os}_${arch}.tar.gz
+curl -fsSL https://github.com/urbforge/urbex-cli/releases/download/v$v/checksums.txt | grep "_${os}_${arch}.tar.gz" | sha256sum -c   # macOS: shasum -a 256 -c
+tar xzf urbex_${v}_${os}_${arch}.tar.gz urbex && mv urbex ~/bin/
+urbex version
 ssh-keygen -t ed25519 -f ~/.ssh/urbex -C urbex && ssh-add ~/.ssh/urbex
 age-keygen -o ~/urbex.key                                   # back it up
 export URBEX_PROXMOX_TOKEN='urbex@pve!cli=<value>'
@@ -152,8 +161,13 @@ urbex bootstrap
 
 Then run the commands of steps 3 to 6 without `urbex-op '...'`, from
 your app's folder, wherever it is. Terraform, Ansible and sops must be
-on the `PATH` there: with mise, that is `mise use -g` for each tool, or a
-`mise.toml` in that folder.
+on the `PATH` there, at the versions urbex-cli's
+[`mise.toml`](https://github.com/urbforge/urbex-cli/blob/v0.1.0/mise.toml)
+pins: with mise, that is `mise use -g` for each tool, or a `mise.toml` in
+that folder. `urbex doctor` checks them.
+
+To build `urbex` from source instead (to work on it), see *Build & test*
+in [urbex-cli's README](https://github.com/urbforge/urbex-cli#build--test).
 
 ## Configuration and secrets
 

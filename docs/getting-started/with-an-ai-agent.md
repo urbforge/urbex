@@ -18,10 +18,10 @@ your app:
 ```text
 Set up Urbex for me and deploy my app with it.
 
-1. Clone https://github.com/urbforge/urbex and https://github.com/urbforge/urbex-cli
-   side by side, then read urbex/docs/getting-started.md and
+1. Clone https://github.com/urbforge/urbex, read
+   urbex/docs/getting-started.md and
    urbex/docs/getting-started/with-the-cli.md, and follow the latter
-   with the container (urbex-op).
+   with the container: urbex-op, downloaded from the urbex-cli release.
 2. Find every value yourself, don't ask me for what you can discover:
    from this machine the LAN's CIDR, gateway and DNS, the Proxmox node
    (port 8006 on the LAN) and a free block of addresses; once my tokens

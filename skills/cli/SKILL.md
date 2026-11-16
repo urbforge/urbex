@@ -35,14 +35,33 @@ Find out once per session which way the user runs Urbex:
   urbex-op 'cd /work/projects/acme-app && urbex status staging'
   ```
   The GitOps repo is `/work/gitops` there, `<workspace>/gitops` on the
-  host. After updating the `urbex-cli` checkout, `urbex-op build` rebuilds
-  the image.
+  host. A release's `urbex-op` runs that release's image; to move to a
+  new release, see [Upgrading](${CLAUDE_PLUGIN_ROOT}/docs/upgrading.md). From a checkout of urbex-cli,
+  `urbex-op build` rebuilds the image after updating it.
 - **Native** (`command -v urbex`): run `urbex ...` in the project's
   folder, with `URBEX_GITOPS_REPO` set to the GitOps repo's working copy
   (or `--gitops-repo`). Credentials come from environment variables, then
   `~/.urbex/credentials.yaml`.
 
 Neither: use the `setup` skill.
+
+## Versions
+
+This plugin (0.2.0) needs **urbex 0.1.0 or later, with the same major
+version (0)**. Once per session, run `urbex version` (`urbex-op
+'urbex version'`):
+
+- older than 0.1.0, or `urbex: unknown command "version"` (built before
+  versions existed): tell the user to upgrade, as
+  [Upgrading](${CLAUDE_PLUGIN_ROOT}/docs/upgrading.md) says, before going on;
+- another major version (1.x): the plugin and the CLI don't match;
+  tell the user to update the plugin (`/plugin marketplace update urbex`)
+  or use a CLI of major 0;
+- `dev` (built from source): fine, it is a checkout's `main`.
+
+The plugin and the CLI each have their own version: the plugin works
+with any CLI of the same major. While both are 0.x a minor may still
+break, hence the minimum.
 
 ## Following a long command
 

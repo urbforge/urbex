@@ -16,13 +16,16 @@ Write the app; Urbex gives it everything else - repositories, builds, deploys, l
 
 Every environment, from a homelab to the cloud, should give applications the same fundamental services, the same way. Urbex is that platform.
 
-> **Status: working prototype, not released yet.** The whole flow - from an
+> **Status: preview release ([v0.1.0](https://github.com/urbforge/urbex-cli/releases/tag/v0.1.0)).** The whole flow - from an
 > empty Proxmox node to an app in staging and production - runs end to end
-> and has been validated on a real server. The CLI is open source
-> ([Apache-2.0](LICENSE)) and public:
-> [`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli). You build
-> it from its repository - see [Get Urbex](docs/getting-started/with-the-cli.md#1-get-urbex).
-> We are looking for testers: see
+> and has been validated on a real server. Download `urbex`, or `urbex-op`
+> and its image, from the release - see
+> [Get Urbex](docs/getting-started/with-the-cli.md#1-get-urbex). A preview:
+> no backups yet, Proxmox only, one operator - see the
+> [known limitations](docs/known-limitations.md). The CLI is open source
+> ([Apache-2.0](LICENSE)):
+> [`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli). We are
+> looking for testers: see
 > [Try it early, tell us what's missing](#try-it-early-tell-us-whats-missing).
 
 ## Who it's for - today
@@ -221,8 +224,8 @@ trimmed once its base services are settled):
 
 **How to tell us**: open an
 [issue](https://github.com/urbforge/urbex/issues) - what you deployed,
-where it stopped, what you expected, and the output of the command that
-failed. A problem with the CLI itself can also go to
+where it stopped, what you expected, the output of the command that
+failed, and `urbex version` (or `urbex-op 'urbex version'`). A problem with the CLI itself can also go to
 [urbex-cli's issues](https://github.com/urbforge/urbex-cli/issues). If
 you help people take their apps to production and see what's missing,
 tell us too: it shapes the roadmap.
@@ -244,6 +247,7 @@ Start here:
   [CLI](docs/getting-started/with-the-cli.md), [any AI
   agent](docs/getting-started/with-an-ai-agent.md) or [Claude
   Code](docs/getting-started/with-claude-code.md).
+- [**Upgrading**](docs/upgrading.md) — moving to a new release.
 - [**Cookbook**](docs/cookbook.md) — recipes: releasing, rolling back,
   pinning staging, secrets, adding services, troubleshooting, driving
   Urbex from an LLM agent (the Claude Code plugin included).
