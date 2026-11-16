@@ -1,0 +1,27 @@
+#!/bin/bash
+# What Claude Code runs as urbex in claude.tape: urbex through
+# demo-env.sh's views, plain - so Claude reads, and the GIF shows, no LAN
+# address and not the platform's domain.
+here=$(cd "$(dirname "$0")" && pwd)
+PATH=${PATH//$here:/}
+DEMO_PLAIN=1
+# shellcheck source=../demo-env.sh
+source "$here/../demo-env.sh"
+# 'urbex status' is quick: only the other commands count as work, and
+# 'status --watch', which follows a command running elsewhere. (Not 'exec
+# urbex': that runs the binary, past demo-env.sh's urbex function and
+# its views.)
+if [ "$1" = status ] && [[ " $* " != *" --watch "* ]]; then
+  urbex "$@"
+  exit
+fi
+# claude/statusline.sh says "working" while this runs - one file per
+# process, as several may - and still after: until Claude, told the
+# command ended, stops.
+mkdir -p /tmp/claude-demo-urbex
+echo $$ >"/tmp/claude-demo-urbex/$$"
+urbex "$@"
+rc=$?
+echo '○ working' >/tmp/claude-demo-state
+rm -f "/tmp/claude-demo-urbex/$$"
+exit "$rc"
