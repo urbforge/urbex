@@ -93,12 +93,54 @@ nor an image of its own: its LXC pulls the image it declares (see
 | `provides` | `postgres` | none | The interface the application implements, so that Urbex configures it and passes its connection to the applications that use it. See [linked applications](#linked-applications). |
 | `uses` | list of names | | The applications of the stack this one needs. Its Stack waits until they are healthy before it starts, and it gets their connection. See [linked applications](#linked-applications). |
 | `ready_within` | `<n>s` or `<n>m` | `60s` | How long the application may take to be healthy after it starts. The applications that use it wait for it that long, and after a reboot Proxmox waits that long, up to 5 minutes, before it starts their LXCs. |
-| `resources.cpu` | integer ≥ 1 | `1` | Cores of the LXC. |
-| `resources.memory` | `<n>Mi` or `<n>Gi` | `1Gi` | Memory of the LXC. |
-| `resources.disk` | `<n>Mi` or `<n>Gi` | `5Gi` | Root disk of the LXC, rounded up to whole GiB. |
+| `machine` | `lxc`, `vm` | `lxc` | What the application runs on: an unprivileged LXC, or a VM in the platform's pool for what an LXC can't do without root - the `keyctl`, `mount` or `fuse` features. See [machine](#machine). |
+| `resources.cpu` | integer ≥ 1 | `1` | Cores of the LXC or VM. |
+| `resources.memory` | `<n>Mi` or `<n>Gi` | `1Gi` | Memory of the LXC or VM. A VM gets at least `1Gi`, and gives back what it doesn't use down to half of it (ballooning). |
+| `resources.disk` | `<n>Mi` or `<n>Gi` | `5Gi`, `8Gi` for a VM | Root disk of the LXC or VM, rounded up to whole GiB. A VM's is at least `5Gi`, the size of its template. |
 | `env.staging`, `env.prod` | map of strings | | **Initial** configuration of the service in that environment: written to its `config.env` in the GitOps repo when the environment is first applied, and never again. Change `config.env` after that. Never put secrets here - use `urbex secret`. |
 | `auth.keycloak` | boolean | `false` | The service authenticates users with Keycloak: it gets `KEYCLOAK_REALM`, `KEYCLOAK_ISSUER` and `KEYCLOAK_JWKS_URL` (its environment's realm, the issuer the tokens carry, the signing keys) to validate tokens ([ADR-0024](../decisions/0024-keycloak-realm-per-environment.md)). |
 | `auth.roles` | list | | Realm roles the service checks: created in each environment's realm (`<project>-<env>`); in staging, a test user per role (`test-<role>`, see `urbex users`). |
+
+## Machine
+
+Every application runs in an unprivileged LXC unless it says
+`machine: vm` ([ADR-0033](../decisions/0033-vm-for-keyctl-mount-fuse.md)):
+
+```yaml
+services:
+  - name: backup
+    image: rclone/rclone
+    version: "1.71"
+    machine: vm
+```
+
+An LXC is enough for almost every application, Docker included. A VM is
+for what an unprivileged LXC can't get without `root@pam`: the `keyctl`,
+`mount` (NFS or SMB from inside the machine) or `fuse` features (rclone
+mounts, sshfs, some backup tools). It has its own kernel, so it can do
+all of that with nothing asked of the Proxmox node.
+
+A VM is a linked clone of urbex's VM template, which `urbex apply` builds
+the first time an application asks for one, from the cloud image named
+by [`proxmox.vmImage`](platform-config.md#a-vm-image) in the platform
+config. It is otherwise like an LXC: its own VMID and IP from the
+allocation ledger, Docker and Komodo Periphery, a record in the internal
+DNS zone, its logs and resources in Grafana, and its Stack deployed by
+Komodo. `apply` names the applications that run in a VM.
+
+It costs more: about 300-400 MB of memory more than an LXC (a kernel and
+its page cache) and a boot of tens of seconds instead of a few. Ask for
+one only when the application needs it.
+
+- **Switching** an application between `lxc` and `vm` replaces its
+  machine: `urbex apply` deletes the old one and creates the new one.
+  It refuses to for a machine with named volumes, even with
+  `--delete-data`.
+- **Named volumes** are disks of the VM, mounted where an LXC mounts
+  them: see [volumes](#volumes).
+- **Not yet in a VM:** shares. `urbex apply` refuses an application with
+  `machine: vm` that declares one; the VM will mount them itself over
+  NFS or SMB ([urbforge/urbex-cli#83](https://github.com/urbforge/urbex-cli/issues/83)).
 
 ## Runtimes
 
@@ -216,6 +258,18 @@ Terraform deletes the LXC and Proxmox its volumes. A volume removed from
 `urbex.yaml` is no longer mounted in the container, but stays on the LXC
 until `urbex destroy --delete-data`.
 
+In a **VM** ([`machine: vm`](#machine)) a named volume is a disk of the
+VM instead, on the same storage, with `backup=1`, and the serial
+`<application>-<name>` (cut to Proxmox's 20 characters with a hash when
+longer), by which the VM finds it whatever its order. `urbex apply`
+plugs it in while the VM runs; Ansible formats it ext4 the first time
+and mounts it with a systemd unit, by its filesystem's UUID, at the same
+`/srv/volumes/<application>/<name>`, before Docker starts. Everything
+else holds as for an LXC: Docker fills it from the image, it grows when
+`size` grows (the disk, then the filesystem, online), it can't shrink,
+and it goes only with `--delete-data`. Switching an application with
+named volumes between `lxc` and `vm` is refused.
+
 A **share** is a folder of the Proxmox node that exists outside Urbex,
 such as a NAS's media library. The operator declares it once in
 `urbex.platform.yaml`, and every application that names it mounts it, at
@@ -279,7 +333,7 @@ What an application gets from what it uses.
 
 | Provider | The provider gets | An application that uses it gets |
 |---|---|---|
-| `provides: postgres` | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `PGDATA` in its volume | `DATABASE_URL`, `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`, for a role of its own named after it ([ADR-0030](../decisions/0030-postgresql-application.md)); Urbex does not create that role yet, see [known limitations](../known-limitations.md#projects-and-deploys) |
+| `provides: postgres` | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `PGDATA` in its volume | `DATABASE_URL`, `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`, for a role and a schema of its own, named after it ([ADR-0030](../decisions/0030-postgresql-application.md)) |
 | any other application | nothing | `<APP>_HOST`, `<APP>_PORT`, `<APP>_URL`, where `<APP>` is the name in capitals with `_` for `-` |
 
 An application that uses two providers of the same interface gets each
@@ -305,10 +359,27 @@ Rules that `urbex apply` enforces.
 - The variables Urbex generates cannot be set with `urbex secret`, since
   `apply` would overwrite them.
 
+What a `postgres` provider holds. One server and one database, named
+after the project (`-` turned into `_`), per environment. Each
+application that uses it has a role and a schema named after it (`-`
+turned into `_`, so `admin-ui` gets `admin_ui`), the schema owned by the
+role and first in its `search_path`: the application reads and writes its
+own tables without naming the schema, and has no rights on the other
+applications' schemas nor on `public`. `urbex apply` makes them on every
+run, once the provider takes connections and before the applications
+start, through a Komodo exec in the provider's container, and changes
+only what is missing; the password is sent as a SCRAM-SHA-256 verifier,
+never in clear. The server's own user, `urbex`, is for Urbex only. An
+application that needs a database to itself declares a provider of its
+own. An application removed, or that stops using the provider, keeps its
+role and schema, with their data, until `urbex apply <env> --delete-data`
+drops them, naming them first.
+
 How the order holds. Each application that uses others has, in its
 compose file, a service `wait` that probes them as the application will
-reach them, a `postgres` provider with `pg_isready` and any other with
-its healthcheck. A provider counts as healthy once it has answered every
+reach them, a `postgres` provider by logging in with the application's
+own role (so the role must exist too) and any other with its
+healthcheck. A provider counts as healthy once it has answered every
 probe for 20 seconds; a single failure starts the 20 seconds again. The
 wait gives up after the longest chain of `ready_within` upstream, plus
 20 s per level, and the application then does not start. The
@@ -378,6 +449,7 @@ command uses them yet (see [`status.md`](../status.md)).
 | `version` of an application from an image | `urbex deploy <env> --app <name> --update` in each environment, or `urbex deploy staging --app <name> --update` followed by `urbex promote`. |
 | `environments` | `urbex apply <env>` for an environment added; an environment removed from the list is not destroyed: run `urbex destroy <env>` before removing it. |
 | `resources` | `urbex plan <env>`, then `urbex apply <env>`. |
+| `machine` | `urbex apply <env>`, which replaces the machine; refused for one with named volumes. |
 | `provides`, `uses`, `ready_within`, references in `env` | `urbex apply <env>`, which regenerates the generated files and the wait. |
 | `volumes` | `urbex apply <env>`, which adds a new named volume and grows a bigger one. A new share needs the operator's `pct set` first. |
 | A new service | `urbex apply <env>` in each environment. |

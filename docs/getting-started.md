@@ -10,10 +10,9 @@ first time, most of it spent waiting for downloads.
 > real Proxmox VE 9.2 node - see [`status.md`](status.md) and
 > [`known-limitations.md`](known-limitations.md).
 >
-> ⚠️ The CLI's repository, [`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli),
-> isn't public yet: it will be, as open source, with the first release.
-> Until then, cloning it needs access to it. This repository,
-> `urbforge/urbex`, is public and holds the documentation.
+> The CLI is open source (Apache-2.0), in
+> [`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli); this
+> repository, `urbforge/urbex`, holds the documentation.
 
 ## How Urbex works
 
@@ -72,6 +71,28 @@ creating the platform and the environments, releasing, promoting.
   ```
   The token is `urbex@pve!cli=<value>`, with the value the last command
   prints.
+- **Memory, disk and CPU**: about **6 GiB of free memory** (8 to be
+  comfortable) and **30 GiB of free disk** for the platform and a first
+  app in two environments. Measured on the test node (Proxmox VE 9.2,
+  ZFS storage), with the platform and a three-service app in production:
+
+  | | Memory used, at its peak | Disk | Limits urbex sets |
+  |---|---|---|---|
+  | The six platform LXCs together | 4 GiB, 4.5 during a build; 5.6 GiB with the page cache (Komodo up to 1.2 while building) | 16 GiB of files; 11 GiB written on ZFS, with the 1.5 GiB template the LXCs are linked clones of; a first build adds 2.7 GiB of build cache on Komodo | 11.5 GiB memory, 79 GiB disk |
+  | Each service, per environment | 0.25 GiB; 0.55 GiB with the page cache | 2 GiB of files; 0.5 GiB written on ZFS, plus a 1.5 GiB template shared by every service | 1 GiB memory, 5 GiB disk (`resources`) |
+
+  The limits aren't reserved: an LXC's memory is a ceiling, and on a
+  thin storage (ZFS, LVM-thin) a disk takes only what is written on it.
+  The node needs what is actually used, plus room for builds; on a
+  storage that isn't thin (plain LVM), each disk takes its full size.
+  The page cache is given back when memory runs short. The test node
+  has 8 threads of a 2012 low-power Xeon (E3-1265L v2): over a month,
+  urbex and the node's other guests used 43% of it at most. Komodo
+  builds with the 2 cores of its LXC: the sample app, a Go API and a web
+  frontend, built in about 5 minutes, with 1.75 cores busy.
+
+  > These figures aren't optimised yet: trimming the platform's
+  > resources will be planned once its base services are settled.
 - **A free block of IPs on the LAN**: 10 for the platform, then one per
   service per environment.
 - **A domain name.** With Cloudflare, it's your Cloudflare zone.

@@ -23,9 +23,8 @@ From the `/plugin` menu instead, choose *Add Marketplace* and enter only
 `urbforge/urbex`; then install `urbex` from the marketplace's list.
 
 It also needs `python3`, 3.8 or later, on your machine, for the scripts
-that find your settings. Until `urbex-cli` is public, you need access to
-[`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli) to build
-`urbex`.
+that find your settings. `urbex` itself is built from
+[`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli).
 
 ## 2. Set up Urbex
 
