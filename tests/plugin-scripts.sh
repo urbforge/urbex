@@ -49,3 +49,15 @@ for arg, want in [
 print("ok   prepare-proxmox.py parse_host")
 sys.exit(1 if failed else 0)
 PY
+py_rc=$?
+
+# The plugin's version has its notes in CHANGELOG.md ("### Plugin X",
+# under its release or Unreleased) - urbforge/redemptor#54.
+plugin=$(sed -n 's/^ *"version": "\(.*\)",$/\1/p' .claude-plugin/plugin.json)
+if grep -q "^### Plugin $plugin\$" CHANGELOG.md; then
+  echo "ok   CHANGELOG.md has plugin $plugin"
+else
+  echo "FAIL CHANGELOG.md has no '### Plugin $plugin' section: add the plugin's notes" >&2
+  exit 1
+fi
+exit "$py_rc"
