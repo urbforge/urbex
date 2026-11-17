@@ -16,6 +16,13 @@ validation on a real Proxmox VE 9.2 node and Cloudflare account, and of
 Cloudflare Quick Tunnel
 ([ADR-0025](decisions/0025-cloudflare-quick-tunnel.md)) on the same node.
 
+**v0.1.0 is a preview release.** In short: no backups of the platform
+yet ([below](#operations-and-security), planned in M3); Proxmox only
+(VPS support is planned in M3, E3-bis); a single operator, from one
+workspace; and while Urbex is 0.x, a
+minor release may change how something works (see
+[Upgrading](upgrading.md)).
+
 - [Platform](#platform)
 - [Projects and deploys](#projects-and-deploys)
 - [Public endpoints (Cloudflare)](#public-endpoints-cloudflare)

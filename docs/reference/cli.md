@@ -19,6 +19,7 @@ the [cookbook](../cookbook.md).
 - [`urbex destroy`](#urbex-destroy)
 - [`urbex teardown`](#urbex-teardown)
 - [`urbex users`](#urbex-users)
+- [`urbex version`](#urbex-version)
 - [Environment variables](#environment-variables)
 - [Exit status and output](#exit-status-and-output)
 
@@ -85,10 +86,13 @@ fails for no clear reason.
 - **cloudflare**, with an account in the config: the token is active and
   sees the zone of `domain`.
 
-Each check is `ok`, `warn`, `fail` or `skip`; a check that isn't `ok`
-has its fix under it. On the lab:
+It starts with urbex's own version, as [`urbex version`](#urbex-version)
+prints it. Each check is `ok`, `warn`, `fail` or `skip`; a check that
+isn't `ok` has its fix under it. On the lab:
 
 ```
+urbex 0.1.0 (commit 1a2b3c4, built 2026-11-20T10:00:00Z, linux/amd64)
+
 tools:
   ok    git                git version 2.47.3
   ok    terraform          Terraform v1.13.3
@@ -126,8 +130,8 @@ proxmox:
 ```
 
 It exits non-zero when a check failed. `--output json` prints the report
-as one JSON document, `{"checks": [{"group", "name", "status", "detail",
-"fix"}], "ok": true}`, for the setup UI and the plugin
+as one JSON document, `{"version", "checks": [{"group", "name", "status",
+"detail", "fix"}], "ok": true}`, for the setup UI and the plugin
 ([ADR-0032](../decisions/0032-web-ui-console-ai-assistant.md)).
 
 ## `urbex discover`
@@ -949,6 +953,39 @@ command is for:
   "users": [ { "username": "test-member", "password": "4f0c9b..." } ]
 }
 ```
+
+## `urbex version`
+
+```
+urbex version [--output text|json]
+urbex --version
+```
+
+Prints which build this is: say it in a bug report. A release says its
+version; a build from source says `dev`, the commit and its date, and
+`-dirty` if the tree had uncommitted changes:
+
+```
+$ urbex version
+urbex 0.1.0 (commit 1a2b3c4, built 2026-11-20T10:00:00Z, linux/amd64)
+$ urbex version              # built from a checkout
+urbex dev (commit 9df118e-dirty, committed 2026-11-16T17:38:34Z, linux/amd64)
+```
+
+`urbex --version` prints the same line. `--output json`:
+
+```json
+{
+  "version": "0.1.0",
+  "commit": "1a2b3c4d5e6f...",
+  "date": "2026-11-20T10:00:00Z",
+  "go": "go1.26.5",
+  "platform": "linux/amd64"
+}
+```
+
+`date` is the build's, set by a release; a build from source has
+`commit_date` instead, and `modified` when the tree had changes.
 
 ## Progress events
 

@@ -22,6 +22,7 @@ Proxmox VE 9.2 node, see [What has been validated](#what-has-been-validated).
 
 | Area | State |
 |---|---|
+| Distribution | Releases of `urbex-cli` ([v0.1.0](https://github.com/urbforge/urbex-cli/releases/tag/v0.1.0), a preview): `urbex` for Linux and macOS (amd64, arm64) with checksums and provenance, `urbex-op` and its image `ghcr.io/urbforge/urbex-op`; `urbex version`. Moving to a new release: [Upgrading](upgrading.md) |
 | App manifest (`urbex.yaml`) | Formal JSON Schema, typed Go decoding, `urbex init` scaffolds and validates |
 | Platform config (`urbex.platform.yaml`) | Scaffolded and validated by `urbex bootstrap` |
 | Credentials | Env vars, falling back to `~/.urbex/credentials.yaml`; never written to the GitOps repo |

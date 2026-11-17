@@ -23,8 +23,11 @@ From the `/plugin` menu instead, choose *Add Marketplace* and enter only
 `urbforge/urbex`; then install `urbex` from the marketplace's list.
 
 It also needs `python3`, 3.8 or later, on your machine, for the scripts
-that find your settings. `urbex` itself is built from
-[`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli).
+that find your settings. `urbex` itself comes from the releases of
+[`urbforge/urbex-cli`](https://github.com/urbforge/urbex-cli/releases):
+the plugin downloads it. The plugin has its own version; it works with
+any `urbex` of the same major version and says when yours is older than
+it needs - see [Plugin and CLI versions](../upgrading.md#plugin-and-cli-versions).
 
 ## 2. Set up Urbex
 
@@ -42,7 +45,8 @@ Or ask in plain words: "set up Urbex on my Proxmox node". What happens:
    pings each address of the LAN once.
 2. **It asks one question**: whether you use Cloudflare. The choices are
    none, a Quick Tunnel, or your own zone.
-3. **It builds `urbex-op`** and creates the workspace in `~/urbex-work`.
+3. **It downloads `urbex-op`** from the newest release of urbex-cli, and
+   creates the workspace in `~/urbex-work` (which pulls the image).
 4. **You prepare Proxmox**, choosing between two ways: a script, which
    it recommends, or the commands by hand. The script runs in your own
    terminal, not in the chat. It asks for the password of `root@pam` without showing it,

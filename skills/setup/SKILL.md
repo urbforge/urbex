@@ -61,11 +61,11 @@ before there is a token; from step 5, `urbex doctor` and `urbex
 discover` take over.
 
 - `check-prerequisites.sh`: git, ssh-keygen, python3 (3.8 or later),
-  podman or docker, an existing `urbex-op`, workspace or `urbex`, access
-  to `urbex-cli`.
+  podman or docker, an existing `urbex-op` (and its image), workspace or
+  `urbex`, urbex-cli's releases reachable.
   For a missing tool, say how to install it on the user's OS. podman or
-  docker is all Urbex needs; the native path (Go, Terraform, Ansible,
-  sops, age, through mise) is for users who can't run containers: see
+  docker is all Urbex needs; the native path (`urbex` from the
+  release, plus Terraform, Ansible, sops, age) is for users who can't run containers: see
   *Native tools* in `${CLAUDE_PLUGIN_ROOT}/docs/getting-started/with-the-cli.md`.
 - `discover-network.py` pings the LAN's addresses once (a /24 at most) and
   prints, as JSON, this machine's address, the LAN's CIDR, gateway and
@@ -93,17 +93,24 @@ LAN, the free block you propose. Then ask only:
 
 ## 3. Get Urbex and the workspace
 
-`urbex-cli` is private until the first release: the user needs access to
-`github.com/urbforge/urbex-cli`. Clone it, by default in
-`~/src/urbex-cli`, with the protocol that works (`gh repo clone
-urbforge/urbex-cli`, or SSH). Then:
+Download `urbex-op` from the newest release of `urbforge/urbex-cli`
+(pre-releases included: while Urbex is 0.x every release is one, so
+`releases/latest` finds none). It runs that release's image,
+`ghcr.io/urbforge/urbex-op:<version>`, and pulls it the first time:
 
 ```sh
-cd ~/src/urbex-cli
-tools/operator/urbex-op build                  # a few minutes the first time
-mkdir -p ~/.local/bin && ln -sf "$PWD/tools/operator/urbex-op" ~/.local/bin/urbex-op
-urbex-op -w ~/urbex-work init
+tag=$(curl -fsSL 'https://api.github.com/repos/urbforge/urbex-cli/releases?per_page=1' \
+  | python3 -c 'import json, sys; print(json.load(sys.stdin)[0]["tag_name"])')
+mkdir -p ~/.local/bin
+curl -fsSLo ~/.local/bin/urbex-op "https://github.com/urbforge/urbex-cli/releases/download/$tag/urbex-op"
+chmod +x ~/.local/bin/urbex-op
+urbex-op -w ~/urbex-work init                  # pulls the image the first time: a minute or two
+urbex-op -w ~/urbex-work 'urbex version'
 ```
+
+Check the version as the `cli` skill's *Versions* says. If the user
+already runs Urbex from a checkout of urbex-cli (`urbex-op` there, its
+image built with `urbex-op build`), keep it: don't download over it.
 
 - Check that `~/.local/bin` is on their `PATH`, and have them add
   `export URBEX_WORKSPACE=~/urbex-work` to their shell's profile. Your
@@ -114,7 +121,7 @@ urbex-op -w ~/urbex-work init
   `~/urbex-work/home/age.key`** outside the workspace: every secret is
   encrypted to it, and it can't be recovered.
 
-While the build runs, go on with step 4: the user can read it meanwhile.
+While the image is pulled, go on with step 4: the user can read it meanwhile.
 
 ## 4. Prepare Proxmox and the tokens (the user)
 

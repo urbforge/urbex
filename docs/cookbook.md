@@ -1047,19 +1047,24 @@ its resource metrics are still collected.
 ## Run urbex from a container
 
 Rather than installing `terraform`, `ansible-playbook`, `sops` and the
-rest, run `urbex` with `tools/operator/urbex-op` from `urbforge/urbex-cli`
-(podman or docker). It works on a **workspace**: one folder with the
+rest, run `urbex` with `urbex-op` (podman or docker): one script, from
+each [release](https://github.com/urbforge/urbex-cli/releases), that runs
+the release's image `ghcr.io/urbforge/urbex-op:<version>` and pulls it
+the first time. It works on a **workspace**: one folder with the
 credentials, the SSH and age keys, the GitOps repo and your projects.
 
 ```sh
-cd urbex-cli
-tools/operator/urbex-op build                     # the image, with urbex built from the checkout
-tools/operator/urbex-op -w ~/urbex-work init      # SSH key, age key, folders
-tools/operator/urbex-op -w ~/urbex-work set proxmoxToken   # stored in the workspace (or export URBEX_PROXMOX_TOKEN)
-tools/operator/urbex-op -w ~/urbex-work 'urbex bootstrap'
-tools/operator/urbex-op -w ~/urbex-work 'cd /work/projects/acme-app && urbex apply staging'
-tools/operator/urbex-op -w ~/urbex-work shell     # an interactive shell
+curl -fsSLo ~/bin/urbex-op https://github.com/urbforge/urbex-cli/releases/download/v0.1.0/urbex-op
+chmod +x ~/bin/urbex-op
+urbex-op -w ~/urbex-work init      # SSH key, age key, folders
+urbex-op -w ~/urbex-work set proxmoxToken   # stored in the workspace (or export URBEX_PROXMOX_TOKEN)
+urbex-op -w ~/urbex-work 'urbex bootstrap'
+urbex-op -w ~/urbex-work 'cd /work/projects/acme-app && urbex apply staging'
+urbex-op -w ~/urbex-work shell     # an interactive shell
 ```
+
+From a checkout of `urbforge/urbex-cli`, `tools/operator/urbex-op build`
+builds the image from the checkout instead, and that script runs it.
 
 The workspace is `/work` in the container (`$HOME` is `/work/home`, the
 GitOps repo `/work/gitops`). Details in `tools/operator/README.md`.

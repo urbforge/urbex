@@ -6,8 +6,10 @@ prerequisites. Then pick a guide: Claude Code with the Urbex plugin,
 any other AI agent, or the commands typed by you. Allow an hour the
 first time, most of it spent waiting for downloads.
 
-> ⚠️ Urbex is early-stage. Everything here has been run end to end on a
-> real Proxmox VE 9.2 node - see [`status.md`](status.md) and
+> ⚠️ Urbex is a preview release
+> ([v0.1.0](https://github.com/urbforge/urbex-cli/releases/tag/v0.1.0)).
+> Everything here has been run end to end on a real Proxmox VE 9.2 node -
+> see [`status.md`](status.md) and
 > [`known-limitations.md`](known-limitations.md).
 >
 > The CLI is open source (Apache-2.0), in
@@ -119,8 +121,8 @@ Linux or macOS, `git`, and one of the following:
 
 | | Install | Notes |
 |---|---|---|
-| **Container** (recommended) | `podman` or `docker` | Nothing else: the image has `urbex`, Terraform, Ansible, sops and age at the versions the CLI is tested with. Go isn't needed. |
-| **Native** | [mise](https://mise.jdx.dev), then `mise install` in the `urbex-cli` checkout | Installs the pinned versions of Go (only to build `urbex`), Terraform, Ansible, sops and age, listed in `urbex-cli`'s `mise.toml`. Without mise, install them yourself: Go 1.26, Terraform 1.13 (or OpenTofu), `ansible-core`, `sops`, `age`, plus `ssh`. |
+| **Container** (recommended) | `podman` or `docker` | Nothing else: `urbex-op`, from the release, runs the release's image, which has `urbex`, Terraform, Ansible, sops and age at the versions the CLI is tested with. |
+| **Native** | `urbex` from the release, plus Terraform, Ansible, sops and age | The versions `urbex-cli`'s `mise.toml` pins: with [mise](https://mise.jdx.dev), `mise use -g` each of them; without, install them yourself: Terraform 1.13 (or OpenTofu), `ansible-core`, `sops`, `age`, plus `ssh`. |
 
 Every guide below uses the container. With the native tools, run the
 same `urbex ...` commands directly, after the extra setup in
