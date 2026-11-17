@@ -92,7 +92,24 @@ Hetzner 19%, Cloudflare R2 5%.
      a Proxmox Backup Server datastore added to the node, or any storage
      whose content includes `backup` (an NFS share, a directory). **Never
      a default**: without it the Proxmox layer is off, and `doctor` says
-     so. urbex doesn't create or configure the storage.
+     so. In a real setup **the PBS runs on a dedicated device or another
+     host, never on the node it backs up**: a PBS on the same node is
+     lost with it, and is only for testing.
+   - **Adding the storage to Proxmox** (Datacenter > Storage) needs
+     privileges the platform's pool-scoped token doesn't have
+     (`Datastore.Allocate` on `/storage`, `Sys.Modify`). Two ways, both
+     documented:
+     - **by hand, once, by the operator** - the default, least
+       privilege: add the PBS storage (address, datastore, the PBS
+       user's token, the fingerprint), then grant the platform's token
+       `Datastore.AllocateSpace` and `Datastore.Audit` on it;
+     - **with a separate, more privileged Proxmox token**, used only for
+       that setup step (`urbex backup setup-proxmox` or its documented
+       API calls) and **never stored on the platform** - passed in the
+       environment for that one command.
+
+     Either way, urbex itself only ever needs `VM.Backup` on the pool and
+     `Datastore.AllocateSpace`/`Datastore.Audit` on that storage.
    - **Mode**: `snapshot` by default (no downtime; on ZFS or LVM-thin a
      storage snapshot, on PBS its incremental, deduplicated format);
      `suspend` or `stop` per machine when asked (`backups.proxmox.mode`).
