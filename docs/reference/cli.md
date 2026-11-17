@@ -18,6 +18,7 @@ the [cookbook](../cookbook.md).
 - [`urbex status`](#urbex-status)
 - [`urbex destroy`](#urbex-destroy)
 - [`urbex teardown`](#urbex-teardown)
+- [`urbex updates`](#urbex-updates)
 - [`urbex users`](#urbex-users)
 - [`urbex version`](#urbex-version)
 - [Environment variables](#environment-variables)
@@ -917,6 +918,46 @@ Destroys the platform `urbex bootstrap` created: the inverse of
 Needs: `URBEX_PROXMOX_TOKEN`, `URBEX_AGE_KEY`, `terraform`. The Proxmox
 resource pool, its storages, the token and the Debian template
 (`proxmox.lxcTemplate`) are left as they are.
+
+## `urbex updates`
+
+```
+urbex updates [<env>] [--file urbex.yaml] [--gitops-repo <dir>] [--output text|json]
+```
+
+Says, for each application from a published image applied in `<env>`
+(or in staging and prod), whether a newer image is available. It
+changes nothing:
+
+- **the tag `urbex.yaml` asks for points to another image** than the one
+  running (a tag like `17` or `1.29` moves): `urbex deploy <env>
+  --update` runs it;
+- **a newer tag of the same major** - a minor or patch version: deploy
+  it with `urbex deploy <env> --app <app> --version <tag>`, and set it
+  in `urbex.yaml`;
+- **a newer major**: listed only, never proposed - its data may need a
+  migration, and its release notes say how (see
+  [`--allow-major`](#urbex-deploy)).
+
+Only tags shaped like the asked one are compared: as many numbers, the
+same `v` and the same suffix - `1.29` with `1.30` and `2.0`, not with
+`1.30.1`, `1.30-alpine` or `latest`. A tag without a version
+(`latest`) has no newer tags. The tags come from the registry, asked
+anonymously, as `deploy --update` does.
+
+```
+$ urbex updates
+shop (staging):
+  db               postgres:17.6, running 17.6@sha256:0d93...
+                   newer: 17.12 - urbex deploy staging --app db --version 17.12
+                   new major: 18.7 - read its release notes first; not proposed
+  cache            valkey/valkey:8, running 8@sha256:4f1a...
+                   8 points to a newer image: urbex deploy staging --update
+                   new major: 9 - read its release notes first; not proposed
+```
+
+`--output json`: `{"project", "updates": [{"env", "app", "image",
+"asked", "running", "newDigest", "minor", "major", "error"}]}`.
 
 ## `urbex users`
 
