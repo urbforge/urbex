@@ -42,7 +42,7 @@ You don't need a Cloudflare account: `cloudflare.quickTunnel: true` gives
 every public service a `*.trycloudflare.com` address
 ([ADR-0025](docs/decisions/0025-cloudflare-quick-tunnel.md)); it is for
 trying Urbex, not for production. `domain` in `urbex.platform.yaml` is
-still required (the Gitea admin's e-mail, the default of `dns.zone`). A
+still required (the Forgejo admin's e-mail, the default of `dns.zone`). A
 domain on Cloudflare gives you stable public names and Access in front of
 the admin tools.
 
@@ -108,7 +108,7 @@ like Claude Code or Codex can use
 ## How it works
 
 Urbex runs on a server you already have - a Proxmox node today - and
-installs the platform's services there: Gitea for the repositories,
+installs the platform's services there: Forgejo for the repositories,
 Komodo for builds and deploys, Technitium for internal DNS, Keycloak for
 identity, Prometheus, Loki and Grafana for monitoring, and Cloudflare for
 public access. A project - web frontends deployed to Cloudflare Workers,
@@ -119,13 +119,13 @@ creates and keeps what it needs in every environment.
 ## What works today
 
 The `urbex` CLI implements it: bootstrap
-sets up Gitea and Komodo; projects are developed trunk-based, and every
+sets up Forgejo and Komodo; projects are developed trunk-based, and every
 push to `main` is built by Komodo and deployed to staging; releases are
 tags, promoted to production; and each environment runs what its folder
 in the GitOps repo says - version, configuration, SOPS-encrypted
 secrets - deployed by Komodo on every change. With Cloudflare, public
 APIs go out through a Cloudflare Tunnel, web frontends are deployed to
-Cloudflare Workers, Keycloak is public, and Gitea and Komodo sit behind
+Cloudflare Workers, Keycloak is public, and Forgejo and Komodo sit behind
 Cloudflare Access; every service also gets an internal DNS name in
 Technitium, independently of Cloudflare. Without a Cloudflare account,
 `cloudflare.quickTunnel: true` exposes every public service on a
@@ -156,7 +156,7 @@ supported/not-supported breakdown and implementation priorities, and
 - Every project service runs in a dedicated **LXC** (Debian 13), as a
   container Komodo builds from the project's Git repo and rolls out.
 - Platform services (created on-demand if missing):
-  - **Gitea** — self-hosted Git server (app repos + GitOps repo).
+  - **Forgejo** — self-hosted Git server (app repos + GitOps repo).
   - **Komodo** — build/update pipeline and LXC management.
   - **Technitium DNS** — internal name resolution between services.
   - **Keycloak** — identity provider (SSO for admin tools and OIDC for
@@ -175,7 +175,7 @@ supported/not-supported breakdown and implementation priorities, and
 ## Future evolutions (v2+)
 
 - Cloud providers beyond Proxmox: Azure, GCP, AWS.
-- Git servers beyond Gitea: GitHub, GitLab.
+- Git servers beyond Forgejo: GitHub, GitLab.
 - Secrets management: optional HashiCorp Vault support alongside SOPS+age.
 
 ## Use Urbex from Claude Code
@@ -264,7 +264,7 @@ Reference ([index](docs/reference/)):
 - [Credentials](docs/reference/credentials.md) — every credential and how
   to get it.
 - [Platform resources](docs/reference/platform-resources.md) — what Urbex
-  creates on Proxmox, Gitea, and Komodo.
+  creates on Proxmox, Forgejo, and Komodo.
 
 Design and planning:
 

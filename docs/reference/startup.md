@@ -25,14 +25,14 @@ flowchart TD
   DNS1["<b>technitium</b><br/>Ansible: the DNS server first,<br/>every LXC resolves through it<br/><i>~25 s</i>"]
   subgraph BASE["<b>base</b> - Ansible, all at once <i>~5 min</i>"]
     direction LR
-    G["Gitea"]
+    G["Forgejo"]
     K["Komodo:<br/>Core, database, Periphery<br/>(its images: the longest)"]
     I["Keycloak, observability,<br/>tunnel LXCs:<br/>pull their Stacks' images"]
   end
   A["<b>agents</b><br/>Ansible: telemetry agents' files<br/><i>~5-20 s</i>"]
   D["<b>dns</b><br/>Technitium: zone, records<br/><i>~5 s</i>"]
-  GO["<b>gitops</b><br/>Gitea org and repo, Komodo keys,<br/>Action, Procedure; push the GitOps repo<br/><i>~10-20 s</i>"]
-  CO["<b>connect</b><br/>Ansible: Periphery on every LXC;<br/>Komodo adopts Technitium, Gitea, Komodo<br/><i>~20 s</i>"]
+  GO["<b>gitops</b><br/>Forgejo org and repo, Komodo keys,<br/>Action, Procedure; push the GitOps repo<br/><i>~10-20 s</i>"]
+  CO["<b>connect</b><br/>Ansible: Periphery on every LXC;<br/>Komodo adopts Technitium, Forgejo, Komodo<br/><i>~20 s</i>"]
   subgraph ST["<b>stacks</b> - Komodo, all at once <i>~1.5 min; ~8 from an empty node</i>"]
     direction LR
     KC["Keycloak and its PostgreSQL;<br/>its image built once, ~7 min"]
@@ -82,10 +82,10 @@ Keycloak's image in **stacks** are most of the time (the **stacks** and
 everything is already right.
 
 - **What runs at the same time.** In **base**, each LXC runs its own
-  part (Ansible's `free` strategy): Gitea and Komodo install while the
+  part (Ansible's `free` strategy): Forgejo and Komodo install while the
   LXCs of Keycloak, the observability stack and the tunnel pull the
   images Komodo deploys on them later - one LXC at a time, so as not to
-  slow Gitea's and Komodo's first starts on the shared disk. In
+  slow Forgejo's and Komodo's first starts on the shared disk. In
   **stacks**, Komodo deploys every Stack at once.
 - **Keycloak** runs in production mode on an image built once for its
   PostgreSQL ([ADR-0029](../decisions/0029-keycloak-production-postgresql.md)):

@@ -47,7 +47,7 @@ Neither: use the `setup` skill.
 
 ## Versions
 
-This plugin (0.2.0) needs **urbex 0.1.0 or later, with the same major
+This plugin (0.2.1) needs **urbex 0.1.0 or later, with the same major
 version (0)**. Once per session, run `urbex version` (`urbex-op
 'urbex version'`):
 
@@ -103,13 +103,13 @@ a yes for that command:
 
 - `urbex bootstrap` (it creates or changes the platform's LXCs);
 - `urbex apply prod`, `urbex deploy prod ...`, `urbex promote`;
-- `urbex release` (it tags a version on Gitea; versions are never
+- `urbex release` (it tags a version on Forgejo; versions are never
   reused);
 - `urbex destroy <env>`, `urbex teardown --yes`;
 - any `--delete-data` (it deletes data, nothing is kept) or
   `--allow-major` (the data may need a migration first);
 - `urbex secret set` or `unset` in prod;
-- a push to the project's `main` on Gitea (it deploys to staging).
+- a push to the project's `main` on Forgejo (it deploys to staging).
 
 `init`, `plan`, `status`, `users`, `secret list` and `bootstrap
 --dry-run` change nothing: run them freely. So are `apply staging` and
@@ -124,7 +124,7 @@ suggests. Don't add a flag that overrides the refusal on your own.
 - Never print, read or copy `credentials.yaml`, `age.key`, or a
   decrypted `secrets.sops.env`, and never ask for a token, password or
   key in the chat. To check that a credential is set, test for the key
-  without printing the value (`grep -q '^giteaToken:' ...`).
+  without printing the value (`grep -qE '^(forgeToken|giteaToken):' ...`: `giteaToken` in a workspace from urbex 0.1.0).
 - **Setting a secret**: the value must not go through the chat. Give the
   user the commands to run in their own terminal:
   ```sh
@@ -148,7 +148,7 @@ suggests. Don't add a flag that overrides the refusal on your own.
 
 | The user says | Run |
 |---|---|
-| "deploy to staging" | Push to `main` on Gitea (staging follows it); `urbex status staging` until it runs the new commit. The first time, `urbex apply staging`. |
+| "deploy to staging" | Push to `main` on Forgejo (staging follows it); `urbex status staging` until it runs the new commit. The first time, `urbex apply staging`. |
 | "what runs where?" | `urbex status` (platform and every project), `urbex status <env>` (one project). |
 | "release and promote" | `urbex release`, then `urbex promote`; ask first. |
 | "roll back prod" | `urbex deploy prod --version <previous release>`; ask first. |
@@ -161,7 +161,7 @@ suggests. Don't add a flag that overrides the refusal on your own.
 | "my push didn't deploy" / "the build failed" | `urbex status staging`, then the cookbook's *A push didn't deploy* and *A build or a deploy failed*; logs in Grafana and Komodo. |
 | "apps don't come back after a reboot" | `urbex status <env>`, its *Reconciler* section, and the cookbook's *The reconciler holds applications back*. |
 | "remove staging" / "remove the project" | `urbex destroy <env>` for each environment; ask first. |
-| "remove the whole platform" | `urbex teardown`, then `--yes` after the user has read what it destroys. Every repository and image on Gitea goes with it. |
+| "remove the whole platform" | `urbex teardown`, then `--yes` after the user has read what it destroys. Every repository and image on Forgejo goes with it. |
 
 After a command, report what changed and where it runs (the addresses it
 printed), in a few lines. For errors, quote the CLI's one-line message:

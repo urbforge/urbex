@@ -88,7 +88,7 @@ LAN, the free block you propose. Then ask only:
 
 - **Cloudflare**: none (everything on the LAN, the default), a Quick
   Tunnel (public `*.trycloudflare.com` addresses, no account), or their
-  own zone (public HTTPS on their domain, Gitea and Komodo behind
+  own zone (public HTTPS on their domain, Forgejo and Komodo behind
   Cloudflare Access). It can be added later.
 
 ## 3. Get Urbex and the workspace
@@ -287,9 +287,9 @@ resolve names*) and [known limitations](${CLAUDE_PLUGIN_ROOT}/docs/known-limitat
 the rest.
 
 At the end, `urbex-op -w ~/urbex-work 'urbex status'` lists every
-address. Give the user the Gitea, Komodo, Grafana and Keycloak
+address. Give the user the Forgejo, Komodo, Grafana and Keycloak
 addresses, and tell them the `urbex-admin` passwords are in
-`~/urbex-work/home/.urbex/credentials.yaml` (`giteaAdminPassword`,
+`~/urbex-work/home/.urbex/credentials.yaml` (`forgeAdminPassword`,
 `komodoAdminPassword`, ...), without opening it. Tell them to back up
 the workspace: after a teardown, `gitops/` is the GitOps repo's only
 copy.
@@ -303,15 +303,15 @@ copy.
    values in the code and proposes them the same way; commit it.
 3. Ask, then
    `urbex-op -w ~/urbex-work 'cd /work/projects/<project> && urbex apply staging'`.
-   It creates the LXCs, the repository on Gitea from the local `main`,
+   It creates the LXCs, the repository on Forgejo from the local `main`,
    the build, and deploys `main`. Give the user the addresses it prints.
-4. Gitea is now the app's remote: every push to `main` is deployed to
+4. Forgejo is now the app's remote: every push to `main` is deployed to
    staging.
    ```sh
    cd ~/urbex-work/projects/<project>
    git remote add urbex http://<gitea address>:3000/urbex/<project>.git
    ```
-   Pushing asks for Gitea credentials: the user's own Gitea account, or
+   Pushing asks for Forgejo credentials: the user's own Forgejo account, or
    `urbex-admin` with its password from the credentials file, typed by
    the user.
 5. Production, each step only when the user asks: `urbex apply prod`

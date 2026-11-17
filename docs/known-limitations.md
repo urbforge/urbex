@@ -34,6 +34,7 @@ minor release may change how something works (see
 
 | Limitation | Workaround / consequence |
 |---|---|
+| **A platform installed with urbex 0.1.0 stays on Gitea 1.24**, which is out of support: newer urbex bootstraps Forgejo 15 LTS ([ADR-0034](decisions/0034-forgejo-lts-forge.md)), and doesn't migrate a running forge - Forgejo imports Gitea's database only up to Gitea 1.22. Its workspace keeps working with newer urbex (the old credential and config names are still read). | Bootstrap the platform again (`urbex teardown`, then `urbex bootstrap`; push the project repos somewhere else first), or push the repos to the new forge yourself. |
 | **One Proxmox node.** Every LXC is created on `proxmox.node`; no clusters, no HA, no other providers (cloud providers are v2+). | - |
 | **Addresses aren't checked or reserved.** Urbex takes static IPs from `proxmox.network` (base services from `baseHostOffset`, projects 10 after) without checking they're free; a DHCP server can hand them out too. | Keep the block out of the DHCP range. |
 | **Every LXC resolves through Technitium**, then `proxmox.network.dnsServers` (the gateway when unset), which are also Technitium's forwarders: a gateway that doesn't answer DNS, or a resolver the LXCs can't reach (Tailscale's MagicDNS), breaks resolution ([ADR-0027](decisions/0027-service-conventions.md)). | Set `dnsServers` (or `dns.forwarders`) to a LAN resolver. |
@@ -45,7 +46,7 @@ minor release may change how something works (see
 | **Per-project Proxmox isolation** (resource pool, user group, technical users per project) isn't implemented: every LXC goes in the platform's pool, managed with the operator's token. | Planned ([roadmap](roadmap.md)). |
 | **Keycloak's first start builds its image**, once per platform: about 7 minutes on a home lab node, which `urbex bootstrap` and `urbex apply` wait for (up to 15 minutes). Later starts take under a minute ([ADR-0029](decisions/0029-keycloak-production-postgresql.md)). | Wait. |
 | **Base-service images** of Technitium, Prometheus, Loki and Grafana use `latest`. | - |
-| **`urbex teardown` destroys Gitea**, with every repository and image on it. | Keep project repos pushed elsewhere too. The GitOps repo survives as the local working copy: keep it. |
+| **`urbex teardown` destroys Forgejo**, with every repository and image on it. | Keep project repos pushed elsewhere too. The GitOps repo survives as the local working copy: keep it. |
 | **Rotating generated credentials isn't supported**: bootstrap keeps every value in `~/.urbex/credentials.yaml`, and changing one by hand (the Komodo database password, say) can break the service. | Only by rebuilding the platform: `urbex teardown` then `urbex bootstrap`. |
 
 ## Projects and deploys
@@ -53,9 +54,9 @@ minor release may change how something works (see
 | Limitation | Workaround / consequence |
 |---|---|
 | **Only `vX.Y.Z` tags are releases**: no pre-releases (`-rc.1`). | Staging runs every commit of `main`; release a patch version. |
-| **`urbex promote` commits straight to the GitOps repo.** | [Gate production behind a pull request](cookbook.md#gate-production-behind-a-pull-request) with Gitea's protected file patterns. |
+| **`urbex promote` commits straight to the GitOps repo.** | [Gate production behind a pull request](cookbook.md#gate-production-behind-a-pull-request) with Forgejo's protected file patterns. |
 | **Komodo can miss a push** made within ~5 seconds of the previous one (it caches the repo); the scheduled run catches up within 15 minutes. | The `urbex` commands handle it; by hand, run the `urbex-gitops` Procedure. |
-| **Every push to `main` is built**, documentation-only ones included, and **images are never pruned.** | Delete old ones in Gitea, under the organization's *Packages*. |
+| **Every push to `main` is built**, documentation-only ones included, and **images are never pruned.** | Delete old ones in Forgejo, under the organization's *Packages*. |
 | **Removing a service from `urbex.yaml`**: the next `urbex apply` deletes its LXC (the project's Terraform has one per declared service) but leaves its Stack, folder, routes and internal DNS record. With named volumes, `apply` refuses: Proxmox deletes an LXC's volumes with it. | Remove the leftovers by hand. For an application with named volumes, put it back, or run `urbex apply <env> --delete-data` to delete it with its volumes. |
 | **Changing a port or healthcheck** needs `urbex deploy <env>` (it regenerates the compose files); configuration in `urbex.yaml`'s `env` only seeds `config.env` once. | Edit `config.env` in the GitOps repo afterwards. |
 | **No concurrency guard across machines** on the Terraform state and the address ledger. | Don't run `plan`, `apply`, `destroy` from two machines at once. |
@@ -86,7 +87,7 @@ minor release may change how something works (see
 |---|---|
 | **`nested` hostnames need Advanced Certificate Manager**, which Urbex doesn't enable or order certificates for. | Use the default `flat` names, or enable ACM and order the wildcard certificates by hand. |
 | **Public names are derived** from the project's and services' names; `domain.subdomain` in the manifest isn't used. | - |
-| **Gitea and Komodo behind Access are for browsers.** `git` and the CLI keep using the LAN addresses, and the links Gitea and Komodo generate use their internal names (Gitea's registry needs `ROOT_URL` reachable from every LXC). | Use the LAN, or a VPN, for git and the CLI. |
+| **Forgejo and Komodo behind Access are for browsers.** `git` and the CLI keep using the LAN addresses, and the links Forgejo and Komodo generate use their internal names (Forgejo's registry needs `ROOT_URL` reachable from every LXC). | Use the LAN, or a VPN, for git and the CLI. |
 | **Prometheus' and Loki's APIs behind Access are for browsers.** A script or tool calling them from outside needs a Cloudflare Access service token, which Urbex doesn't create. | Create a service token in Zero Trust and add it to the `urbex-operators` policy, or use the LAN. |
 | **Access allows a list of e-mail addresses** with a one-time PIN; no identity provider, no groups. | Keycloak as Access's identity provider is a possible next step. |
 | **The Cloudflare token is broad and stored in Komodo** (secret variable) for the web deploys. | Use a token scoped to the one zone and account, as in [credentials](reference/credentials.md#cloudflare-api-token). |
@@ -108,13 +109,13 @@ minor release may change how something works (see
 
 | Limitation | Workaround / consequence |
 |---|---|
-| **Keycloak covers the projects' users only** ([ADR-0024](decisions/0024-keycloak-realm-per-environment.md)): no admin SSO for Gitea/Komodo/Grafana, no confidential clients for services calling each other, one client per frontend (and one frontend per project); destroying an environment deletes its realm's users. | Add what's missing in Keycloak's console: urbex keeps what it doesn't manage (extra redirect URIs, users, clients). |
+| **Keycloak covers the projects' users only** ([ADR-0024](decisions/0024-keycloak-realm-per-environment.md)): no admin SSO for Forgejo/Komodo/Grafana, no confidential clients for services calling each other, one client per frontend (and one frontend per project); destroying an environment deletes its realm's users. | Add what's missing in Keycloak's console: urbex keeps what it doesn't manage (extra redirect URIs, users, clients). |
 | **A platform bootstrapped before internal DNS registration existed keeps Technitium's original admin password**: `DNS_SERVER_ADMIN_PASSWORD` only takes effect while Technitium has no configuration yet, so re-running `urbex bootstrap` on an already-configured instance doesn't rotate it, and minting the API token fails ([ADR-0026](decisions/0026-technitium-internal-dns-records.md)). | Seed the real password into `~/.urbex/credentials.yaml`'s `technitiumAdminPassword` before bootstrapping. |
 | Technitium does not validate DNSSEC: it leaves validation to its forwarders, since many LAN resolvers, and routers that intercept DNS traffic, do not return the records validation requires, and Technitium would then fail every public name. | Use forwarders that validate DNSSEC, if validation is required. |
 | **When Technitium is down, internal names don't resolve**: the LXCs fall back to the forwarders, which only know public names. | Re-run `urbex bootstrap` to reinstall it. |
 | **The internal zone (`urbex.<domain>`) shadows Cloudflare on the LAN**: Technitium answers for every name under it, so a record you created there on Cloudflare doesn't resolve from the LXCs; with `nested` public hostnames, neither do the web frontends' (they have no LXC, so no internal record) ([ADR-0027](decisions/0027-service-conventions.md)). | Keep your own records out of the platform's subdomain, or set `dns.zone`. |
 | **Without Cloudflare, the token issuer is Keycloak's LAN address** (`KEYCLOAK_ISSUER`): the address your users' browsers reach it at, which the tokens carry. The services fetch the signing keys by internal name. | Configure Cloudflare for a stable, public issuer. |
-| **The internal names don't resolve on your machine** unless it asks Technitium: images (`git.<zone>:3000/...`), the links Gitea and Komodo generate, and the URLs services are configured with use the internal names ([ADR-0027](decisions/0027-service-conventions.md)). The CLI uses the LAN addresses, after checking them against Technitium. | Have your router forward the zone to Technitium ([cookbook](cookbook.md#resolve-a-service-by-name-on-the-lan)). |
+| **The internal names don't resolve on your machine** unless it asks Technitium: images (`git.<zone>:3000/...`), the links Forgejo and Komodo generate, and the URLs services are configured with use the internal names ([ADR-0027](decisions/0027-service-conventions.md)). The CLI uses the LAN addresses, after checking them against Technitium. | Have your router forward the zone to Technitium ([cookbook](cookbook.md#resolve-a-service-by-name-on-the-lan)). |
 | **Logs and resource metrics only** ([ADR-0023](decisions/0023-service-logs-to-loki.md), [ADR-0027](decisions/0027-service-conventions.md)): the services' own metrics (`observability.metrics`) aren't scraped, per-container metrics are CPU and memory only, the only alerts are the reconciler's and those on the LXCs' disk and memory - not on the Proxmox node's own memory, CPU and storages, nor on a VM - and web frontends' runtime logs are on Cloudflare (their deploy container's are in Loki). | Cloudflare's Workers logs for frontends. |
 | **Loki keeps logs forever**: default single-node configuration, no retention set; the observability LXC's disk fills up over time. | Grow its disk (`terraform/base`), or clean Loki's volume. |
 | **Grafana's admin password** is the only login (no Keycloak SSO), after Cloudflare Access when reached from outside. | `admin` / `grafanaAdminPassword` from `~/.urbex/credentials.yaml`. |
@@ -124,6 +125,6 @@ minor release may change how something works (see
 
 | Limitation | Workaround / consequence |
 |---|---|
-| **Gitea and its registry are plain HTTP on the LAN**, trusted by the LXCs' Docker as an insecure registry. | Keep the LAN trusted. |
-| **No backups** of Gitea, Komodo, Keycloak or the services' data. | Proxmox's own backups of the LXCs, which include the applications' named volumes (`backup=1`); a restore brings them back and `urbex apply` takes it as it is ([how](cookbook.md#back-up-and-restore-an-applications-data)). |
+| **Forgejo and its registry are plain HTTP on the LAN**, trusted by the LXCs' Docker as an insecure registry. | Keep the LAN trusted. |
+| **No backups** of Forgejo, Komodo, Keycloak or the services' data. | Proxmox's own backups of the LXCs, which include the applications' named volumes (`backup=1`); a restore brings them back and `urbex apply` takes it as it is ([how](cookbook.md#back-up-and-restore-an-applications-data)). |
 | **No fleet-wide status**: `urbex status <env>` is per project. | Komodo's UI; `grep -r '^VERSION' environments/` in the GitOps repo. |

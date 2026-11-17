@@ -26,10 +26,10 @@ Proxmox VE 9.2 node, see [What has been validated](#what-has-been-validated).
 | App manifest (`urbex.yaml`) | Formal JSON Schema, typed Go decoding, `urbex init` scaffolds and validates |
 | Platform config (`urbex.platform.yaml`) | Scaffolded and validated by `urbex bootstrap` |
 | Credentials | Env vars, falling back to `~/.urbex/credentials.yaml`; never written to the GitOps repo |
-| Base-service provisioning | Terraform (5 fixed Debian 13 LXCs: Gitea, Komodo, Technitium, Keycloak, observability; optional resource pool) + Ansible (Docker + each service's compose); idempotent, with a pre-flight check that aborts instead of adopting/duplicating an untracked container |
-| Platform setup (`urbex bootstrap`) | Generates admin passwords/secrets into `~/.urbex/credentials.yaml`; creates a Gitea token, org, and `gitops` repo; a Komodo API key, the onboarding key project LXCs join with, Komodo's Gitea git/registry accounts and `URBEX_*` variables; the release Action, the GitOps Procedure and its webhook; `.sops.yaml`; pushes the GitOps repo to Gitea ([platform resources](reference/platform-resources.md)) |
+| Base-service provisioning | Terraform (5 fixed Debian 13 LXCs: Forgejo, Komodo, Technitium, Keycloak, observability; optional resource pool) + Ansible (Docker + each service's compose); idempotent, with a pre-flight check that aborts instead of adopting/duplicating an untracked container |
+| Platform setup (`urbex bootstrap`) | Generates admin passwords/secrets into `~/.urbex/credentials.yaml`; creates a Forgejo token, org, and `gitops` repo; a Komodo API key, the onboarding key project LXCs join with, Komodo's Forgejo git/registry accounts and `URBEX_*` variables; the release Action, the GitOps Procedure and its webhook; `.sops.yaml`; pushes the GitOps repo to Forgejo ([platform resources](reference/platform-resources.md)) |
 | Project-service provisioning | Generic `for_each` Terraform module (any number of manifest services); static VMID/IP allocation shared across all projects in one GitOps repo, so they never collide; Docker + Komodo Periphery + sops on each LXC |
-| **Builds** | Every push to a project's `main` makes Komodo build each service and push `<project>-<service>:<short hash>` to Gitea's registry ([ADR-0018](decisions/0018-image-build-komodo-gitea-registry.md), [ADR-0021](decisions/0021-staging-follows-main.md)) |
+| **Builds** | Every push to a project's `main` makes Komodo build each service and push `<project>-<service>:<short hash>` to Forgejo's registry ([ADR-0018](decisions/0018-image-build-komodo-gitea-registry.md), [ADR-0021](decisions/0021-staging-follows-main.md)) |
 | **Continuous deployment to staging** | Staging follows `main` (`TRACK=main` in its version files): after each build, Komodo commits the new version to the GitOps repo and deploys it ([ADR-0021](decisions/0021-staging-follows-main.md)) |
 | **Releases** | A `vX.Y.Z` tag (pushed by hand or by `urbex release`, which tags the commit staging runs) gives that commit's images the tag `X.Y.Z` - no rebuild ([ADR-0020](decisions/0020-trunk-releases-gitops-environments.md), [ADR-0021](decisions/0021-staging-follows-main.md)) |
 | **Environments in the GitOps repo** | `environments/<env>/<project>/<service>/` holds the compose file, `version.env`, `config.env`, and `secrets.sops.env`; Komodo deploys each folder as a Stack on the service's LXC whenever it changes (webhook), and reconciles every 15 minutes |
@@ -45,7 +45,7 @@ Proxmox VE 9.2 node, see [What has been validated](#what-has-been-validated).
 | `urbex teardown` | Destroys the base-service LXCs and urbex's LXC and VM templates (refusing while project environments exist), forgets the generated credentials, keeps the GitOps repo locally |
 | `urbex destroy` | Takes the environment's Stacks down, removes its folder, `terraform destroy`, clears the allocation ledger; the project's Builds go with its last environment |
 | `urbex status` | Proxmox container presence, allocation ledger and, per service, the version the GitOps repo asks for against what Komodo runs |
-| **Public endpoints (Cloudflare)** | One tunnel for the platform, `cloudflared` on `urbex-tunnel`; Keycloak public, Gitea and Komodo behind Cloudflare Access (one-time PIN for listed e-mails), Komodo's webhook listener public; services with `public: true` published per environment; flat or nested hostnames ([ADR-0022](decisions/0022-cloudflare-tunnel-access-workers.md)) |
+| **Public endpoints (Cloudflare)** | One tunnel for the platform, `cloudflared` on `urbex-tunnel`; Keycloak public, Forgejo and Komodo behind Cloudflare Access (one-time PIN for listed e-mails), Komodo's webhook listener public; services with `public: true` published per environment; flat or nested hostnames ([ADR-0022](decisions/0022-cloudflare-tunnel-access-workers.md)) |
 | **Cloudflare Quick Tunnel** | `cloudflare.quickTunnel: true`, without an account, exposes every `public: true` service on its own `https://*.trycloudflare.com` hostname: a `cloudflared` sidecar on the service's LXC, `urbex apply`/`urbex status` reading the hostname live from it. Not a production substitute for ADR-0022 ([ADR-0025](decisions/0025-cloudflare-quick-tunnel.md)) |
 | **Logs and resource monitoring** | A Grafana Alloy agent on every LXC - base services and project services - sends every container's logs to Loki, and the LXC's CPU, memory, disk and network and each container's CPU and memory to Prometheus, labelled `kind` (`platform`/`app`/`agent`, from the containers' `urbex.*` Docker labels), `service`, `host`, and `project`/`env` for apps; Grafana comes with both data sources and the *Urbex logs* and *Urbex resources* dashboards, and alerts when an LXC's disk or volume is filling up (85%, 95%) or its memory runs short (under 10% available); `observability.logs: false` stops a project's logs ([ADR-0023](decisions/0023-service-logs-to-loki.md)) |
 | **Identity (Keycloak)** | A realm per project environment (`<project>-<env>`) with the services' roles and a public OIDC client per frontend; in staging a test user per role (`urbex users staging`) and a password-login client for tests; services with `auth.keycloak` get the issuer and keys ([ADR-0024](decisions/0024-keycloak-realm-per-environment.md)) |
@@ -60,9 +60,9 @@ Proxmox VE 9.2 node, see [What has been validated](#what-has-been-validated).
 
 | Area | Gap | ADR(s) |
 |---|---|---|
-| Promotion by pull request | `urbex promote` commits to the GitOps repo directly; a PR-gated production folder is a Gitea setting Urbex doesn't manage (see the [cookbook](cookbook.md#gate-production-behind-a-pull-request)) | [0020](decisions/0020-trunk-releases-gitops-environments.md) |
+| Promotion by pull request | `urbex promote` commits to the GitOps repo directly; a PR-gated production folder is a Forgejo setting Urbex doesn't manage (see the [cookbook](cookbook.md#gate-production-behind-a-pull-request)) | [0020](decisions/0020-trunk-releases-gitops-environments.md) |
 | Image cleanup | Every push to `main` leaves an image in the registry; nothing prunes them | [0021](decisions/0021-staging-follows-main.md) |
-| Service conventions | Every service should be deployed by Komodo, reached by internal name, tagged by kind (`platform`/`app`/`agent`) and exposed by its kind of endpoint; services reach each other by internal name; admin and internal UIs (Gitea, Komodo, Technitium, Grafana, Prometheus, Loki, Keycloak's `/admin` and `master` realm) behind Cloudflare Access; every service - the platform's included - is a Komodo Stack; a service catalog in the CLI generates names, routes and Access, and a test rejects a service that doesn't declare them | [0027](decisions/0027-service-conventions.md) |
+| Service conventions | Every service should be deployed by Komodo, reached by internal name, tagged by kind (`platform`/`app`/`agent`) and exposed by its kind of endpoint; services reach each other by internal name; admin and internal UIs (Forgejo, Komodo, Technitium, Grafana, Prometheus, Loki, Keycloak's `/admin` and `master` realm) behind Cloudflare Access; every service - the platform's included - is a Komodo Stack; a service catalog in the CLI generates names, routes and Access, and a test rejects a service that doesn't declare them | [0027](decisions/0027-service-conventions.md) |
 | Databases | A PostgreSQL runs as an application of the stack. Every application that uses it gets its own role, schema and password, made by `urbex apply` through a Komodo exec in the PostgreSQL's container before the application starts; it can't touch the other applications' schemas or `public`. An application removed keeps its schema until `urbex apply --delete-data`; `urbex status <env>` lists the schemas and who uses each; a new major version is refused while the data directory is the old one's ([urbex-cli#9](https://github.com/urbforge/urbex-cli/issues/9), epic [redemptor#17](https://github.com/urbforge/redemptor/issues/17)). The `mysql` and `redis` interfaces, `uses` between stacks, PostgreSQL's own metrics and automated major upgrades are not implemented | [0028](decisions/0028-application-model.md), [0030](decisions/0030-postgresql-application.md) |
 | Removing a service | Dropping a service from `urbex.yaml` has the next `apply` delete its LXC, and leaves its Stack, folder and internal DNS record behind; an application with named volumes is refused unless `urbex apply <env> --delete-data` | - |
 | Pre-releases | Only `vX.Y.Z` tags are releases; `-rc.1` and the like are ignored | [0020](decisions/0020-trunk-releases-gitops-environments.md) |
@@ -77,7 +77,7 @@ Proxmox VE 9.2 node, see [What has been validated](#what-has-been-validated).
 | Per-project Proxmox isolation | New projects should get their own resource pool, a group for their users with minimal permissions, and dedicated technical users; today every LXC goes in the platform-wide `proxmox.pool`, managed with the operator's token | [roadmap](roadmap.md) |
 | Cross-machine concurrency guard | Two machines applying against copies of the same GitOps repo can silently conflict | [0013](decisions/0013-terraform-state-in-gitops-repo.md) |
 | Cloud providers beyond Proxmox (Azure, GCP, AWS) | Not started - v2+ by design | [roadmap](roadmap.md) |
-| Git servers beyond Gitea (GitHub, GitLab) | Not started - v2+ by design | [roadmap](roadmap.md) |
+| Git servers beyond Forgejo (GitHub, GitLab) | Not started - v2+ by design | [roadmap](roadmap.md) |
 | Vault secrets backend | Not started - v2+ by design | [0011](decisions/0011-secrets-sops-age.md) |
 
 ## What has been validated
@@ -86,7 +86,7 @@ Proxmox VE 9.2 node, see [What has been validated](#what-has-been-validated).
 Debian 13 systemd machines reachable over SSH at the static IPs Urbex
 allocates - the same thing an LXC is to Ansible - and checks every step.
 Only `terraform` (a stub) and the Proxmox API (a stub listing the
-machines and keeping their mount points) are faked; Ansible, Docker, Gitea, Komodo, sops, and the other
+machines and keeping their mount points) are faked; Ansible, Docker, Forgejo, Komodo, sops, and the other
 base services are real. It covers:
 
 1. `urbex bootstrap`: all five base-service roles, the platform setup,
@@ -157,7 +157,7 @@ project's LXCs, their ZFS volumes and pool membership, its Komodo
 Servers, Stacks and Build, the project webhook, and its files in the
 GitOps repo (environment folders, Terraform state and files, Ansible
 inventories, ledger entries) were gone; the base services, the project
-repo and its images on Gitea (kept by design) untouched. It surfaced
+repo and its images on Forgejo (kept by design) untouched. It surfaced
 three bugs, fixed: `destroy` worked from a stale copy of the GitOps repo
 and conflicted with the release Action's commits (now it refreshes, and
 removes the folder last); a Build busy with a push made during `destroy`
@@ -216,7 +216,7 @@ where Technitium has no prior configuration at all.
 
 **On a real Cloudflare account** (Free plan zone, 2026-10-02), with a
 pool-scoped Proxmox token: bootstrap published Keycloak
-(`auth-urbex.<domain>`, issuer public), Gitea and Komodo behind Access
+(`auth-urbex.<domain>`, issuer public), Forgejo and Komodo behind Access
 (redirect to the team's login, one-time PIN), and the webhook listener;
 a project with a public API and a web frontend then ran on staging
 (`api-staging-hello-urbex`, `staging-hello-urbex`), followed `main` -
@@ -225,7 +225,7 @@ released and promoted to prod (`api-hello-urbex`, `hello-urbex`, the
 same build). `destroy` of both environments and `teardown` left nothing
 of urbex on the account - tunnel, routes, DNS records, Access objects,
 Workers and their domains - and everything else untouched. It surfaced:
-Access set up after routing (a failed Access setup left Gitea and Komodo
+Access set up after routing (a failed Access setup left Forgejo and Komodo
 exposed for a few minutes; now Access comes first and nothing is
 published without it), Access errors carried in a different field, and
 a Workers API answering 200 with no body.
@@ -257,12 +257,12 @@ Roughly in the order that makes each subsequent item worth doing.
 
 1. ~~**Validate against a real Proxmox.**~~ Done (see
    [What has been validated](#what-has-been-validated)).
-2. ~~**Image build & push.**~~ Done: Komodo builds, Gitea's registry
+2. ~~**Image build & push.**~~ Done: Komodo builds, Forgejo's registry
    stores ([ADR-0018](decisions/0018-image-build-komodo-gitea-registry.md)).
 
 ### P1 - complete the v1 promise (in dependency order)
 
-3. ~~**Push the GitOps repo to Gitea.**~~ Done.
+3. ~~**Push the GitOps repo to Forgejo.**~~ Done.
 4. ~~**Komodo-driven rollouts, from the GitOps repo.**~~ Done
    ([ADR-0020](decisions/0020-trunk-releases-gitops-environments.md)).
 5. ~~**DNS registration in Technitium.**~~ Done
@@ -304,7 +304,7 @@ Roughly in the order that makes each subsequent item worth doing.
 
 ### P4 - v2+ scope (deliberately deferred)
 
-14. Cloud providers beyond Proxmox, Git servers beyond Gitea (and
+14. Cloud providers beyond Proxmox, Git servers beyond Forgejo (and
     ghcr.io as registry), CI/CD beyond Komodo (GitHub Actions, ArgoCD),
     Kubernetes as orchestrator, Vault -
     already scoped for later in [`roadmap.md`](roadmap.md); no urgency

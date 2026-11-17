@@ -11,7 +11,7 @@ secrets - those are [credentials](credentials.md).
 domain: acme.example
 
 git:
-  giteaUrl: https://git.acme.example
+  forgeUrl: https://git.acme.example
   org: urbex
 
 proxmox:
@@ -52,9 +52,9 @@ cloudflare:
 
 | Field | Default | Meaning |
 |---|---|---|
-| `domain` | required | The platform's domain: the Cloudflare zone public hostnames are created in, and the Gitea admin's e-mail domain. |
-| `git.giteaUrl` | required | The public URL Gitea will have. ⚠️ Not used yet: Urbex reaches Gitea at `http://<its IP>:3000`. |
-| `git.org` | `urbex` | Gitea organization holding the GitOps repo (`<org>/gitops`), every project repo (`<org>/<project>`), and their images (`<ip>:3000/<org>/<project>-<service>`). |
+| `domain` | required | The platform's domain: the Cloudflare zone public hostnames are created in, and the Forgejo admin's e-mail domain. |
+| `git.forgeUrl` | required | The public URL the forge (Forgejo) will have; `git.giteaUrl`, its name before [ADR-0034](../decisions/0034-forgejo-lts-forge.md), is still read. ⚠️ Not used yet: Urbex reaches Gitea at `http://<its IP>:3000`. |
+| `git.org` | `urbex` | Forgejo organization holding the GitOps repo (`<org>/gitops`), every project repo (`<org>/<project>`), and their images (`<ip>:3000/<org>/<project>-<service>`). |
 | `proxmox.apiUrl` | required | Proxmox API URL, ending in `/api2/json`. |
 | `proxmox.insecure` | `false` | Skip TLS verification of the Proxmox API (its default certificate is self-signed). |
 | `proxmox.node` | required | The node every LXC is created on. |
@@ -74,7 +74,7 @@ cloudflare:
 | `cloudflare.name` | `urbex` | Last label of every public hostname, telling Urbex's apart from the zone's others. |
 | `cloudflare.hostnames` | `flat` | How labels are joined - see [public hostnames](#public-hostnames). |
 | `cloudflare.tunnelName` | `<name>-platform` | The Cloudflare Tunnel Urbex creates and routes through. |
-| `cloudflare.access.emails` | required with Cloudflare | Who may open Gitea and Komodo through Cloudflare Access (one-time PIN sent to the address). |
+| `cloudflare.access.emails` | required with Cloudflare | Who may open Forgejo and Komodo through Cloudflare Access (one-time PIN sent to the address). |
 | `cloudflare.quickTunnel` | `false` | Alternative to `cloudflare.accountId`/`zoneId` (mutually exclusive with them): a Cloudflare Quick Tunnel per `public: true` service, no account needed - see [ADR-0025](../decisions/0025-cloudflare-quick-tunnel.md) and its [known limitations](../known-limitations.md#public-endpoints-cloudflare). Doesn't apply to `frontend.type: web`. |
 | `dns.zone` | `<cloudflare.name>.<domain>` | The zone Technitium serves the services' internal names in - `git.urbex.example.com`, `api.staging.acme-app.urbex.example.com` ([ADR-0027](../decisions/0027-service-conventions.md)). Technitium answers for the whole zone: keep nothing of yours under it on Cloudflare. |
 | `dns.forwarders` | `proxmox.network.dnsServers`, or the gateway | IP addresses Technitium forwards every name outside `dns.zone` to. |
@@ -145,7 +145,7 @@ With Cloudflare configured, Urbex publishes, under `domain`:
 | | `flat` (default) | `nested` |
 |---|---|---|
 | Keycloak (`/admin` and the `master` realm behind Access) | `auth-urbex.<domain>` | `auth.urbex.<domain>` |
-| Gitea (behind Access) | `git-urbex.<domain>` | `git.urbex.<domain>` |
+| Forgejo (behind Access) | `git-urbex.<domain>` | `git.urbex.<domain>` |
 | Komodo (behind Access) | `komodo-urbex.<domain>` | `komodo.urbex.<domain>` |
 | Komodo webhooks (`/listener/` only) | `hooks-urbex.<domain>` | `hooks.urbex.<domain>` |
 | Technitium's console (behind Access) | `dns-urbex.<domain>` | `dns.urbex.<domain>` |

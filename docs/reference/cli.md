@@ -48,7 +48,7 @@ the [cookbook](../cookbook.md).
   resolved to (`17.6@sha256:...`).
 - **Credentials** come from environment variables, falling back to
   `~/.urbex/credentials.yaml`; see [credentials](credentials.md).
-- Commands that change the GitOps repo first pull it from Gitea
+- Commands that change the GitOps repo first pull it from Forgejo
   (rebasing local commits), then commit and push. Its working copy may
   have uncommitted changes; they are kept.
 
@@ -174,14 +174,14 @@ Proposed urbex.platform.yaml (save it with --write):
 domain: example.com   # the Cloudflare zone
 
 git:
-  giteaUrl: https://git-urbex.example.com
+  forgeUrl: https://git-urbex.example.com
   org: urbex
 
-cloudflare:   # public HTTPS on example.com; Gitea and Komodo behind Cloudflare Access
+cloudflare:   # public HTTPS on example.com; Forgejo and Komodo behind Cloudflare Access
   accountId: 0123456789abcdef0123456789abcdef
   zoneId: fedcba9876543210fedcba9876543210
   access:
-    emails: [you@example.com]   # FILL IN: who may open Gitea and Komodo (a one-time PIN goes to the address)
+    emails: [you@example.com]   # FILL IN: who may open Forgejo and Komodo (a one-time PIN goes to the address)
 
 proxmox:
   apiUrl: https://192.168.1.10:8006/api2/json
@@ -234,7 +234,7 @@ urbex init                      # urbex.yaml is valid.
 urbex bootstrap [--gitops-repo <dir>] [--dry-run] [--events json]
 ```
 
-Creates the platform: the base-service LXCs, and Gitea and Komodo wired
+Creates the platform: the base-service LXCs, and Forgejo and Komodo wired
 together. Run it once per platform; running it again is safe and is how
 the base services are updated. Its phases, what runs at the same time
 and how long each takes are drawn in [startup sequence](startup.md);
@@ -258,7 +258,7 @@ and how long each takes are drawn in [startup sequence](startup.md);
    LXCs come from the Debian template as before, with a warning.
    Then `terraform init` and `terraform apply` in `terraform/base/`, then
    `ansible-playbook` with `ansible/playbook.yml`: Docker on every LXC
-   (skipped on clones of the template), then Technitium, then Gitea,
+   (skipped on clones of the template), then Technitium, then Forgejo,
    Komodo (Core, database, Periphery) and the others in parallel - while
    they install, the LXCs of Keycloak, the observability stack and the
    tunnel pull, one at a time, the images of the Stacks Komodo deploys
@@ -273,14 +273,14 @@ and how long each takes are drawn in [startup sequence](startup.md);
    `tunnel`). On a platform set up with a zone named after `domain`, it
    moves the project services' records to the new zone and deletes the
    old one - see [ADR-0027](../decisions/0027-service-conventions.md).
-7. Platform setup: a Gitea token, the org and its `gitops` repo; a Komodo
-   API key, the onboarding key, Komodo's Gitea git and registry accounts,
+7. Platform setup: a Forgejo token, the org and its `gitops` repo; a Komodo
+   API key, the onboarding key, Komodo's Forgejo git and registry accounts,
    the `URBEX_*` Komodo variables, the `urbex-release` Action, the
    `urbex-gitops` Procedure; `.sops.yaml`; commits and pushes the GitOps
    repo, and adds its webhook. Tokens and keys already in the credentials
    file are reused, not rotated.
    Then connects the other base LXCs to Komodo and has Komodo adopt
-   Technitium, Gitea and Komodo as Stacks (`urbex-technitium`,
+   Technitium, Forgejo and Komodo as Stacks (`urbex-technitium`,
    `urbex-gitea`, `urbex-komodo`) whose compose files stay on their
    servers, in `/opt/urbex`: Komodo takes over the running containers
    without redeploying them, and from then on can redeploy them; a copy
@@ -301,8 +301,8 @@ and how long each takes are drawn in [startup sequence](startup.md);
    before Ansible, the tunnel `urbex-platform` and the token its
    connector on `urbex-tunnel` runs with; at the end, Access first - the
    one-time PIN login if missing, the policy for `cloudflare.access.emails`,
-   applications for Gitea and Komodo - then the routes and DNS records of
-   Keycloak, Gitea, Komodo and the webhook listener. If Access can't be set
+   applications for Forgejo and Komodo - then the routes and DNS records of
+   Keycloak, Forgejo, Komodo and the webhook listener. If Access can't be set
    up, nothing is published.
 9. Waits for Keycloak to answer before reporting the platform ready: its
    first start takes a few minutes (it says so while waiting), and stops
@@ -324,7 +324,7 @@ urbex plan <env> [--file urbex.yaml] [--gitops-repo <dir>]
 ```
 
 Shows what `apply` would change in the infrastructure, without changing
-it: updates the GitOps repo from Gitea, allocates (and records) a VMID and IP for each service's LXC in
+it: updates the GitOps repo from Forgejo, allocates (and records) a VMID and IP for each service's LXC in
 `<env>` if it has none, writes the project's Terraform files under
 `terraform/projects/<project>/<env>/`, and runs `terraform plan`.
 
@@ -374,7 +374,7 @@ usual times: [startup sequence](startup.md#urbex-apply-env);
    volume, it removes the empty `lost+found` of a new one (ext4) so that
    Docker can fill the volume from the image, and stops if the folder is
    not a mount point.
-3. **The project:** its repo on Gitea (if Gitea has no `main`, pushes
+3. **The project:** its repo on Forgejo (if Forgejo has no `main`, pushes
    `--repo-dir`'s `HEAD` there), a Komodo Build per service, and the
    project repo's webhook to the `urbex-release` Action. Applications
    from published images have no Build; a project made only of such
@@ -424,7 +424,7 @@ Fix it and run `apply` again.
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `--repo-dir <dir>` | `.` | The project's local repo, used only if Gitea has no `main` yet. |
+| `--repo-dir <dir>` | `.` | The project's local repo, used only if Forgejo has no `main` yet. |
 | `--delete-data` | off | Let `apply` delete the LXC of an application removed from `urbex.yaml`, with its named volumes, and drop the PostgreSQL roles and schemas no application uses any more, with their data. `apply` names them first. Nothing is kept. A replacement of an LXC with volumes is refused with it as well. |
 
 Needs: `URBEX_PROXMOX_TOKEN`, `URBEX_AGE_KEY`, the platform credentials
@@ -445,7 +445,7 @@ port or healthcheck only need [`deploy`](#urbex-deploy).
 urbex release [--version vX.Y.Z] [--ref <commit|branch|tag>] [--file urbex.yaml] [--gitops-repo <dir>]
 ```
 
-Makes a release: tags a commit of the project as `vX.Y.Z` on Gitea and
+Makes a release: tags a commit of the project as `vX.Y.Z` on Forgejo and
 waits until every service has an image `X.Y.Z` in the registry.
 
 A release concerns the services built from source only. It is refused
@@ -620,7 +620,7 @@ Base services:
   ...
 
 Endpoints:
-  Gitea (web, git, registry)   http://git.urbex.example.com:3000            http://192.168.1.200:3000              https://git-urbex.example.com  (public: behind Cloudflare Access)
+  Forgejo (web, git, registry)   http://git.urbex.example.com:3000            http://192.168.1.200:3000              https://git-urbex.example.com  (public: behind Cloudflare Access)
   Komodo                       http://komodo.urbex.example.com:9120         http://192.168.1.201:9120              https://komodo-urbex.example.com  (public: behind Cloudflare Access)
   Komodo webhooks              http://hooks.urbex.example.com:9120/listener/ http://192.168.1.201:9120/listener/    https://hooks-urbex.example.com/listener/  (signed calls only)
   Keycloak                     http://auth.urbex.example.com:8080           http://192.168.1.203:8080              https://auth-urbex.example.com  (realms public; admin console behind Cloudflare Access)
@@ -629,8 +629,8 @@ Endpoints:
   Prometheus                   http://prometheus.urbex.example.com:9090     http://192.168.1.204:9090              https://prometheus-urbex.example.com  (public: behind Cloudflare Access; remote write internal only)
   Loki                         http://loki.urbex.example.com:3100           http://192.168.1.204:3100              https://loki-urbex.example.com  (public: behind Cloudflare Access; push internal only)
 
-Logins: Gitea and Komodo urbex-admin, Grafana admin, Keycloak admin, Technitium admin; passwords in ~/.urbex/credentials.yaml
-(giteaAdminPassword, komodoAdminPassword, grafanaAdminPassword, keycloakAdminPassword, technitiumAdminPassword).
+Logins: Forgejo and Komodo urbex-admin, Grafana admin, Keycloak admin, Technitium admin; passwords in ~/.urbex/credentials.yaml
+(forgeAdminPassword, komodoAdminPassword, grafanaAdminPassword, keycloakAdminPassword, technitiumAdminPassword).
 
 Projects:
   acme-app (staging)
@@ -640,7 +640,7 @@ Projects:
     api            http://192.168.1.211:8080    https://api-acme-app-urbex.example.com           version=1.4.0 stack=running dns=api.acme-app.urbex.example.com
 ```
 
-Both forms first update the GitOps repo from Gitea (the release Action
+Both forms first update the GitOps repo from Forgejo (the release Action
 commits there too), and say so if they can't.
 
 Through `urbex-op`, the credentials file is shown at its path on your
@@ -652,7 +652,7 @@ container's `/work/home/...`.
 `--output json` (`-o json`) prints the same as one JSON document on
 standard output, for a program to read - a web UI, an MCP server, the
 Claude Code plugin ([ADR-0032](../decisions/0032-web-ui-console-ai-assistant.md)).
-What couldn't be checked or updated (Gitea, Komodo) is in `warnings`
+What couldn't be checked or updated (Forgejo, Komodo) is in `warnings`
 instead of the text's bracketed lines; errors still go to standard error
 with a non-zero exit status. It holds no password: `logins` names each
 admin user and the key of its password in the credentials file.
@@ -667,7 +667,7 @@ Without `<env>`:
   "endpoints": [
     {
       "service": "gitea",
-      "name": "Gitea (web, git, registry)",
+      "name": "Forgejo (web, git, registry)",
       "internal": "http://git.urbex.example.com:3000",
       "lan": "http://192.168.1.200:3000",
       "public": "https://git-urbex.example.com",
@@ -677,7 +677,7 @@ Without `<env>`:
   ],
   "logins": {
     "credentialsFile": "/home/me/urbex-work/home/.urbex/credentials.yaml",
-    "users": [ { "service": "gitea", "user": "urbex-admin", "passwordKey": "giteaAdminPassword" } ]
+    "users": [ { "service": "gitea", "user": "urbex-admin", "passwordKey": "forgeAdminPassword" } ]
   },
   "projects": [
     {
@@ -753,7 +753,7 @@ urbex bootstrap: running for 7m12s, about 3m05s left (started 14:02)
   ✓ Create the LXCs (Terraform)                       56s
   ✓ Configure every LXC (Ansible)                     21s
   ✓ Install Technitium (DNS)                          26s
-  ▶ Install Gitea and Komodo, pull the other images   4m29s so far, about 21s left
+  ▶ Install Forgejo and Komodo, pull the other images   4m29s so far, about 21s left
   · Prepare the telemetry agents                      about 5s
   ...
 ```
@@ -834,7 +834,7 @@ urbex destroy <env> [--file urbex.yaml] [--gitops-repo <dir>] [--delete-data] [-
 
 Removes an environment of the project, in this order:
 
-1. Updates the GitOps repo from Gitea.
+1. Updates the GitOps repo from Forgejo.
 2. Takes its Komodo Stacks down (`docker compose down`) and deletes them:
    from here on nothing deploys the environment. With Cloudflare, removes
    its public services' routes and DNS records, and its web frontend's
@@ -873,7 +873,7 @@ acme-vault (prod) has named volumes: vault/data. Destroying it deletes them with
 |---|---|
 | `--delete-data` | Delete the named volumes with their machines. Nothing is kept. Shares are never touched. |
 
-The project's repo and images stay on Gitea. Services that were never
+The project's repo and images stay on Forgejo. Services that were never
 applied are skipped; if none were, nothing happens. Base services are
 never touched.
 
@@ -889,12 +889,12 @@ urbex teardown [--gitops-repo <dir>] [--yes] [--events json]
 Destroys the platform `urbex bootstrap` created: the inverse of
 `bootstrap`.
 
-1. Updates the GitOps repo from Gitea (if it still answers).
+1. Updates the GitOps repo from Forgejo (if it still answers).
 2. Refuses while any project environment exists - a folder under
    `environments/` or an LXC in the allocation ledger - naming them: run
    `urbex destroy <env>` in each project first.
 3. Says what it destroys and what is lost: the base-service LXCs and
-   their disks, so **every repository and image on Gitea** (project repos
+   their disks, so **every repository and image on Forgejo** (project repos
    included - make sure they also live elsewhere), Komodo's, Keycloak's
    and Grafana's data, the generated credentials. Without `--yes` it
    stops here.
@@ -908,7 +908,7 @@ Destroys the platform `urbex bootstrap` created: the inverse of
    key, Cloudflare token) stay.
 6. Commits the GitOps repo locally. Its working copy is now the **only
    copy**: keep it. `urbex bootstrap` creates a new platform from it and
-   pushes it to the new Gitea.
+   pushes it to the new Forgejo.
 
 | Flag | Meaning |
 |---|---|
@@ -1042,7 +1042,7 @@ as without `--events`.
 | `URBEX_GITOPS_REPO` | Every command but `init`: the GitOps repo working copy, if `--gitops-repo` isn't given. |
 | `URBEX_PROXMOX_TOKEN` | `bootstrap`, `plan`, `apply`, `destroy`, `teardown`, `status`. |
 | `URBEX_AGE_KEY` | `bootstrap`, `plan`, `apply`, `destroy`, `teardown`, `secret set/unset`. |
-| `URBEX_GITEA_TOKEN`, `URBEX_KOMODO_*`, ... | Generated by bootstrap into `~/.urbex/credentials.yaml`; an environment variable overrides the file. |
+| `URBEX_FORGE_TOKEN`, `URBEX_KOMODO_*`, ... | Generated by bootstrap into `~/.urbex/credentials.yaml`; an environment variable overrides the file. |
 
 The full list, and how to obtain each, is in [credentials](credentials.md).
 

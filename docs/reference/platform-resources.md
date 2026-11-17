@@ -1,11 +1,11 @@
 # Platform resources reference
 
-Everything Urbex creates outside the GitOps repo - on Proxmox, in Gitea,
+Everything Urbex creates outside the GitOps repo - on Proxmox, in Forgejo,
 in Komodo - with its name, what creates it, and what removes it. Useful
 for finding your way in the UIs, and for knowing what is safe to touch.
 
 `<org>` is `git.org` from [`urbex.platform.yaml`](platform-config.md)
-(default `urbex`); `<gitea>` is Gitea's `<ip>:3000`.
+(default `urbex`); `<gitea>` is Forgejo's `<ip>:3000`.
 
 ## Proxmox
 
@@ -29,7 +29,7 @@ in the same pool, with its own kernel ([ADR-0033](../decisions/0033-vm-for-keyct
 
 | LXC | Runs |
 |---|---|
-| `urbex-gitea` | Gitea 1.24 (web, git, container registry) on `:3000`, SSH on `:2222`. |
+| `urbex-gitea` | Forgejo 15 LTS (web, git, container registry; [ADR-0034](../decisions/0034-forgejo-lts-forge.md)) on `:3000`, SSH on `:2222`. The LXC keeps its name from when it ran Gitea. |
 | `urbex-komodo` | Komodo Core on `:9120`, its database (FerretDB on PostgreSQL), and a Periphery agent that is also the **builder** (server `urbex-komodo`). |
 | `urbex-technitium` | Technitium DNS, web console on `:5380`. |
 | `urbex-keycloak` | Keycloak on `:8080`, in production mode, from an image the Stack builds once for PostgreSQL; its PostgreSQL 17, reachable only by Keycloak (no port published), with its data on the volume `urbex_keycloak-db` ([ADR-0029](../decisions/0029-keycloak-production-postgresql.md)). |
@@ -55,7 +55,7 @@ Action and Procedure `platform`; a project's servers, Stacks and Builds
 The base services run as Docker Compose projects installed by Ansible;
 their data is in Docker volumes on the LXC.
 
-## Gitea
+## Forgejo
 
 | Resource | Name | Created by | Removed by |
 |---|---|---|---|
@@ -64,13 +64,13 @@ their data is in Docker volumes on the LXC.
 | Organization | `<org>` | `urbex bootstrap` | `urbex teardown` |
 | GitOps repo | `<org>/gitops` | `urbex bootstrap` | `urbex teardown` |
 | GitOps webhook | on `<org>/gitops`, branch `main` → the `urbex-gitops` Procedure | `urbex bootstrap` | `urbex teardown` |
-| Project repo | `<org>/<project>` | `urbex apply` (if missing) | by hand, or with Gitea by `urbex teardown` |
+| Project repo | `<org>/<project>` | `urbex apply` (if missing) | by hand, or with Forgejo by `urbex teardown` |
 | Project webhook | on `<org>/<project>`, every push → the `urbex-release` Action | `urbex apply` | `urbex destroy` of the last environment |
 | Release tags | `vX.Y.Z` on `<org>/<project>` | `urbex release`, or you | - |
 | Images | packages `<project>-<service>`, tags `<short hash>` and `<X.Y.Z>`: `<gitea>/<org>/<project>-<service>:<tag>` | the `urbex-release` Action | - (by hand) |
 
 Images are never deleted automatically: one per commit of `main`. Clean
-them up in Gitea under the organization's *Packages* when they pile up.
+them up in Forgejo under the organization's *Packages* when they pile up.
 
 ## Komodo
 
@@ -79,7 +79,7 @@ them up in Gitea under the organization's *Packages* when they pile up.
 | Admin user | `urbex-admin` | `urbex bootstrap` | `urbex teardown` |
 | API key | `urbex-cli` | `urbex bootstrap` | `urbex teardown` |
 | Onboarding key | `urbex-projects` | `urbex bootstrap` | `urbex teardown` |
-| Git account, registry account | `urbex-admin` on `<gitea>`, with the Gitea token | `urbex bootstrap` | `urbex teardown` |
+| Git account, registry account | `urbex-admin` on `<gitea>`, with the Forgejo token | `urbex bootstrap` | `urbex teardown` |
 | Variables | `URBEX_GITEA_URL`, `URBEX_GITEA_USER`, `URBEX_GITEA_TOKEN` (secret), `URBEX_ORG`, `URBEX_LOKI_PUSH_URL`; with Cloudflare `URBEX_CLOUDFLARE_TOKEN` (secret), `URBEX_CLOUDFLARE_ACCOUNT_ID` | `urbex bootstrap` | `urbex teardown` |
 | Variables of the linked environments | `URBEX_GRAPH_<PROJECT>_<ENV>`, the graph of `uses` of an environment, for the reconciler | `urbex apply <env>` | `urbex apply <env>` once nothing is linked, `urbex destroy <env>` |
 | Variable of the reconciler | `URBEX_RECONCILE_STATE`, its state between runs | the `urbex-reconcile` Action | `urbex teardown` |
@@ -132,7 +132,7 @@ commit whose image already exists, and only moves environments to
 one. A tag pushed with git resolves to the commit it points to, annotated
 or not.
 
-It reads Gitea's address and token from the `URBEX_*` variables.
+It reads Forgejo's address and token from the `URBEX_*` variables.
 `urbex release` and `urbex apply` also run it directly. Its source is
 `platform/komodo/release.ts` in `urbex-cli`.
 
@@ -235,7 +235,7 @@ nothing is published.
 ## What is safe to change by hand
 
 - **Yes:** anything under `environments/` in the GitOps repo; tags and
-  branches on project repos; old images in Gitea; Komodo's UI for
+  branches on project repos; old images in Forgejo; Komodo's UI for
   looking, running the Procedure, or redeploying a Stack.
 - **Overwritten by the next `bootstrap` or `apply`:** the Action, the
   Procedure, Builds, Stacks, the `URBEX_*` variables. Change them in the

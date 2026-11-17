@@ -21,16 +21,16 @@ first time, most of it spent waiting for downloads.
 ```
  your machine (or an agent)        Proxmox
  ┌───────────────────────┐   ┌──────────────────────────────────────────┐
- │ acme-app working copy │   │ platform: Gitea, Komodo, Technitium,     │
+ │ acme-app working copy │   │ platform: Forgejo, Komodo, Technitium,     │
  │   urbex.yaml          │──▶│   Keycloak, Prometheus/Grafana/Loki      │
  │ urbex CLI             │   │ acme-app-api-staging   acme-app-api-prod │
  └───────────────────────┘   └──────────────────────────────────────────┘
 ```
 
-- **The platform**: Gitea (Git and the container registry), Komodo
+- **The platform**: Forgejo (Git and the container registry), Komodo
   (builds and deploys), Technitium (internal DNS), Keycloak (login), and
   an observability stack, each in its own LXC.
-- **Your app** lives on Gitea, developed on `main`. Every push is built
+- **Your app** lives on Forgejo, developed on `main`. Every push is built
   into one image per service and deployed to **staging**.
 - **A release is a Git tag** (`v1.4.2`) on a commit staging ran: it gives
   that image the version, without rebuilding it. **Production runs
@@ -110,7 +110,7 @@ at their IP and port. Choose one:
 |---|---|---|
 | **Nothing** | Apps and admin tools on the LAN only | - |
 | **Quick Tunnel** | A public `https://*.trycloudflare.com` address per public service | No account ([ADR-0025](decisions/0025-cloudflare-quick-tunnel.md)) |
-| **Your zone** | Public HTTPS on your domain; Gitea, Komodo and the consoles behind Cloudflare Access | A Cloudflare account, the domain's zone on it, an API token ([credentials](reference/credentials.md)) |
+| **Your zone** | Public HTTPS on your domain; Forgejo, Komodo and the consoles behind Cloudflare Access | A Cloudflare account, the domain's zone on it, an API token ([credentials](reference/credentials.md)) |
 
 You can add Cloudflare later: see
 [Put the platform on the internet](cookbook.md#put-the-platform-on-the-internet).

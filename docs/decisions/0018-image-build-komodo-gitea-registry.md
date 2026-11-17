@@ -6,7 +6,7 @@ Accepted - implemented in `urbforge/urbex-cli`. Registry, builder,
 Dockerfiles, and the HTTP/insecure-registry consequences stand. What
 triggers a build, how images are tagged, and how they are rolled out are
 decided by [ADR-0020](0020-trunk-releases-gitops-environments.md): one
-image per release tag, deployed by Komodo from the GitOps repo.
+image per release tag, deployed by Komodo from the GitOps repo. The forge is now Forgejo LTS ([ADR-0034](0034-forgejo-lts-forge.md)): where this ADR says Gitea, read Forgejo.
 
 ## Context
 
