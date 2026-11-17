@@ -39,7 +39,9 @@ jobs:
             echo "The docs and the Claude Code plugin ($plugin) of urbex $version."
             echo "The CLI, \`urbex-op\` and its image: [urbforge/urbex-cli $TAG](https://github.com/urbforge/urbex-cli/releases/tag/$TAG)."
             echo
-            scripts/release-notes.sh "$TAG"
+            # The changelog's links are relative to the repository; on the
+            # release's page they point to this tag's files.
+            scripts/release-notes.sh "$TAG" | sed "s#](docs/#](https://github.com/$GITHUB_REPOSITORY/blob/$TAG/docs/#g; s#](CHANGELOG.md#](https://github.com/$GITHUB_REPOSITORY/blob/$TAG/CHANGELOG.md#g"
           } >"$notes"
           case "$TAG" in
             v0.* | *-*) pre=--prerelease ;;
