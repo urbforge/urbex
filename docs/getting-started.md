@@ -112,6 +112,11 @@ at their IP and port. Choose one:
 | **Quick Tunnel** | A public `https://*.trycloudflare.com` address per public service | No account ([ADR-0025](decisions/0025-cloudflare-quick-tunnel.md)) |
 | **Your zone** | Public HTTPS on your domain; Gitea, Komodo and the consoles behind Cloudflare Access | A Cloudflare account, the domain's zone on it, an API token ([credentials](reference/credentials.md)) |
 
+Without Cloudflare, a VPN (Tailscale, WireGuard) to your LAN reaches
+everything by its internal name; access modes for the VPN and for a
+reverse proxy of your own (Caddy) are planned in
+[ADR-0035](decisions/0035-access-without-cloudflare.md).
+
 You can add Cloudflare later: see
 [Put the platform on the internet](cookbook.md#put-the-platform-on-the-internet).
 
