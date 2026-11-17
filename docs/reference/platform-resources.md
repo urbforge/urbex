@@ -11,7 +11,7 @@ for finding your way in the UIs, and for knowing what is safe to touch.
 
 | Resource | Name | Created by | Removed by |
 |---|---|---|---|
-| LXC template | `urbex-template`, VMID `vmIdBase+90` to `+99`: the Debian template with Docker, sops and the compose wrapper and the Periphery and Alloy images; every new LXC is a linked clone of it. Rebuilt, at another VMID, when what builds it changes; an older one is removed once no LXC is a clone of it | `urbex bootstrap` | `urbex teardown` |
+| LXC template | `urbex-template`, VMID `vmIdBase+90` to `+99`: the Debian template with Docker, sops and the compose wrapper and the Periphery and Alloy images; every new LXC is a linked clone of it. Rebuilt, at another VMID, when what builds it changes; an older one is removed once no LXC is a clone of it. Until `urbex bootstrap` rebuilds it, `urbex apply` clones from the newest outdated one and says so | `urbex bootstrap` | `urbex teardown` |
 | VM template | `urbex-vm-template`, VMID `vmIdBase+80` to `+89`: the Debian cloud image (`proxmox.vmImage`) with the same as the LXC template plus the QEMU guest agent; every VM is a linked clone of it. Built the first time an application has `machine: vm`, rebuilt at another VMID when what builds it changes; an older one is removed once no VM is a clone of it | `urbex apply <env>` | `urbex teardown` |
 | Base-service LXCs | `urbex-gitea`, `urbex-komodo`, `urbex-technitium`, `urbex-keycloak`, `urbex-observability`, and `urbex-tunnel` with Cloudflare | `urbex bootstrap` | `urbex teardown` |
 | Project LXCs | `<project>-<service>-<env>` | `urbex apply <env>` | `urbex destroy <env>` |

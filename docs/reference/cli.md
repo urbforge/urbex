@@ -345,8 +345,13 @@ there is something to run, waits until it runs. Its phases and their
 usual times: [startup sequence](startup.md#urbex-apply-env);
 `urbex status --progress` follows them live.
 
-1. Everything `plan` does, then `terraform apply`: one LXC per service.
-   `terraform plan` runs first, and a plan that would delete an LXC
+1. Everything `plan` does, then `terraform apply`: one LXC per service,
+   cloned from urbex's LXC template - the current one, or else the
+   newest, outdated one, which `apply` says (`urbex's LXC template (9090)
+   is out of date ...`): its clones already have Docker and the agents'
+   images, and step 2 brings them up to date; `urbex bootstrap` rebuilds
+   it. With no template, `apply` says the LXCs come from the Debian
+   template and install everything themselves. `terraform plan` runs first, and a plan that would delete an LXC
    with named volumes, declared in `urbex.yaml` or still on it, is
    refused, naming it: Proxmox deletes an LXC's volumes with it. A
    replacement names the attributes that force it and is never allowed.
