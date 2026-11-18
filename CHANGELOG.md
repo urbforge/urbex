@@ -20,6 +20,24 @@ workflow refuses a tag whose version has no entry here.
 
 ## [Unreleased]
 
+### Plugin 0.2.1
+
+Needs **urbex 0.1.0 or later, major 0**.
+
+- **Changed**: the skills name the forge Forgejo, and its credentials
+  `forgeToken` and `forgeAdminPassword`; the `cli` skill's token check
+  accepts `giteaToken` too, for a workspace written by urbex 0.1.0.
+
+### Docs
+
+- **Added**: [ADR-0034](docs/decisions/0034-forgejo-lts-forge.md) -
+  Forgejo LTS is the platform's forge, in place of Gitea; the known
+  limitation for platforms installed with 0.1.0, which stay on Gitea
+  1.24.
+- **Changed**: Gitea is Forgejo throughout; the reference documents
+  `forgeToken`, `forgeAdminPassword`, `URBEX_FORGE_*` and `git.forgeUrl`,
+  the old names still read.
+
 ## [0.1.0] - 2026-11-17
 
 The first preview release: the docs install urbex from the
