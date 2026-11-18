@@ -1177,9 +1177,13 @@ An LXC that stops reporting, stopped or destroyed, raises nothing.
   dashboard and on the LXC (`du -xh / | sort -h | tail`). For an
   application, give it a bigger disk with `resources.disk`, or a bigger
   volume with its `size`, and `urbex apply`
-  ([more resources](#give-a-service-more-cpu-memory-or-disk)). Komodo's
-  LXC fills with the build cache: a scheduled clean-up is planned
-  ([urbex-cli#92](https://github.com/urbforge/urbex-cli/issues/92)).
+  ([more resources](#give-a-service-more-cpu-memory-or-disk)). On
+  Komodo's LXC the builds' cache is pruned every day (the Stack
+  `urbex-build-cache`; its log line in Loki says what it freed, `{service="build-cache"}`):
+  if it fills anyway, lower `komodo.buildCache.keepStorage` or
+  `keepFor` in `urbex.platform.yaml` and run `urbex bootstrap` (see
+  [the platform config](reference/platform-config.md)), or give the
+  LXC a bigger disk.
 - **Memory.** An LXC's memory is what it uses less the page cache, as
   `free` and Proxmox show it, against its limit. Give an application
   more with `resources.memory`; find what grows in *Urbex resources*,

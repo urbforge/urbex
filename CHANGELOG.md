@@ -30,6 +30,8 @@ Needs **urbex 0.1.0 or later, major 0**.
 
 ### Docs
 
+- **Added**: `komodo.buildCache` in the platform config, the build cache's
+  pruning in the platform resources, the cookbook and ADR-0027's table.
 - **Added**: [ADR-0034](docs/decisions/0034-forgejo-lts-forge.md) -
   Forgejo LTS is the platform's forge, in place of Gitea; the known
   limitation for platforms installed with 0.1.0, which stay on Gitea
