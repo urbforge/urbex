@@ -80,16 +80,19 @@ An existing workspace (`~/urbex-work`, `$URBEX_WORKSPACE`) with a
 `gitops/urbex.platform.yaml` means a platform may already exist: read
 that file and go on from where it is, instead of starting over.
 
-## 2. One short question
+## 2. What you found, and Cloudflare
 
 Tell the user, in a few lines, what you found: the Proxmox node (when
 there is one candidate; when several, list them and propose one), the
-LAN, the free block you propose. Then ask only:
+LAN, the free block you propose.
 
-- **Cloudflare**: none (everything on the LAN, the default), a Quick
-  Tunnel (public `*.trycloudflare.com` addresses, no account), or their
-  own zone (public HTTPS on their domain, Forgejo and Komodo behind
-  Cloudflare Access). It can be added later.
+**Cloudflare: none, unless the user asks for public addresses.** Go on
+without it - everything on the LAN - and say in one line that it can be
+added later, with the two options: a Quick Tunnel (public
+`*.trycloudflare.com` addresses, no account) or their own zone (public
+HTTPS on their domain, Forgejo and Komodo behind Cloudflare Access).
+Ask which one only when the user has said they want their apps reachable
+from the internet, or named a domain on Cloudflare.
 
 ## 3. Get Urbex and the workspace
 
@@ -277,7 +280,9 @@ then:
 urbex-op -w ~/urbex-work 'urbex bootstrap --events json'
 ```
 
-It takes about twenty minutes: run it with `--events json` in the
+It takes about twenty minutes the first time (1212 s on the test node,
+233 s of them for the LXC template), a minute or two when it runs again:
+run it with `--events json` in the
 background, as the `cli` skill says (*Following a long command*),
 telling the user each phase as it ends. Re-running it is safe, and is how a failed run
 resumes. When an error names a cause, fix it and run it again; the

@@ -20,7 +20,19 @@ In Claude Code, run these two commands one at a time:
 ```
 
 From the `/plugin` menu instead, choose *Add Marketplace* and enter only
-`urbforge/urbex`; then install `urbex` from the marketplace's list.
+`urbforge/urbex`; then install `urbex` from the marketplace's list. Or,
+from your terminal rather than inside Claude Code, one at a time:
+
+```sh
+claude plugin marketplace add urbforge/urbex
+```
+
+```sh
+claude plugin install urbex@urbex
+```
+
+Claude Code sees a new plugin's skills after `/reload-plugins`, or when
+you start it again.
 
 It also needs `python3`, 3.8 or later, on your machine, for the scripts
 that find your settings. `urbex` itself comes from the releases of
@@ -43,8 +55,9 @@ Or ask in plain words: "set up Urbex on my Proxmox node". What happens:
    machine, your LAN's CIDR, gateway and DNS, the Proxmox nodes on the
    LAN, and a block of free addresses. To find the free addresses, it
    pings each address of the LAN once.
-2. **It asks one question**: whether you use Cloudflare. The choices are
-   none, a Quick Tunnel, or your own zone.
+2. **It goes on without Cloudflare** - everything on the LAN - and says
+   it can be added later: a Quick Tunnel, or your own zone. It asks only
+   if you've said you want your apps reachable from the internet.
 3. **It downloads `urbex-op`** from the newest release of urbex-cli, and
    creates the workspace in `~/urbex-work` (which pulls the image).
 4. **You prepare Proxmox**, choosing between two ways: a script, which
@@ -71,7 +84,8 @@ Or ask in plain words: "set up Urbex on my Proxmox node". What happens:
    each value comes from. Check that the address block is outside your
    DHCP range: nothing else can check that.
 6. **It asks before `urbex bootstrap`**, then follows it, for about
-   twenty minutes, and gives you the platform's addresses.
+   twenty minutes (1212 s on our test node), and gives you the
+   platform's addresses.
 7. **Your first app**: give it the repository's URL or path. It writes
    `urbex.yaml` from the code, shows it to you, and deploys the app to
    staging.

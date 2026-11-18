@@ -20,6 +20,16 @@ workflow refuses a tag whose version has no entry here.
 
 ## [Unreleased]
 
+### Plugin 0.2.2
+
+Needs **urbex 0.1.0 or later, major 0**.
+
+- **Changed**: the `setup` skill goes on without Cloudflare and mentions
+  the options, asking only when the user wants public addresses; the
+  durations the skills give are the test node's (a first bootstrap about
+  20 minutes, a first apply about 6); the default workspace is
+  `~/urbex-work`, as `urbex-op`'s (urbforge/urbex#57).
+
 ### Plugin 0.2.1
 
 Needs **urbex 0.1.0 or later, major 0**.
