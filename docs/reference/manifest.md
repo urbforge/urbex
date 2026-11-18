@@ -60,7 +60,7 @@ frontend:
 | Field | Type | Required | Meaning |
 |---|---|---|---|
 | `apiVersion` | `urbex/v1` | yes | Manifest format version. |
-| `project` | string | yes | The project's name on the platform: 3-40 characters, lowercase letters, digits, `-`, starting with a letter. It names the repo on Gitea, the LXCs, the images, and the folders in the GitOps repo, so changing it means a new project. |
+| `project` | string | yes | The project's name on the platform: 3-40 characters, lowercase letters, digits, `-`, starting with a letter. It names the repo on Forgejo, the LXCs, the images, and the folders in the GitOps repo, so changing it means a new project. |
 | `services` | list | one of `services` or `frontend` | The services to build and run. At least one if present. |
 | `environments` | `[staging, prod]` or `[prod]` | `[staging, prod]` | The environments of the stack. With `[prod]` the stack runs in production only: `urbex apply staging` is refused, and `urbex release` and `urbex promote` do not apply, since versions are set in production directly with `urbex deploy prod` ([ADR-0028](../decisions/0028-application-model.md)). |
 | `frontend` | object | | See [`frontend`](#frontend). |

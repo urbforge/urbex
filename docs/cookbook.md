@@ -5,7 +5,7 @@ Each one says what to run and what happens; details of every command are in
 the [CLI reference](reference/cli.md), of every file in
 [the GitOps repo reference](reference/gitops-repo.md).
 
-The examples use project `acme-app` with a service `api`, Gitea at
+The examples use project `acme-app` with a service `api`, Forgejo at
 `192.168.1.200:3000`, and `URBEX_GITOPS_REPO` pointing at your working
 copy of the GitOps repo.
 
@@ -26,7 +26,7 @@ copy of the GitOps repo.
 - [Put the platform on the internet](#put-the-platform-on-the-internet)
 - [Publish a service](#publish-a-service)
 - [Deploy a web frontend](#deploy-a-web-frontend)
-- [Let someone else into Gitea and Komodo](#let-someone-else-into-gitea-and-komodo)
+- [Let someone else into Forgejo and Komodo](#let-someone-else-into-forgejo-and-komodo)
 - [Protect an endpoint with a role](#protect-an-endpoint-with-a-role)
 
 **Configuration and secrets**
@@ -198,7 +198,7 @@ prod --version <commit>` works, but skips the release - avoid it.
 `urbex promote` and `urbex deploy prod` commit straight to the GitOps
 repo. To have production changes reviewed instead:
 
-1. In Gitea, add a branch protection rule on `main` of `urbex/gitops`
+1. In Forgejo, add a branch protection rule on `main` of `urbex/gitops`
    with **protected file patterns** `environments/prod/**`: direct
    pushes touching prod are refused, pull requests are not. Staging,
    which Komodo and `urbex` update directly, keeps working.
@@ -232,7 +232,7 @@ urbex bootstrap
 
 ```
 Published on Cloudflare: Keycloak https://auth-urbex.example.com (its admin console behind Access), webhooks https://hooks-urbex.example.com;
-behind Access: Gitea https://git-urbex.example.com, Komodo https://komodo-urbex.example.com, Technitium https://dns-urbex.example.com, Grafana https://grafana-urbex.example.com, Prometheus https://prometheus-urbex.example.com, Loki https://loki-urbex.example.com.
+behind Access: Forgejo https://git-urbex.example.com, Komodo https://komodo-urbex.example.com, Technitium https://dns-urbex.example.com, Grafana https://grafana-urbex.example.com, Prometheus https://prometheus-urbex.example.com, Loki https://loki-urbex.example.com.
 ```
 
 Bootstrap adds a small LXC running `cloudflared`, sets up Access first
@@ -286,11 +286,11 @@ staging serves it at `https://staging-acme-app-urbex.example.com`.
 rolls it back. Each environment is a Cloudflare Worker with static
 assets, `urbex-acme-app-web-<env>`; unknown paths serve `index.html`.
 
-## Let someone else into Gitea and Komodo
+## Let someone else into Forgejo and Komodo
 
 Add their e-mail to `cloudflare.access.emails` and run `urbex bootstrap`.
 They open `https://git-urbex.example.com`, enter the address, and get a
-PIN by e-mail. That opens the door; Gitea and Komodo still ask for their
+PIN by e-mail. That opens the door; Forgejo and Komodo still ask for their
 own login (`urbex-admin`, or accounts you create in them).
 
 ## Protect an endpoint with a role
@@ -876,7 +876,7 @@ folders, destroys its LXCs, and frees their addresses. An environment
 with named volumes needs `--delete-data`, which deletes them with the
 LXCs. With the last
 environment gone, the project's Builds and webhook go too. The repo and
-its images stay on Gitea - delete them there if you want them gone.
+its images stay on Forgejo - delete them there if you want them gone.
 
 ## Remove the whole platform
 
@@ -889,7 +889,7 @@ urbex teardown --yes      # destroys the base-service LXCs and urbex's LXC templ
 ```
 
 `teardown` refuses while any project environment exists. It destroys
-Gitea's LXC, and with it every repository and image there: make sure
+Forgejo's LXC, and with it every repository and image there: make sure
 project repos are pushed somewhere else first. urbex's LXC template
 (`vmIdBase+90` onwards) goes too. Afterwards the GitOps repo's working
 copy is the only copy left - keep it - and `~/.urbex/credentials.yaml`
@@ -903,7 +903,7 @@ urbex status                 # the platform and every project environment
 urbex status staging         # one project's environment, from its folder
 ```
 
-`urbex status` lists every address of the platform - Gitea, Komodo and
+`urbex status` lists every address of the platform - Forgejo, Komodo and
 its webhooks, Keycloak, Technitium, Grafana, Prometheus, Loki - on the
 LAN and, with Cloudflare, on the internet, where the logins are, and
 then every project environment in the GitOps repo with each service's
@@ -919,7 +919,7 @@ the default `flat` names under `example.com`,
 
 | | Address |
 |---|---|
-| Keycloak / Gitea / Komodo | `https://auth-urbex.example.com`, `git-urbex`, `komodo-urbex` |
+| Keycloak / Forgejo / Komodo | `https://auth-urbex.example.com`, `git-urbex`, `komodo-urbex` |
 | An API, staging / prod | `https://api-staging-acme-app-urbex.example.com`, `https://api-acme-app-urbex.example.com` |
 | The web frontend, staging / prod | `https://staging-acme-app-urbex.example.com`, `https://acme-app-urbex.example.com` |
 | A service on the LAN | `http://<its LXC's IP>:<port>` - `state/allocations.json` in the GitOps repo |
@@ -928,7 +928,7 @@ the default `flat` names under `example.com`,
 
 Every service has an internal name in Technitium, whether or not
 Cloudflare is configured: `api.staging.acme-app.urbex.example.com` for
-a project service, `git.urbex.example.com` for Gitea - `urbex status`
+a project service, `git.urbex.example.com` for Forgejo - `urbex status`
 lists them ([ADR-0027](decisions/0027-service-conventions.md)). The
 LXCs resolve through Technitium already; from your own machine:
 
@@ -1114,7 +1114,7 @@ Common causes: the build fails (the Dockerfile, or the conventions of a
 on `$PORT`; the healthcheck path is wrong, so the container stays
 unhealthy and `urbex` keeps waiting until it times out.
 
-To redo a release whose Action run failed, delete the tag in Gitea and
+To redo a release whose Action run failed, delete the tag in Forgejo and
 create it again (`urbex release --version <same> --ref <commit>`). A tag
 pushed while `main` is still building that commit is fine: runs of the
 Action queue up.

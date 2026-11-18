@@ -47,7 +47,7 @@ Fill it in ([every field](../reference/platform-config.md)):
 ```yaml
 domain: acme.example
 git:
-  giteaUrl: https://git.acme.example
+  forgeUrl: https://git.acme.example
   org: urbex
 proxmox:
   apiUrl: https://192.168.1.10:8006/api2/json
@@ -69,7 +69,7 @@ Then run it again:
 urbex-op 'urbex bootstrap'
 ```
 
-It takes about twenty minutes. It creates the platform's LXCs (Gitea,
+It takes about twenty minutes. It creates the platform's LXCs (Forgejo,
 Komodo, Technitium, Keycloak, observability, and the tunnel when
 Cloudflare is configured), configures them and connects them. At the end
 it prints the address of each service. The `urbex-admin` passwords are in
@@ -108,7 +108,7 @@ cd ~/urbex-work/projects/acme-app && git add urbex.yaml && git commit -m "Add ur
 urbex-op 'cd /work/projects/acme-app && urbex apply staging'
 ```
 
-It creates the LXC, the repository on Gitea from your local `main`, the
+It creates the LXC, the repository on Forgejo from your local `main`, the
 build and the deploy, then builds `main` and deploys it. It prints the
 address of each service:
 
@@ -117,7 +117,7 @@ Deployed acme-app (staging):
   api              http://192.168.1.210:8080  3f9c2e1 (...)
 ```
 
-Gitea is now your app's remote. Every push to `main` is built and
+Forgejo is now your app's remote. Every push to `main` is built and
 deployed to staging within a few minutes:
 
 ```sh

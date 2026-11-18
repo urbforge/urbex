@@ -1,6 +1,6 @@
 # GitOps repo reference
 
-The GitOps repo (`<org>/gitops` on Gitea) is the platform's single
+The GitOps repo (`<org>/gitops` on Forgejo) is the platform's single
 source of truth: how the infrastructure is built, and what every
 environment of every project runs. Komodo deploys from it; `urbex`
 writes to it; people can too - every change is a commit.
@@ -280,7 +280,7 @@ application runs.
   logs and metrics are labelled.
 - `technitium/`, `gitea/`, `komodo/` hold **copies** of the compose
   files their Stacks deploy from their servers (`/opt/urbex`): Komodo
-  can't depend on Gitea or Technitium to deploy them, and `urbex
+  can't depend on Forgejo or Technitium to deploy them, and `urbex
   bootstrap` restores them if a redeploy breaks one. The copies are for
   review; no secret is in them.
 
@@ -288,7 +288,7 @@ application runs.
 
 1. A commit lands on `main` of the GitOps repo (a push, a merged pull
    request, `urbex`, or the `urbex-release` Action).
-2. Gitea calls Komodo's webhook for the `urbex-gitops` Procedure, which
+2. Forgejo calls Komodo's webhook for the `urbex-gitops` Procedure, which
    runs *deploy if changed* on every Urbex Stack.
 3. Each Stack compares its folder with what it last deployed. Only a
    Stack whose `compose.yaml`, `version.env`, `config.env`,

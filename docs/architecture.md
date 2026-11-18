@@ -8,12 +8,12 @@ flowchart TB
         CLI[urbex CLI]
     end
 
-    subgraph AppRepo["App repo (on Gitea)"]
+    subgraph AppRepo["App repo (on Forgejo)"]
         Manifest[urbex.yaml]
         Code[App code]
     end
 
-    subgraph GitOpsRepo["GitOps repo (on Gitea)"]
+    subgraph GitOpsRepo["GitOps repo (on Forgejo)"]
         TF[Terraform/OpenTofu]
         ANS[Ansible]
         ENVS[environments/: versions, config, SOPS secrets]
@@ -21,7 +21,7 @@ flowchart TB
 
     subgraph Proxmox["Proxmox server"]
         subgraph Base["Base services LXCs"]
-            Gitea
+            Forgejo
             Komodo
             Technitium[Technitium DNS]
             Keycloak
@@ -57,7 +57,7 @@ flowchart TB
     ANS -->|configures| Base
     ANS -->|configures| Staging
     ANS -->|configures| Prod
-    Gitea -->|GitOps repo + app repo| GitOpsRepo
+    Forgejo -->|GitOps repo + app repo| GitOpsRepo
     Komodo -->|deploys environments/staging| SvcS
     Komodo -->|deploys environments/prod| SvcP
     Technitium -->|resolves internal names| Base
@@ -85,7 +85,7 @@ command and flag is in the [CLI reference](reference/cli.md).
 
 | Command | Purpose |
 |---|---|
-| `urbex bootstrap` | Provisions the base services on a fresh Proxmox (Gitea, Komodo, Technitium, Keycloak, Prometheus/Grafana/Loki) and initializes the GitOps repo. See [ADR-0006](decisions/0006-bootstrap-command.md). |
+| `urbex bootstrap` | Provisions the base services on a fresh Proxmox (Forgejo, Komodo, Technitium, Keycloak, Prometheus/Grafana/Loki) and initializes the GitOps repo. See [ADR-0006](decisions/0006-bootstrap-command.md). |
 | `urbex init` | Generates/validates `urbex.yaml` in the app repo, typically run by the LLM after analyzing the project code. |
 | `urbex plan <env>` | Computes the infrastructure changes needed (Terraform diff + Ansible config) for an environment, without applying them. |
 | `urbex apply <env>` | Applies the planned changes: creates/updates LXCs, connects them to Komodo, declares the project's builds and the environment's folder and stacks, registers each service's internal DNS name in Technitium and, with Cloudflare, its public route; a new staging starts following `main`. |
@@ -111,23 +111,23 @@ storage) with tracked state; Ansible configures the inside of the LXCs
 Technitium/Keycloak). LXCs run Debian 13. See
 [ADR-0003](decisions/0003-terraform-ansible-provisioning.md).
 
-### GitOps: repo on Gitea + Komodo
+### GitOps: repo on Forgejo + Komodo
 
 Everything that defines the platform and what runs on it is versioned
-in a GitOps repo hosted on a self-hosted Gitea instance on the same
+in a GitOps repo hosted on a self-hosted Forgejo instance on the same
 Proxmox: the infrastructure (Terraform definitions and state, Ansible
 playbooks) and, under `environments/`, one folder per environment with
 each service's compose file, configuration, encrypted secrets, and the
-version to deploy. App repos live on the same Gitea.
+version to deploy. App repos live on the same Forgejo.
 
 Komodo is the build and rollout engine. It builds each service's image
-from the app repo on every push to `main`, pushes it to Gitea's
+from the app repo on every push to `main`, pushes it to Forgejo's
 container registry, and deploys each environment folder of the GitOps
 repo on the service's LXC, through the Periphery agent installed there,
 whenever the folder changes. An application that uses others waits, in
 its own Stack, until what it uses is healthy, and a Komodo Action, the
 reconciler, deploys it again when it could not start
-([ADR-0031](decisions/0031-readiness-between-stacks.md)). What Urbex creates in Gitea and Komodo is
+([ADR-0031](decisions/0031-readiness-between-stacks.md)). What Urbex creates in Forgejo and Komodo is
 listed in [platform resources](reference/platform-resources.md); the
 repo's layout and files in the [GitOps repo reference](reference/gitops-repo.md). See
 [ADR-0004](decisions/0004-gitops-gitea-komodo.md),
@@ -197,7 +197,7 @@ Registration doesn't depend on Cloudflare being configured. See
 
 A single Keycloak, three uses:
 
-1. SSO for admin UIs (Komodo, Grafana, Gitea, Technitium).
+1. SSO for admin UIs (Komodo, Grafana, Forgejo, Technitium).
 2. OIDC provider for dev apps (apps register as clients).
 3. Service APIs are protected by roles defined in Keycloak.
 
@@ -237,10 +237,10 @@ very image staging ran.
 ```mermaid
 sequenceDiagram
     participant Dev as Dev / agent
-    participant Repo as acme-app (Gitea)
+    participant Repo as acme-app (Forgejo)
     participant K as Komodo
-    participant Reg as Registry (Gitea)
-    participant G as gitops (Gitea)
+    participant Reg as Registry (Forgejo)
+    participant G as gitops (Forgejo)
     participant S as staging LXC
     participant P as prod LXC
     Dev->>Repo: git push main
@@ -299,12 +299,12 @@ secrets. See
 ## Bootstrap vs steady-state
 
 Urbex operates in two distinct modes, to solve the chicken-and-egg problem
-(the GitOps repo that is supposed to manage Gitea cannot exist before
-Gitea exists):
+(the GitOps repo that is supposed to manage Forgejo cannot exist before
+Forgejo exists):
 
 1. **Bootstrap** (`urbex bootstrap`): runs Terraform+Ansible directly
    against the Proxmox API to create the base services and the first
-   Gitea repo, then pushes the initial state to it as the GitOps repo.
+   Forgejo repo, then pushes the initial state to it as the GitOps repo.
 2. **Steady-state**: from that point on, every change (new project, new
    environment, base service update) goes through a commit to the GitOps
    repo + reconciliation via Komodo/CLI.

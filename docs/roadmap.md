@@ -7,10 +7,10 @@ works today and its limits, see [`status.md`](status.md) and
 ## v1 — scope
 
 - Infrastructure target: **Proxmox only** (an already-running server).
-- Git server managed by Urbex: **Gitea only**.
-- Container registry: **Gitea's built-in registry**
+- Git server managed by Urbex: **Forgejo only**.
+- Container registry: **Forgejo's built-in registry**
   ([ADR-0018](decisions/0018-image-build-komodo-gitea-registry.md)).
-- CI/CD (image build + deploy): **Komodo**, triggered by Gitea webhooks
+- CI/CD (image build + deploy): **Komodo**, triggered by Forgejo webhooks
   ([ADR-0020](decisions/0020-trunk-releases-gitops-environments.md)).
 - LXC operating system: **Debian 13**.
 - Orchestrator: **Docker Compose** (one per LXC).
@@ -19,7 +19,7 @@ works today and its limits, see [`status.md`](status.md) and
   of Pages), **Firebase** (mobile).
 - Services: **Java, Python, Go**, or any **Docker image** with a ready
   Dockerfile.
-- Base services created on-demand: **Gitea, Komodo, Technitium, Keycloak,
+- Base services created on-demand: **Forgejo, Komodo, Technitium, Keycloak,
   Prometheus + Grafana + Loki**.
 - Ingress: **Cloudflare Tunnel**, with **Cloudflare Access** in front of
   the admin UIs ([ADR-0022](decisions/0022-cloudflare-tunnel-access-workers.md)),
@@ -96,15 +96,15 @@ What the planned additions of v1 became:
 - **Hosts beyond Proxmox**: a server you bring over SSH, then Hetzner
   Cloud, then DigitalOcean (ADR in
   [urbex#24](https://github.com/urbforge/urbex/issues/24)) - E3-bis (M3).
-- **Backups and restore** of Gitea, Komodo, Keycloak, databases and
+- **Backups and restore** of Forgejo, Komodo, Keycloak, databases and
   volumes - E3 (M3).
 
 ## v2+ — future evolutions
 
 - **Cloud providers** beyond Proxmox: Azure, GCP, AWS (VPS hosts come
   first, in E3-bis).
-- **Git servers** beyond Gitea: GitHub, GitLab.
-- **Container registries** beyond Gitea: ghcr.io (paired with GitHub).
+- **Git servers** beyond Forgejo: GitHub, GitLab.
+- **Container registries** beyond Forgejo: ghcr.io (paired with GitHub).
 - **CI/CD** beyond Komodo: GitHub Actions, ArgoCD.
 - **Orchestrators** beyond Docker Compose: Kubernetes.
 - **Secrets**: optional HashiCorp Vault support.

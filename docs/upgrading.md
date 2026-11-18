@@ -51,13 +51,13 @@ that Terraform, Ansible, sops and age are at the versions the release's
 
 The plugin has its own version. It works with any `urbex` of the same
 major version (0 today). While both are 0.x it also needs a minimum,
-which its `cli` skill states: urbex 0.1.0 for plugin 0.2.0.
+which its `cli` skill states: urbex 0.1.0 for plugin 0.2.1.
 
 ### Plugin and CLI versions
 
 | Plugin | urbex |
 |---|---|
-| 0.2.0 | 0.1.0 or later, major 0 |
+| 0.2.0, 0.2.1 | 0.1.0 or later, major 0 |
 
 The plugin checks `urbex version` once per session. When `urbex` is
 older than it needs, it says so and points here. When the major versions

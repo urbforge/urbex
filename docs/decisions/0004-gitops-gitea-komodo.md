@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted. The forge is now Forgejo LTS ([ADR-0034](0034-forgejo-lts-forge.md)): where this ADR says Gitea, read Forgejo.
 
 ## Context
 
