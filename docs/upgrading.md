@@ -7,8 +7,10 @@ the tools on your machine. The workspace, the GitOps repo, the platform
 and your projects stay as they are.
 
 While Urbex is 0.x (a preview), a minor release may still change how
-something works. **Read the release's notes first**: they say when a
-command is needed after upgrading.
+something works. **Read the release's notes first** - its GitHub release,
+or the `CHANGELOG.md` of [urbex-cli](https://github.com/urbforge/urbex-cli/blob/main/CHANGELOG.md)
+and of [this repository](../CHANGELOG.md): their *Breaking* and
+*Upgrading* sections say when a command is needed after upgrading.
 
 ## With urbex-op
 

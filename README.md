@@ -247,7 +247,9 @@ Start here:
   [CLI](docs/getting-started/with-the-cli.md), [any AI
   agent](docs/getting-started/with-an-ai-agent.md) or [Claude
   Code](docs/getting-started/with-claude-code.md).
-- [**Upgrading**](docs/upgrading.md) — moving to a new release.
+- [**Upgrading**](docs/upgrading.md) — moving to a new release; what
+  changed in each: [`CHANGELOG.md`](CHANGELOG.md) (docs and plugin) and
+  urbex-cli's [`CHANGELOG.md`](https://github.com/urbforge/urbex-cli/blob/main/CHANGELOG.md).
 - [**Cookbook**](docs/cookbook.md) — recipes: releasing, rolling back,
   pinning staging, secrets, adding services, troubleshooting, driving
   Urbex from an LLM agent (the Claude Code plugin included).

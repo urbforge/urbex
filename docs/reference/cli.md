@@ -18,6 +18,7 @@ the [cookbook](../cookbook.md).
 - [`urbex status`](#urbex-status)
 - [`urbex destroy`](#urbex-destroy)
 - [`urbex teardown`](#urbex-teardown)
+- [`urbex updates`](#urbex-updates)
 - [`urbex users`](#urbex-users)
 - [`urbex version`](#urbex-version)
 - [Environment variables](#environment-variables)
@@ -361,7 +362,8 @@ usual times: [startup sequence](startup.md#urbex-apply-env);
    replacement names the attributes that force it and is never allowed.
    An application removed from `urbex.yaml` is a plain delete, which
    goes ahead only with `--delete-data`: `apply` names the LXCs and
-   volumes first, and deletes them. Then each named volume the LXC
+   volumes first, and deletes them, and frees their addresses in the
+   allocation ledger (`Freed the addresses of ...`). Then each named volume the LXC
    lacks becomes a mount point (`backup=1`), and a bigger `size` grows
    it; a smaller one is refused. An LXC that can't mount them at once
    is restarted, and the restart is said first. An application whose
@@ -851,7 +853,8 @@ Removes an environment of the project, in this order:
    `environments/<env>/<project>/`, the environment's Terraform files and
    (now empty) state under `terraform/projects/<project>/<env>/`, its
    Ansible inventory under `ansible/projects/<project>/<env>/`, and its
-   entries in the allocation ledger.
+   entries in the allocation ledger: every machine its Terraform state
+   held, applications no longer in `urbex.yaml` included.
 
 The folder goes last on purpose: until the Stacks are gone, a push to
 `main` can still make the release Action update it, and removing it
@@ -891,8 +894,13 @@ Destroys the platform `urbex bootstrap` created: the inverse of
 
 1. Updates the GitOps repo from Forgejo (if it still answers).
 2. Refuses while any project environment exists - a folder under
-   `environments/` or an LXC in the allocation ledger - naming them: run
-   `urbex destroy <env>` in each project first.
+   `environments/` - naming them: run `urbex destroy <env>` in each
+   project first. Then an entry the allocation ledger still holds, left
+   by an older urbex, is forgotten if its machine is gone from Proxmox
+   (`Forgot stale entries of the allocation ledger ...`); if its machine
+   still exists, teardown stops and names it with its VMID: delete it in
+   the pool, or put its application back in `urbex.yaml` and run
+   `urbex destroy <env>`.
 3. Says what it destroys and what is lost: the base-service LXCs and
    their disks, so **every repository and image on Forgejo** (project repos
    included - make sure they also live elsewhere), Komodo's, Keycloak's
@@ -917,6 +925,46 @@ Destroys the platform `urbex bootstrap` created: the inverse of
 Needs: `URBEX_PROXMOX_TOKEN`, `URBEX_AGE_KEY`, `terraform`. The Proxmox
 resource pool, its storages, the token and the Debian template
 (`proxmox.lxcTemplate`) are left as they are.
+
+## `urbex updates`
+
+```
+urbex updates [<env>] [--file urbex.yaml] [--gitops-repo <dir>] [--output text|json]
+```
+
+Says, for each application from a published image applied in `<env>`
+(or in staging and prod), whether a newer image is available. It
+changes nothing:
+
+- **the tag `urbex.yaml` asks for points to another image** than the one
+  running (a tag like `17` or `1.29` moves): `urbex deploy <env>
+  --update` runs it;
+- **a newer tag of the same major** - a minor or patch version: deploy
+  it with `urbex deploy <env> --app <app> --version <tag>`, and set it
+  in `urbex.yaml`;
+- **a newer major**: listed only, never proposed - its data may need a
+  migration, and its release notes say how (see
+  [`--allow-major`](#urbex-deploy)).
+
+Only tags shaped like the asked one are compared: as many numbers, the
+same `v` and the same suffix - `1.29` with `1.30` and `2.0`, not with
+`1.30.1`, `1.30-alpine` or `latest`. A tag without a version
+(`latest`) has no newer tags. The tags come from the registry, asked
+anonymously, as `deploy --update` does.
+
+```
+$ urbex updates
+shop (staging):
+  db               postgres:17.6, running 17.6@sha256:0d93...
+                   newer: 17.12 - urbex deploy staging --app db --version 17.12
+                   new major: 18.7 - read its release notes first; not proposed
+  cache            valkey/valkey:8, running 8@sha256:4f1a...
+                   8 points to a newer image: urbex deploy staging --update
+                   new major: 9 - read its release notes first; not proposed
+```
+
+`--output json`: `{"project", "updates": [{"env", "app", "image",
+"asked", "running", "newDigest", "minor", "major", "error"}]}`.
 
 ## `urbex users`
 

@@ -1,0 +1,51 @@
+# The release of the docs and the Claude Code plugin: on a v* tag (pushed
+# by Teg, with urbex-cli's of the same version), a GitHub release with the
+# version's notes from CHANGELOG.md - the run fails without them
+# (urbforge/redemptor#54) - and a link to the CLI's release. A pre-release
+# while urbex is 0.x or the tag has a suffix (v0.1.0-rc.1).
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.repository == 'urbforge/urbex'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # the release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Publish the release with its notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          version=${TAG#v}
+          plugin=$(sed -n 's/^ *"version": "\(.*\)",$/\1/p' .claude-plugin/plugin.json)
+          notes=$RUNNER_TEMP/notes.md
+          {
+            echo "The docs and the Claude Code plugin ($plugin) of urbex $version."
+            echo "The CLI, \`urbex-op\` and its image: [urbforge/urbex-cli $TAG](https://github.com/urbforge/urbex-cli/releases/tag/$TAG)."
+            echo
+            # The changelog's links are relative to the repository; on the
+            # release's page they point to this tag's files.
+            scripts/release-notes.sh "$TAG" | sed "s#](docs/#](https://github.com/$GITHUB_REPOSITORY/blob/$TAG/docs/#g; s#](CHANGELOG.md#](https://github.com/$GITHUB_REPOSITORY/blob/$TAG/CHANGELOG.md#g"
+          } >"$notes"
+          case "$TAG" in
+            v0.* | *-*) pre=--prerelease ;;
+            *) pre= ;;
+          esac
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "urbex $version - docs and plugin $plugin" --notes-file "$notes" $pre
