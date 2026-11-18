@@ -53,6 +53,10 @@ minor release may change how something works (see
 
 | Limitation | Workaround / consequence |
 |---|---|
+| **A `healthcheck` is an HTTP path**: an application others `use` needs one (or the `postgres` interface), so a service that speaks no HTTP - Redis/Valkey, MQTT, a game server - can't be in `uses`. | Reach it by its internal name in `env`, without `uses`, as the [Paperless-ngx recipe](cookbook.md#run-a-stack-of-linked-apps-paperless-ngx-with-postgresql-and-redis) does; the app isn't held back until it answers. |
+| **A `postgres` provider gives each application a role without superuser rights**: an app that creates PostgreSQL extensions itself - Immich (VectorChord), some with PostGIS - can't use it. | None yet: such an app needs its database as an application of its own that it administers, which isn't supported. |
+| **No GPU or other device passed to an application**: hardware transcoding (Jellyfin, Plex), machine learning (Immich, Frigate) run on the CPU. | Give the application more `resources.cpu`. |
+| **`auth.keycloak` gives an application its realm's addresses, not a login**: an app with its own OIDC settings (Paperless, Jellyfin's plugin, Nextcloud) is configured by hand with a client you create in Keycloak. | Create the client in its environment's realm and set the app's OIDC variables with `urbex secret` and `config.env`. |
 | **Only `vX.Y.Z` tags are releases**: no pre-releases (`-rc.1`). | Staging runs every commit of `main`; release a patch version. |
 | **`urbex promote` commits straight to the GitOps repo.** | [Gate production behind a pull request](cookbook.md#gate-production-behind-a-pull-request) with Forgejo's protected file patterns. |
 | **Komodo can miss a push** made within ~5 seconds of the previous one (it caches the repo); the scheduled run catches up within 15 minutes. | The `urbex` commands handle it; by hand, run the `urbex-gitops` Procedure. |
