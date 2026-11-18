@@ -40,6 +40,10 @@ Needs **urbex 0.1.0 or later, major 0**.
 
 ### Docs
 
+- **Changed**: getting started installs the plugin from the terminal too
+  (`claude plugin ...`, then `/reload-plugins`), and gives the test
+  node's durations; the default workspace is `~/urbex-work` everywhere.
+
 - **Added**: [ADR-0034](docs/decisions/0034-forgejo-lts-forge.md) -
   Forgejo LTS is the platform's forge, in place of Gitea; the known
   limitation for platforms installed with 0.1.0, which stay on Gitea
