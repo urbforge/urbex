@@ -362,7 +362,8 @@ usual times: [startup sequence](startup.md#urbex-apply-env);
    replacement names the attributes that force it and is never allowed.
    An application removed from `urbex.yaml` is a plain delete, which
    goes ahead only with `--delete-data`: `apply` names the LXCs and
-   volumes first, and deletes them. Then each named volume the LXC
+   volumes first, and deletes them, and frees their addresses in the
+   allocation ledger (`Freed the addresses of ...`). Then each named volume the LXC
    lacks becomes a mount point (`backup=1`), and a bigger `size` grows
    it; a smaller one is refused. An LXC that can't mount them at once
    is restarted, and the restart is said first. An application whose
@@ -852,7 +853,8 @@ Removes an environment of the project, in this order:
    `environments/<env>/<project>/`, the environment's Terraform files and
    (now empty) state under `terraform/projects/<project>/<env>/`, its
    Ansible inventory under `ansible/projects/<project>/<env>/`, and its
-   entries in the allocation ledger.
+   entries in the allocation ledger: every machine its Terraform state
+   held, applications no longer in `urbex.yaml` included.
 
 The folder goes last on purpose: until the Stacks are gone, a push to
 `main` can still make the release Action update it, and removing it
@@ -892,8 +894,13 @@ Destroys the platform `urbex bootstrap` created: the inverse of
 
 1. Updates the GitOps repo from Gitea (if it still answers).
 2. Refuses while any project environment exists - a folder under
-   `environments/` or an LXC in the allocation ledger - naming them: run
-   `urbex destroy <env>` in each project first.
+   `environments/` - naming them: run `urbex destroy <env>` in each
+   project first. Then an entry the allocation ledger still holds, left
+   by an older urbex, is forgotten if its machine is gone from Proxmox
+   (`Forgot stale entries of the allocation ledger ...`); if its machine
+   still exists, teardown stops and names it with its VMID: delete it in
+   the pool, or put its application back in `urbex.yaml` and run
+   `urbex destroy <env>`.
 3. Says what it destroys and what is lost: the base-service LXCs and
    their disks, so **every repository and image on Gitea** (project repos
    included - make sure they also live elsewhere), Komodo's, Keycloak's
