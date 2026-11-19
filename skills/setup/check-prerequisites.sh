@@ -46,7 +46,9 @@ fi
 
 if command -v urbex-op >/dev/null; then
   ok "urbex-op on the PATH: $(command -v urbex-op)"
-  ws=${URBEX_WORKSPACE:-$HOME/urbex-workspace}
+  # urbex-op's default: ~/urbex-work, or ~/urbex-workspace (urbex 0.1's) if only that exists.
+  ws=${URBEX_WORKSPACE:-$HOME/urbex-work}
+  if [ -z "${URBEX_WORKSPACE:-}" ] && [ ! -d "$ws" ] && [ -d "$HOME/urbex-workspace/home" ]; then ws=$HOME/urbex-workspace; fi
   if [ -d "$ws/home" ]; then ok "workspace: $ws"; else warn "no workspace at $ws yet (urbex-op init)"; fi
   # A release's urbex-op names its image ("urbex-op 0.1.0, image ghcr.io/..."); one from
   # before releases has no version command and runs the image urbex-op build makes.

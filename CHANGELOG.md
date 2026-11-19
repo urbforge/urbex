@@ -20,6 +20,16 @@ workflow refuses a tag whose version has no entry here.
 
 ## [Unreleased]
 
+### Plugin 0.2.2
+
+Needs **urbex 0.1.0 or later, major 0**.
+
+- **Changed**: the `setup` skill goes on without Cloudflare and mentions
+  the options, asking only when the user wants public addresses; the
+  durations the skills give are the test node's (a first bootstrap about
+  20 minutes, a first apply about 6); the default workspace is
+  `~/urbex-work`, as `urbex-op`'s (urbforge/urbex#57).
+
 ### Plugin 0.2.1
 
 Needs **urbex 0.1.0 or later, major 0**.
@@ -29,6 +39,10 @@ Needs **urbex 0.1.0 or later, major 0**.
   accepts `giteaToken` too, for a workspace written by urbex 0.1.0.
 
 ### Docs
+
+- **Changed**: getting started installs the plugin from the terminal too
+  (`claude plugin ...`, then `/reload-plugins`), and gives the test
+  node's durations; the default workspace is `~/urbex-work` everywhere.
 
 - **Added**: [ADR-0034](docs/decisions/0034-forgejo-lts-forge.md) -
   Forgejo LTS is the platform's forge, in place of Gitea; the known
