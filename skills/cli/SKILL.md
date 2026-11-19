@@ -47,7 +47,7 @@ Neither: use the `setup` skill.
 
 ## Versions
 
-This plugin (0.2.1) needs **urbex 0.1.0 or later, with the same major
+This plugin (0.2.3) needs **urbex 0.1.0 or later, with the same major
 version (0)**. Once per session, run `urbex version` (`urbex-op
 'urbex version'`):
 
@@ -118,6 +118,13 @@ a yes for that command:
 When a command refuses ("has named volumes", "a replacement is never
 allowed", "release it first"), tell the user what it said and what it
 suggests. Don't add a flag that overrides the refusal on your own.
+
+If `urbex bootstrap` refuses because "the platform's forge is Gitea", the
+platform was created by urbex 0.1.0 and can't move to this urbex in
+place. Moving means destroying every environment and the platform
+(`docs/upgrading.md`, *From 0.1.0 to 0.2.0*): their data and Gitea's
+repositories go. Tell the user, point to that page, and run none of
+those commands unless they ask, one confirmation each.
 
 ## Secrets and credentials
 
