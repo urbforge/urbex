@@ -901,7 +901,7 @@ same way.
 
 `apply` creates the LXC, resolves `1.37.5` to its digest and runs it: on
 the LAN at the address it prints, and by its internal name
-(`vaultwarden.prod.vault.urbex.example.com`, see [resolve a service by name](#resolve-a-service-by-name-on-the-lan)).
+(`vaultwarden.vault.urbex.example.com`, see [resolve a service by name](#resolve-a-service-by-name-on-the-lan)).
 Its data is in the named volume `data`, kept across redeploys and in
 Proxmox's backups ([keep an application's data](#keep-an-applications-data)).
 
@@ -975,7 +975,7 @@ services:
         PAPERLESS_DBNAME: ${db.database}
         PAPERLESS_DBUSER: ${db.user}
         PAPERLESS_DBPASS: ${db.password}
-        PAPERLESS_REDIS: redis://broker.prod.docs.urbex.example.com:6379   # its internal name, in your zone
+        PAPERLESS_REDIS: redis://broker.docs.urbex.example.com:6379   # its internal name, in your zone
 ```
 
 - `db` is a `postgres` provider: `paperless` gets a role and a schema of
@@ -984,7 +984,7 @@ services:
 - `broker` isn't in `uses`: an application others use needs a
   `healthcheck`, which is an HTTP path, and Valkey speaks no HTTP. So
   `paperless` reaches it by its internal name
-  (`<app>.<env>.<project>.<zone>`, as `urbex status prod` shows it) and isn't
+  (`<app>.<project>.<zone>` in production, `<app>.staging.<project>.<zone>` in staging, as `urbex status` shows it) and isn't
   held back until it answers; Paperless retries on its own. A check for
   services that aren't HTTP is in the
   [known limitations](known-limitations.md#projects-and-deploys).
