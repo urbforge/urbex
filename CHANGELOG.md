@@ -30,6 +30,8 @@ Needs **urbex 0.1.0 or later, major 0**.
 
 ### Docs
 
+- **Added**: Java4Shell (CVE-2026-114938) in the known limitations - mitigated in Keycloak and the `runtime: java` images, until fixed images exist (urbforge/urbex-cli#130).
+
 - **Added**: [ADR-0034](docs/decisions/0034-forgejo-lts-forge.md) -
   Forgejo LTS is the platform's forge, in place of Gitea; the known
   limitation for platforms installed with 0.1.0, which stay on Gitea
