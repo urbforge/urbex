@@ -866,9 +866,9 @@ Self-hosted apps - Vaultwarden, Jellyfin, Paperless-ngx, the *arr stack -
 come as published images. In Urbex each is an **application**: one
 service in an `urbex.yaml`, with `image` and `version` instead of a
 runtime, its own LXC, its data in named volumes. A project of such
-applications needs no code and no repo of yours: the `urbex.yaml` alone,
-in a folder of the workspace. A home lab usually runs it in production
-only (`environments: [prod]`).
+applications needs no code: its `urbex.yaml` alone, committed in a git
+repository of its own, which Urbex publishes on Forgejo the first time.
+A home lab usually runs it in production only (`environments: [prod]`).
 
 Vaultwarden, the password manager, in `~/urbex-work/projects/vault/urbex.yaml`:
 
@@ -886,9 +886,18 @@ services:
       - { name: data, path: /data, size: 2Gi }
 ```
 
+Commit it, then apply:
+
 ```sh
+cd ~/urbex-work/projects/vault
+git init -b main && git add urbex.yaml && git commit -m "Vaultwarden"
 urbex-op 'cd /work/projects/vault && urbex apply prod'
 ```
+
+Without the commit, `apply` creates the LXC and then stops with
+`creating branch main on gitea from .: git push: ... not a git repository`;
+commit and run it again. Later changes to `urbex.yaml` are committed the
+same way.
 
 `apply` creates the LXC, resolves `1.37.5` to its digest and runs it: on
 the LAN at the address it prints, and by its internal name
