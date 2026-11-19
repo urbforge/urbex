@@ -880,27 +880,37 @@ environments: [prod]
 services:
   - name: vaultwarden
     image: docker.io/vaultwarden/server
-    version: "1.34.3"            # the image's tag: check the current one
-    port: 80
-    healthcheck: /alive
+    version: "1.37.5"            # the image's tag: check the current one
+    port: 80                     # no healthcheck: see below
     volumes:
       - { name: data, path: /data, size: 2Gi }
-    env:
-      prod:
-        SIGNUPS_ALLOWED: "false"
 ```
 
 ```sh
 urbex-op 'cd /work/projects/vault && urbex apply prod'
 ```
 
-`apply` creates the LXC, resolves `1.34.3` to its digest and runs it: on
+`apply` creates the LXC, resolves `1.37.5` to its digest and runs it: on
 the LAN at the address it prints, and by its internal name
-(`vaultwarden.vault.<zone>`, see [resolve a service by name](#resolve-a-service-by-name-on-the-lan)).
-`public: true` puts it on the internet through Cloudflare
-([publish a service](#publish-a-service)); its own login is then its
-only gate. Its data is in the named volume `data`, kept across
-redeploys and in Proxmox's backups ([keep an application's data](#keep-an-applications-data)).
+(`vaultwarden.prod.vault.urbex.example.com`, see [resolve a service by name](#resolve-a-service-by-name-on-the-lan)).
+Its data is in the named volume `data`, kept across redeploys and in
+Proxmox's backups ([keep an application's data](#keep-an-applications-data)).
+
+- **No `healthcheck`**: Urbex probes with `wget`, and this image has only
+  `curl`. Vaultwarden's image checks itself (its own Docker
+  `HEALTHCHECK` on `/alive`). Before declaring a `healthcheck` on an
+  image, check it has `wget`
+  ([known limitations](known-limitations.md#projects-and-deploys)).
+- **HTTPS for the web vault and the apps**: Bitwarden's clients refuse a
+  plain `http://` address other than `localhost`. On the LAN the page
+  loads but login doesn't. Give it HTTPS with `public: true`, through
+  Cloudflare ([publish a service](#publish-a-service)), and its login is
+  then its only gate; or behind your own reverse proxy.
+- **Close sign-ups once your account exists**: create it, then set
+  `SIGNUPS_ALLOWED=false` in the service's `config.env` in the GitOps
+  repo and redeploy ([change configuration](#change-configuration)).
+  Setting it in `env` from the start leaves no way to create the first
+  account without the admin page.
 
 Moving to a newer image is deliberate: `urbex updates` lists what is
 newer, `urbex deploy prod --app vaultwarden --version <tag>` runs it
@@ -914,6 +924,9 @@ Apps that work together are **one stack**: the applications of one
 `urbex.yaml`, deployed and upgraded together. Each declares what it
 **uses**; Urbex gives it the address of what it uses, and starts it only
 once those are healthy ([linked applications](reference/manifest.md#linked-applications)).
+
+> **Not yet tested on our lab**: written from the manifest reference and
+> the images' documentation. Tell us how it goes.
 
 Paperless-ngx, the document manager, with its database and its queue:
 
@@ -940,8 +953,7 @@ services:
   - name: paperless
     image: ghcr.io/paperless-ngx/paperless-ngx
     version: "2.18"              # check the current tag
-    port: 8000
-    healthcheck: /
+    port: 8000                   # no healthcheck: the image has no wget
     ready_within: 3m
     uses: [db]
     resources: { memory: 2Gi }
@@ -954,7 +966,7 @@ services:
         PAPERLESS_DBNAME: ${db.database}
         PAPERLESS_DBUSER: ${db.user}
         PAPERLESS_DBPASS: ${db.password}
-        PAPERLESS_REDIS: redis://broker.docs.urbex.example.com:6379   # its internal name, in your zone
+        PAPERLESS_REDIS: redis://broker.prod.docs.urbex.example.com:6379   # its internal name, in your zone
 ```
 
 - `db` is a `postgres` provider: `paperless` gets a role and a schema of
@@ -963,7 +975,7 @@ services:
 - `broker` isn't in `uses`: an application others use needs a
   `healthcheck`, which is an HTTP path, and Valkey speaks no HTTP. So
   `paperless` reaches it by its internal name
-  (`<app>.<project>.<zone>`, as `urbex status prod` shows it) and isn't
+  (`<app>.<env>.<project>.<zone>`, as `urbex status prod` shows it) and isn't
   held back until it answers; Paperless retries on its own. A check for
   services that aren't HTTP is in the
   [known limitations](known-limitations.md#projects-and-deploys).
@@ -981,6 +993,9 @@ Sonarr, Radarr and Prowlarr find media, a download client fetches it,
 Jellyfin plays it - all reading and writing the same media folders on a
 NAS. In Urbex: one stack, an application each (so an LXC each), the NAS
 folder as a **share** mounted in every application that needs it.
+
+> **Not yet tested on our lab**: written from the manifest reference and
+> the images' documentation. Tell us how it goes.
 
 First declare the NAS folder, once, in `urbex.platform.yaml`
 ([mount a NAS share](#mount-a-nas-share) has the NAS side: NFS or SMB,
@@ -1038,8 +1053,7 @@ services:
   - name: jellyfin
     image: docker.io/jellyfin/jellyfin
     version: "10.10.7"
-    port: 8096
-    healthcheck: /health
+    port: 8096                   # no healthcheck: the image has no wget
     resources: { cpu: 2, memory: 4Gi }
     volumes:
       - { name: config, path: /config, size: 5Gi }
