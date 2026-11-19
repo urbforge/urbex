@@ -30,6 +30,8 @@ Needs **urbex 0.1.0 or later, major 0**.
 
 ### Docs
 
+- **Changed**: the examples' images moved to current versions - nginx `1.31` (NGINX2Root, CVE-2026-123007, is fixed in 1.31.9), Caddy `2.11`, Vaultwarden `1.37.5`, Jellyfin `10.11.11`, rclone `1.76` - and a cookbook recipe on keeping applications from images up to date, with the HTTP/2 note for nginx (urbforge/urbex#99).
+
 - **Added**: [ADR-0034](docs/decisions/0034-forgejo-lts-forge.md) -
   Forgejo LTS is the platform's forge, in place of Gitea; the known
   limitation for platforms installed with 0.1.0, which stay on Gitea

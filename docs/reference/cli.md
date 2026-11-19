@@ -937,7 +937,7 @@ Says, for each application from a published image applied in `<env>`
 changes nothing:
 
 - **the tag `urbex.yaml` asks for points to another image** than the one
-  running (a tag like `17` or `1.29` moves): `urbex deploy <env>
+  running (a tag like `17` or `1.31` moves): `urbex deploy <env>
   --update` runs it;
 - **a newer tag of the same major** - a minor or patch version: deploy
   it with `urbex deploy <env> --app <app> --version <tag>`, and set it
@@ -947,8 +947,8 @@ changes nothing:
   [`--allow-major`](#urbex-deploy)).
 
 Only tags shaped like the asked one are compared: as many numbers, the
-same `v` and the same suffix - `1.29` with `1.30` and `2.0`, not with
-`1.30.1`, `1.30-alpine` or `latest`. A tag without a version
+same `v` and the same suffix - `1.31` with `1.32` and `2.0`, not with
+`1.32.1`, `1.32-alpine` or `latest`. A tag without a version
 (`latest`) has no newer tags. The tags come from the registry, asked
 anonymously, as `deploy --update` does.
 

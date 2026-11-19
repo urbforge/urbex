@@ -38,6 +38,7 @@ copy of the GitOps repo.
 **Shape of a project**
 
 - [Add a service](#add-a-service)
+- [Keep applications from images up to date](#keep-applications-from-images-up-to-date)
 - [Use your own Dockerfile](#use-your-own-dockerfile)
 - [Several services in one repo](#several-services-in-one-repo)
 - [Change a port or the healthcheck](#change-a-port-or-the-healthcheck)
@@ -408,6 +409,31 @@ The other services are untouched. Staging then runs the worker built from
 `main`. For prod, `urbex apply prod`, then release and promote as usual -
 releases made before the worker existed have no image for it.
 
+## Keep applications from images up to date
+
+An application from a published image runs the digest it was given
+until you move it: a security fix in nginx, PostgreSQL or Vaultwarden
+reaches it only through you. Check now and then, and when an image's
+project announces a vulnerability:
+
+```sh
+urbex updates
+```
+
+It lists, per environment, the newer images: the tag you asked for
+moved (`urbex deploy <env> --update` runs it), a newer minor or patch
+(`urbex deploy <env> --app <app> --version <tag>`), a new major (read
+its release notes first). See [`urbex updates`](reference/cli.md#urbex-updates).
+
+Pin a tag that receives fixes - `1.31` rather than `1.31.9` - so that
+`--update` picks them up, and follow the project's security notices.
+A case in point, [NGINX2Root](https://xint.io/blog/nginx2root-remote-code-execution)
+(CVE-2026-123007): remote code execution in nginx 1.9.5 to 1.31.8 when
+it serves **HTTP/2**, fixed in 1.31.9. Through the Cloudflare Tunnel an
+application is reached over HTTP/1.1, but don't turn on HTTP/2 in an
+nginx older than 1.31.9, and move such an image to `1.31` with
+`urbex deploy <env> --app <app> --version 1.31`.
+
 ## Use your own Dockerfile
 
 ```yaml
@@ -482,7 +508,7 @@ else stays in LXCs.
    services:
      - name: web
        image: docker.io/library/nginx
-       version: "1.29"
+       version: "1.31"
        port: 80
        healthcheck: /
        machine: vm
@@ -495,7 +521,7 @@ else stays in LXCs.
    VM template ready: new VMs are linked clones of urbex-vm-template (9080).
    ...
    Deployed acme-app (prod):
-     web              http://192.168.1.233:80  1.29@sha256:1881968a...
+     web              http://192.168.1.233:80  1.31@sha256:689fbc6a...
    ```
 
 The VM is `<project>-<service>-<env>` in the pool, with its address from
@@ -516,7 +542,7 @@ Declare a named volume where the application writes:
 services:
   - name: vault
     image: vaultwarden/server
-    version: "1.34.3"
+    version: "1.37.5"
     port: 80
     volumes:
       - { name: data, path: /data, size: 5Gi }
@@ -782,7 +808,7 @@ services:
     uses: [db]
   - name: web
     image: docker.io/library/nginx
-    version: "1.29"
+    version: "1.31"
     port: 80
     uses: [api]
     env:
