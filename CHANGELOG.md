@@ -30,6 +30,8 @@ Needs **urbex 0.1.0 or later, major 0**.
 
 ### Docs
 
+- **Added**: the Proxmox node's metrics and alerts with an optional read-only token - the token in the credentials reference and getting started, the alerts in the disk recipe, `pve-exporter` in ADR-0027's services (urbforge/urbex-cli#94).
+
 - **Added**: [ADR-0034](docs/decisions/0034-forgejo-lts-forge.md) -
   Forgejo LTS is the platform's forge, in place of Gitea; the known
   limitation for platforms installed with 0.1.0, which stay on Gitea
