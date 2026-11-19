@@ -30,6 +30,8 @@ Needs **urbex 0.1.0 or later, major 0**.
 
 ### Docs
 
+- **Added**: getting Urbex's alerts on Telegram, Discord or a webhook - the cookbook's steps (BotFather, the chat id, Discord's webhook), `observability.alerts` in the platform config, the three credentials, `urbex doctor --test-alerts` (urbforge/urbex-cli#95).
+
 - **Added**: [ADR-0034](docs/decisions/0034-forgejo-lts-forge.md) -
   Forgejo LTS is the platform's forge, in place of Gitea; the known
   limitation for platforms installed with 0.1.0, which stay on Gitea
