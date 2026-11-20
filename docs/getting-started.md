@@ -148,6 +148,12 @@ that they never go through a chat.
 
 ## Where to go from here
 
+- **A home lab**: self-hosted apps from their images - one app with its
+  data ([Vaultwarden](cookbook.md#run-a-home-lab-app-from-its-image)),
+  a stack of linked apps
+  ([Paperless-ngx with PostgreSQL and Redis](cookbook.md#run-a-stack-of-linked-apps-paperless-ngx-with-postgresql-and-redis)),
+  a stack spread over several LXCs sharing a NAS
+  ([the *arr stack with Jellyfin](cookbook.md#run-a-distributed-stack-the-arr-stack-with-jellyfin-and-a-nas)).
 - [Cookbook](cookbook.md): rolling back, adding a service, putting the
   platform on the internet, running from another machine, and more.
 - [Reference](reference/): every command, manifest field, platform

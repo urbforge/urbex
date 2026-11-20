@@ -43,6 +43,11 @@ Needs **urbex 0.1.0 or later, major 0**.
 - **Changed**: getting started installs the plugin from the terminal too
   (`claude plugin ...`, then `/reload-plugins`), and gives the test
   node's durations; the default workspace is `~/urbex-work` everywhere.
+- **Added**: a home-lab path - recipes for an app from its image with its
+  data (Vaultwarden), a stack of linked apps (Paperless-ngx with
+  PostgreSQL and Redis), a distributed stack sharing a NAS (the *arr
+  stack with Jellyfin); the limitations a home lab meets (non-HTTP
+  healthchecks, PostgreSQL extensions, GPUs, app SSO).
 
 - **Added**: [ADR-0034](docs/decisions/0034-forgejo-lts-forge.md) -
   Forgejo LTS is the platform's forge, in place of Gitea; the known
