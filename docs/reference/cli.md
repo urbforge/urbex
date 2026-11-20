@@ -98,7 +98,7 @@ prints it. Each check is `ok`, `warn`, `fail` or `skip`; a check that
 isn't `ok` has its fix under it. On the lab:
 
 ```
-urbex 0.1.0 (commit 1a2b3c4, built 2026-11-20T10:00:00Z, linux/amd64)
+urbex 0.2.0 (commit 1a2b3c4, built 2026-11-20T10:00:00Z, linux/amd64)
 
 tools:
   ok    git                git version 2.47.3
@@ -1021,7 +1021,7 @@ version; a build from source says `dev`, the commit and its date, and
 
 ```
 $ urbex version
-urbex 0.1.0 (commit 1a2b3c4, built 2026-11-20T10:00:00Z, linux/amd64)
+urbex 0.2.0 (commit 1a2b3c4, built 2026-11-20T10:00:00Z, linux/amd64)
 $ urbex version              # built from a checkout
 urbex dev (commit 9df118e-dirty, committed 2026-11-16T17:38:34Z, linux/amd64)
 ```
@@ -1030,7 +1030,7 @@ urbex dev (commit 9df118e-dirty, committed 2026-11-16T17:38:34Z, linux/amd64)
 
 ```json
 {
-  "version": "0.1.0",
+  "version": "0.2.0",
   "commit": "1a2b3c4d5e6f...",
   "date": "2026-11-20T10:00:00Z",
   "go": "go1.26.5",

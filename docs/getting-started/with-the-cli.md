@@ -7,17 +7,17 @@ docker.
 
 ## 1. Get Urbex
 
-Download `urbex-op` from the [release](https://github.com/urbforge/urbex-cli/releases/tag/v0.1.0):
+Download `urbex-op` from the [release](https://github.com/urbforge/urbex-cli/releases/tag/v0.2.0):
 one script, which runs that release's image,
-`ghcr.io/urbforge/urbex-op:0.1.0`, and pulls it the first time.
+`ghcr.io/urbforge/urbex-op:0.2.0`, and pulls it the first time.
 
 ```sh
 mkdir -p ~/bin
-curl -fsSLo ~/bin/urbex-op https://github.com/urbforge/urbex-cli/releases/download/v0.1.0/urbex-op
+curl -fsSLo ~/bin/urbex-op https://github.com/urbforge/urbex-cli/releases/download/v0.2.0/urbex-op
 chmod +x ~/bin/urbex-op                 # ~/bin must be on your PATH
 export URBEX_WORKSPACE=~/urbex-work     # put this in your shell's profile
 urbex-op init                           # pulls the image the first time
-urbex-op 'urbex version'                # urbex 0.1.0 (commit ..., built ..., linux/amd64)
+urbex-op 'urbex version'                # urbex 0.2.0 (commit ..., built ..., linux/amd64)
 ```
 
 `init` creates the **workspace**: one folder with the SSH key Urbex
@@ -144,12 +144,12 @@ That's it. For configuration and secrets see
 ## Native tools
 
 Without the container, download `urbex` from the
-[release](https://github.com/urbforge/urbex-cli/releases/tag/v0.1.0) - the
+[release](https://github.com/urbforge/urbex-cli/releases/tag/v0.2.0) - the
 archive for your system (Linux or macOS, amd64 or arm64), checked against
 `checksums.txt` - and set up what the container does for you:
 
 ```sh
-v=0.1.0 os=linux arch=amd64                                 # or darwin, arm64
+v=0.2.0 os=linux arch=amd64                                 # or darwin, arm64
 curl -fsSLO https://github.com/urbforge/urbex-cli/releases/download/v$v/urbex_${v}_${os}_${arch}.tar.gz
 curl -fsSL https://github.com/urbforge/urbex-cli/releases/download/v$v/checksums.txt | grep "_${os}_${arch}.tar.gz" | sha256sum -c   # macOS: shasum -a 256 -c
 tar xzf urbex_${v}_${os}_${arch}.tar.gz urbex && mv urbex ~/bin/
@@ -165,7 +165,7 @@ urbex bootstrap
 Then run the commands of steps 3 to 6 without `urbex-op '...'`, from
 your app's folder, wherever it is. Terraform, Ansible and sops must be
 on the `PATH` there, at the versions urbex-cli's
-[`mise.toml`](https://github.com/urbforge/urbex-cli/blob/v0.1.0/mise.toml)
+[`mise.toml`](https://github.com/urbforge/urbex-cli/blob/v0.2.0/mise.toml)
 pins: with mise, that is `mise use -g` for each tool, or a `mise.toml` in
 that folder. `urbex doctor` checks them.
 

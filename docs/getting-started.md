@@ -7,7 +7,7 @@ any other AI agent, or the commands typed by you. Allow an hour the
 first time, most of it spent waiting for downloads.
 
 > ⚠️ Urbex is a preview release
-> ([v0.1.0](https://github.com/urbforge/urbex-cli/releases/tag/v0.1.0)).
+> ([v0.2.0](https://github.com/urbforge/urbex-cli/releases/tag/v0.2.0)).
 > Everything here has been run end to end on a real Proxmox VE 9.2 node -
 > see [`status.md`](status.md) and
 > [`known-limitations.md`](known-limitations.md).
