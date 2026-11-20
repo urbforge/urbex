@@ -201,6 +201,7 @@ where their compose files live and in who can repair them:
 | Loki | `urbex-observability` | `loki.<zone>` | API behind Access; push internal | platform |
 | `pve-exporter` - the Proxmox node's metrics, only with the [monitoring token](../reference/credentials.md#proxmox-monitoring-token) | `urbex-observability` | - (scraped inside the Stack) | none (calls the node's API) | platform |
 | Tunnel (`cloudflared`) | `urbex-tunnel` | `tunnel.<zone>` | none (outbound only) | platform |
+| Build cache pruning (`docker` CLI, urbforge/urbex-cli#92) | `urbex-komodo` | none (no endpoint) | none | platform |
 | Periphery | every LXC | - (connects out to Komodo) | internal | agent |
 | Alloy | every LXC | - (pushes out) | internal | agent |
 | Quick Tunnel sidecar | a project service's LXC | - | the service's public endpoint | agent |

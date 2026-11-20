@@ -65,12 +65,12 @@ Shared flags:
 ## `urbex doctor`
 
 ```
-urbex doctor [--gitops-repo <dir>] [--output text|json]
+urbex doctor [--test-alerts] [--gitops-repo <dir>] [--output text|json]
 ```
 
 Checks that this machine, the workspace, Proxmox and Cloudflare have
 what urbex needs, and says what to do about what's missing. It changes
-nothing and prints no secret; run it first, and whenever something
+nothing (`--test-alerts` sends a test message) and prints no secret; run it first, and whenever something
 fails for no clear reason.
 
 - **tools**: `git`, `ssh`, `terraform`, `ansible-playbook`, `sops`, `age`,
@@ -86,6 +86,12 @@ fails for no clear reason.
   exists.
 - **cloudflare**, with an account in the config: the token is active and
   sees the zone of `domain`.
+- **alerts**, with `observability.alerts` in the config: each channel's
+  credential is there. With `--test-alerts`, Grafana sends a test
+  message through each channel, and each check says whether it went
+  out, or the channel's error (a wrong bot token, a chat the bot isn't
+  in). This one check sends something; the others change nothing. See
+  [get the alerts on Telegram or Discord](../cookbook.md#get-the-alerts-on-telegram-or-discord).
 
 It starts with urbex's own version, as [`urbex version`](#urbex-version)
 prints it. Each check is `ok`, `warn`, `fail` or `skip`; a check that
