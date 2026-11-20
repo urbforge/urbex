@@ -38,6 +38,12 @@ admin tools that aren't open to the internet. Without wiring all of it by
 hand, and with an AI agent able to drive it: "deploy to staging",
 "promote to production".
 
+**Or you self-host apps** - Vaultwarden, Jellyfin and the *arr stack,
+Paperless-ngx - and want each in its own LXC from its published image,
+pinned to a version, with its data in volumes and backups, linked to its
+database, on your NAS's media: see the
+[home lab recipes](docs/cookbook.md#run-a-home-lab-app-from-its-image).
+
 You don't need a Cloudflare account: `cloudflare.quickTunnel: true` gives
 every public service a `*.trycloudflare.com` address
 ([ADR-0025](docs/decisions/0025-cloudflare-quick-tunnel.md)); it is for

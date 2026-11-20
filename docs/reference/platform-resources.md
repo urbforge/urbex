@@ -30,7 +30,7 @@ in the same pool, with its own kernel ([ADR-0033](../decisions/0033-vm-for-keyct
 | LXC | Runs |
 |---|---|
 | `urbex-gitea` | Forgejo 15 LTS (web, git, container registry; [ADR-0034](../decisions/0034-forgejo-lts-forge.md)) on `:3000`, SSH on `:2222`. The LXC keeps its name from when it ran Gitea. |
-| `urbex-komodo` | Komodo Core on `:9120`, its database (FerretDB on PostgreSQL), and a Periphery agent that is also the **builder** (server `urbex-komodo`). |
+| `urbex-komodo` | Komodo Core on `:9120`, its database (FerretDB on PostgreSQL), and a Periphery agent that is also the **builder** (server `urbex-komodo`). The Stack `urbex-build-cache` prunes the builds' cache there every `komodo.buildCache.every` (see [the platform config](platform-config.md)). |
 | `urbex-technitium` | Technitium DNS, web console on `:5380`. |
 | `urbex-keycloak` | Keycloak on `:8080`, in production mode, from an image the Stack builds once for PostgreSQL; its PostgreSQL 17, reachable only by Keycloak (no port published), with its data on the volume `urbex_keycloak-db` ([ADR-0029](../decisions/0029-keycloak-production-postgresql.md)). |
 | `urbex-observability` | Prometheus `:9090` (receiving the agents' metrics by remote write), Loki `:3100`, Grafana `:3000` (admin / `grafanaAdminPassword`), with Loki and Prometheus as data sources and the *Urbex logs* and *Urbex resources* dashboards (folder *Urbex*), the reconciler's alerts (folder `urbex`, see [its runbook](../cookbook.md#the-reconciler-holds-applications-back)), and the alerts on every LXC's disk and memory (same folder, see [their runbook](../cookbook.md#a-disk-is-filling-up-or-a-machine-is-running-out-of-memory)). A change to their files recreates Grafana and Prometheus at the next `urbex bootstrap`. |
