@@ -1314,7 +1314,7 @@ the first time. It works on a **workspace**: one folder with the
 credentials, the SSH and age keys, the GitOps repo and your projects.
 
 ```sh
-curl -fsSLo ~/bin/urbex-op https://github.com/urbforge/urbex-cli/releases/download/v0.1.0/urbex-op
+curl -fsSLo ~/bin/urbex-op https://github.com/urbforge/urbex-cli/releases/download/v0.2.0/urbex-op
 chmod +x ~/bin/urbex-op
 urbex-op -w ~/urbex-work init      # SSH key, age key, folders
 urbex-op -w ~/urbex-work set proxmoxToken   # stored in the workspace (or export URBEX_PROXMOX_TOKEN)

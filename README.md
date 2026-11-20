@@ -16,7 +16,7 @@ Write the app; Urbex gives it everything else - repositories, builds, deploys, l
 
 Every environment, from a homelab to the cloud, should give applications the same fundamental services, the same way. Urbex is that platform.
 
-> **Status: preview release ([v0.1.0](https://github.com/urbforge/urbex-cli/releases/tag/v0.1.0)).** The whole flow - from an
+> **Status: preview release ([v0.2.0](https://github.com/urbforge/urbex-cli/releases/tag/v0.2.0)).** The whole flow - from an
 > empty Proxmox node to an app in staging and production - runs end to end
 > and has been validated on a real server. Download `urbex`, or `urbex-op`
 > and its image, from the release - see
