@@ -64,9 +64,8 @@ services:
   healthcheck. Two applications of a group may not publish the same
   port.
 - **The group is the machine.** Its VMID and IP are allocated and
-  recorded once, under its name. Its resources are the sum of its
-  applications'. Its root disk is the largest asked for, plus the
-  others' images. Its shares, devices
+  recorded once, under its name. Its resources - cores, memory and root
+  disk - are the sum of its applications'. Its shares, devices
   ([urbforge/urbex-cli#138](https://github.com/urbforge/urbex-cli/issues/138))
   and features are the union of its applications'. Its applications
   share a `machine`: `lxc` and `vm` in one group are refused.
