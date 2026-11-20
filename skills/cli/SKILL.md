@@ -26,7 +26,7 @@ Find out once per session which way the user runs Urbex:
 
 - **Container** (`command -v urbex-op`): every command runs as
   `urbex-op '<commands>'`, against the workspace in `$URBEX_WORKSPACE`
-  (default `~/urbex-workspace`), mounted at `/work`. Your shell doesn't
+  (default `~/urbex-work`; `~/urbex-workspace` with an older `urbex-op`), mounted at `/work`. Your shell doesn't
   keep variables between commands, so pass it each time
   (`urbex-op -w ~/urbex-work '...'`) if it isn't in the user's profile.
   Project commands run in the project's folder, which must be inside the
@@ -47,7 +47,7 @@ Neither: use the `setup` skill.
 
 ## Versions
 
-This plugin (0.2.1) needs **urbex 0.1.0 or later, with the same major
+This plugin (0.2.2) needs **urbex 0.1.0 or later, with the same major
 version (0)**. Once per session, run `urbex version` (`urbex-op
 'urbex version'`):
 
@@ -65,8 +65,11 @@ break, hence the minimum.
 
 ## Following a long command
 
-`bootstrap`, `apply`, `destroy` and `teardown --yes` take minutes, up to
-twenty. Run them with `--events json`, in the background (a background
+`bootstrap`, `apply`, `destroy` and `teardown --yes` take minutes. On the
+test node: a first `bootstrap` about 20 minutes (1212 s), a first `apply`
+of an environment about 6 (342 s: its LXCs, the build, the deploy), a
+later `apply` a minute or two, `promote` under 2, `destroy` about one,
+`teardown` about two. Run them with `--events json`, in the background (a background
 task, or a watch whose events are the command's lines):
 
 ```sh
