@@ -31,14 +31,14 @@ the operator image of `urbex-cli` (`mise run operator-image`). On the
 platform, the project `demo` must not exist yet.
 
 ```sh
-URBEX_OPERATOR_IMAGE=urbex-operator docs/demo/record.sh ~/urbex-workspace
+URBEX_OPERATOR_IMAGE=urbex-operator docs/demo/record.sh ~/urbex-work
 ```
 
 It takes about 15 minutes, nearly all of it the first `apply` (the
 LXCs, Komodo, the build of `main`). Then remove the project:
 
 ```sh
-cd ~/urbex-workspace/demo/app && urbex destroy staging && urbex destroy prod
+cd ~/urbex-work/demo/app && urbex destroy staging && urbex destroy prod
 ```
 
 `claude.gif` the same way, on a fresh project again, with your Claude
@@ -47,7 +47,7 @@ Code login:
 ```sh
 claude setup-token                  # once: a token for scripts, then
 export CLAUDE_CODE_OAUTH_TOKEN=...  # (or nothing: a copy of ~/.claude/.credentials.json is used)
-URBEX_OPERATOR_IMAGE=urbex-operator docs/demo/record.sh ~/urbex-workspace claude
+URBEX_OPERATOR_IMAGE=urbex-operator docs/demo/record.sh ~/urbex-work claude
 ```
 
 The login goes into the workspace's `demo/claude-home` for the recording

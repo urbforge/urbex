@@ -69,7 +69,8 @@ Then run it again:
 urbex-op 'urbex bootstrap'
 ```
 
-It takes about twenty minutes. It creates the platform's LXCs (Forgejo,
+It takes about twenty minutes (1212 s on our test node, a quarter of it
+for the LXC template). It creates the platform's LXCs (Forgejo,
 Komodo, Technitium, Keycloak, observability, and the tunnel when
 Cloudflare is configured), configures them and connects them. At the end
 it prints the address of each service. The `urbex-admin` passwords are in
@@ -109,7 +110,9 @@ urbex-op 'cd /work/projects/acme-app && urbex apply staging'
 ```
 
 It creates the LXC, the repository on Forgejo from your local `main`, the
-build and the deploy, then builds `main` and deploys it. It prints the
+build and the deploy, then builds `main` and deploys it: about six
+minutes the first time (342 s on our test node, for two services), a
+minute or two afterwards. It prints the
 address of each service:
 
 ```
