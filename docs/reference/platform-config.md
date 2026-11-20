@@ -83,6 +83,9 @@ cloudflare:
 | `komodo.buildCache.keepStorage` | `3GB` | The builds' cache on Komodo's LXC is pruned, least recently used first, down to this size (`500MB`, `3GB`...). |
 | `komodo.buildCache.keepFor` | `168h` | ...and of what is older than this duration; so are the images no container uses, older than it. An hour or more. |
 | `komodo.buildCache.every` | `24h` | How often (the first run 10 minutes after the Stack starts). An hour or more. Changed by `urbex bootstrap`. |
+| `observability.alerts.telegram.chatId` | none | Send Urbex's alerts to this Telegram chat: a number, negative for a group, or a public channel's `@name`. Needs the credential `telegramBotToken`. See [get the alerts on Telegram or Discord](../cookbook.md#get-the-alerts-on-telegram-or-discord). |
+| `observability.alerts.discord` | `false` | Send them to a Discord channel's webhook, the credential `discordWebhookUrl`. |
+| `observability.alerts.webhook` | `false` | Post them as Grafana's JSON to the credential `alertsWebhookUrl`. Any of the three, or several; with none, the alerts stay in Grafana. Applied by `urbex bootstrap`; checked by `urbex doctor --test-alerts`. |
 | `storage.shares.<name>.path` | none | A folder of the Proxmox node that applications mount by name: see [shares](#shares). An absolute path that isn't `/` and has no comma, space or tab. |
 
 ## Shares

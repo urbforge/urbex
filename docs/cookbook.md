@@ -67,6 +67,7 @@ copy of the GitOps repo.
 - [The reconciler holds applications back](#the-reconciler-holds-applications-back)
 - [The reconciler is not running](#the-reconciler-is-not-running)
 - [A disk is filling up, or a machine is running out of memory](#a-disk-is-filling-up-or-a-machine-is-running-out-of-memory)
+- [Get the alerts on Telegram or Discord](#get-the-alerts-on-telegram-or-discord)
 - [An LXC was recreated](#an-lxc-was-recreated)
 - [Bootstrap was interrupted](#bootstrap-was-interrupted)
 - [Ansible refuses an LXC: host key changed](#ansible-refuses-an-lxc-host-key-changed)
@@ -1422,9 +1423,86 @@ An LXC that stops reporting, stopped or destroyed, raises nothing.
   more with `resources.memory`; find what grows in *Urbex resources*,
   per container.
 
-The alerts show in Grafana only (Alerting, Alert rules). To be notified,
-add a contact point and a notification policy in Grafana; urbex leaves
-them alone.
+The alerts show in Grafana (Alerting, Alert rules), and in a chat once
+you [get them on Telegram or Discord](#get-the-alerts-on-telegram-or-discord).
+
+## Get the alerts on Telegram or Discord
+
+Grafana sends Urbex's alerts - a disk filling up, memory running out,
+the reconciler stuck - to a Telegram chat, a Discord channel or any
+webhook, with one or several at once. Each message is one alert on one
+machine, with a link to it in Grafana:
+
+```
+FIRING [warning] / on urbex-komodo is 91% full. - service komodo - urbex-komodo
+https://grafana-urbex.example.com/alerting/grafana/urbex-disk-filling/view?orgId=1
+```
+
+and `RESOLVED [warning] ...` when it clears. Alerts of the same rule and
+machine are grouped, and repeated at most every 4 hours while they fire.
+
+**Telegram.** Create a bot: in Telegram, talk to
+[@BotFather](https://t.me/BotFather), send `/newbot`, pick a name; it
+answers with the bot's token (`123456789:AA...`). Add the bot to the
+group that will get the alerts (or open a chat with it), send a message
+there, then read the chat's id:
+
+```sh
+curl -s "https://api.telegram.org/bot<token>/getUpdates" | jq '.result[].message.chat | {id, title}'
+```
+
+A group's id is negative (`-1001234567890`). Store the token, then
+declare the chat in `urbex.platform.yaml`:
+
+```sh
+urbex-op set telegramBotToken
+```
+
+```yaml
+observability:
+  alerts:
+    telegram:
+      chatId: "-1001234567890"
+```
+
+**Discord.** In the channel's settings, *Integrations* > *Webhooks* >
+*New Webhook*, *Copy Webhook URL*. Then:
+
+```sh
+urbex-op set discordWebhookUrl
+```
+
+```yaml
+observability:
+  alerts:
+    discord: true
+```
+
+**Any webhook** (`webhook: true`, the credential `alertsWebhookUrl`)
+gets Grafana's JSON for each notification.
+
+Then apply it to the platform, and send a test message:
+
+```sh
+urbex bootstrap
+urbex doctor --test-alerts
+```
+
+```
+alerts:
+  ok    telegram           test message sent
+  ok    discord            test message sent
+```
+
+The token and the URLs are kept encrypted in the observability Stack,
+never in clear in the GitOps repo. Use a test chat first: every alert of
+the platform goes there. Removing `observability.alerts` and running
+`urbex bootstrap` again stops the messages.
+
+With `observability.alerts`, Urbex owns Grafana's notification policies
+(they are provisioned, so Grafana shows them read-only): a contact
+point or policy added by hand in Grafana's UI is not used. Without it,
+Urbex leaves them alone.
 
 ## An LXC was recreated
 
