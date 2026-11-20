@@ -53,6 +53,7 @@ Needs **urbex 0.1.0 or later, major 0**.
   pruning in the platform resources, the cookbook and ADR-0027's table.
 - **Added**: Java4Shell (CVE-2026-114938) in the known limitations - mitigated in Keycloak and the `runtime: java` images, until fixed images exist (urbforge/urbex-cli#130).
 - **Added**: getting Urbex's alerts on Telegram, Discord or a webhook - the cookbook's steps (BotFather, the chat id, Discord's webhook), `observability.alerts` in the platform config, the three credentials, `urbex doctor --test-alerts` (urbforge/urbex-cli#95).
+- **Added**: ADR-0037 (proposed) - applications grouped on one LXC (`lxc: <name>`), presets that expand into ordinary applications (`preset: arr`), and Jellyfin on the LAN only (urbforge/urbex#105, for urbforge/urbex-cli#63).
 
 - **Added**: [ADR-0034](docs/decisions/0034-forgejo-lts-forge.md) -
   Forgejo LTS is the platform's forge, in place of Gitea; the known
