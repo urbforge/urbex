@@ -14,11 +14,20 @@ works with any `urbex` of the same major version; while both are 0.x a
 minor may still break, so each plugin version states the minimum `urbex`
 it needs (see [Upgrading](docs/upgrading.md#plugin-and-cli-versions)).
 
-A pull request that changes what users see adds a line under
-*Unreleased*; a release moves them under its version - the release
-workflow refuses a tag whose version has no entry here.
+Feature and fix pull requests don't touch this file: what users see is
+written here in one pull request when a release is prepared (see
+`docs/development.md` in urbforge/redemptor), under the release's
+version - the release workflow refuses a tag whose version has no entry
+here.
 
 ## [Unreleased]
+
+## [0.2.0] - 2026-11-20
+
+The docs for urbex 0.2.0: Forgejo in place of Gitea and how to move a
+0.1.0 platform ([upgrading](docs/upgrading.md)), the Java4Shell and
+NGINX2Root notes, the home-lab recipes, alerts to Telegram or Discord,
+and the plugin up to 0.2.3, which works with urbex 0.1.0 and 0.2.0.
 
 ### Plugin 0.2.3
 
