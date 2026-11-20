@@ -29,11 +29,15 @@ Needs **urbex 0.1.0 or later, major 0**; works with urbex 0.2.0.
   points to the upgrading guide, and runs none of the destroying steps
   unless asked (urbforge/urbex-cli#134).
 
-### Docs
+### Plugin 0.2.2
 
-- **Added**: *From 0.1.0 to 0.2.0* in the upgrading guide - Forgejo in
-  place of Gitea, why a 0.1.0 platform is started again rather than
-  upgraded, the steps, and that 0.2.0 carries the Java4Shell mitigation.
+Needs **urbex 0.1.0 or later, major 0**.
+
+- **Changed**: the `setup` skill goes on without Cloudflare and mentions
+  the options, asking only when the user wants public addresses; the
+  durations the skills give are the test node's (a first bootstrap about
+  20 minutes, a first apply about 6); the default workspace is
+  `~/urbex-work`, as `urbex-op`'s (urbforge/urbex#57).
 
 ### Plugin 0.2.1
 
@@ -44,6 +48,23 @@ Needs **urbex 0.1.0 or later, major 0**.
   accepts `giteaToken` too, for a workspace written by urbex 0.1.0.
 
 ### Docs
+
+- **Added**: *From 0.1.0 to 0.2.0* in the upgrading guide - Forgejo in
+  place of Gitea, why a 0.1.0 platform is started again rather than
+  upgraded, the steps, and that 0.2.0 carries the Java4Shell mitigation.
+- **Changed**: getting started installs the plugin from the terminal too
+  (`claude plugin ...`, then `/reload-plugins`), and gives the test
+  node's durations; the default workspace is `~/urbex-work` everywhere.
+- **Added**: a home-lab path - recipes for an app from its image with its
+  data (Vaultwarden), a stack of linked apps (Paperless-ngx with
+  PostgreSQL and Redis), a distributed stack sharing a NAS (the *arr
+  stack with Jellyfin); the limitations a home lab meets (non-HTTP
+  healthchecks, PostgreSQL extensions, GPUs, app SSO).
+
+- **Added**: `komodo.buildCache` in the platform config, the build cache's
+  pruning in the platform resources, the cookbook and ADR-0027's table.
+- **Added**: Java4Shell (CVE-2026-114938) in the known limitations - mitigated in Keycloak and the `runtime: java` images, until fixed images exist (urbforge/urbex-cli#130).
+- **Added**: getting Urbex's alerts on Telegram, Discord or a webhook - the cookbook's steps (BotFather, the chat id, Discord's webhook), `observability.alerts` in the platform config, the three credentials, `urbex doctor --test-alerts` (urbforge/urbex-cli#95).
 
 - **Added**: [ADR-0034](docs/decisions/0034-forgejo-lts-forge.md) -
   Forgejo LTS is the platform's forge, in place of Gitea; the known
