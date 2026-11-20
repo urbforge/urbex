@@ -34,6 +34,7 @@ minor release may change how something works (see
 
 | Limitation | Workaround / consequence |
 |---|---|
+| **Docker Hub's anonymous limit** (100 pulls an hour per address) applies to every machine of the platform, which share the node's address; a bootstrap or many deploys in an hour can hit it (`429 Too Many Requests`). | [Pull from Docker Hub through a cache](cookbook.md#pull-from-docker-hub-through-a-cache) (`docker.registryMirrors`); a cache on the platform itself is tracked in [urbex-cli#33](https://github.com/urbforge/urbex-cli/issues/33). |
 | **A platform installed with urbex 0.1.0 stays on Gitea 1.24**, which is out of support: newer urbex bootstraps Forgejo 15 LTS ([ADR-0034](decisions/0034-forgejo-lts-forge.md)), and doesn't migrate a running forge - Forgejo imports Gitea's database only up to Gitea 1.22. Its workspace keeps working with newer urbex (the old credential and config names are still read). | Bootstrap the platform again (`urbex teardown`, then `urbex bootstrap`; push the project repos somewhere else first), or push the repos to the new forge yourself. |
 | **One Proxmox node.** Every LXC is created on `proxmox.node`; no clusters, no HA, no other providers (cloud providers are v2+). | - |
 | **Addresses aren't checked or reserved.** Urbex takes static IPs from `proxmox.network` (base services from `baseHostOffset`, projects 10 after) without checking they're free; a DHCP server can hand them out too. | Keep the block out of the DHCP range. |
