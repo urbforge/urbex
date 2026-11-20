@@ -12,6 +12,37 @@ or the `CHANGELOG.md` of [urbex-cli](https://github.com/urbforge/urbex-cli/blob/
 and of [this repository](../CHANGELOG.md): their *Breaking* and
 *Upgrading* sections say when a command is needed after upgrading.
 
+## From 0.1.0 to 0.2.0
+
+0.2.0 brings the Java4Shell mitigation (CVE-2026-114938: Keycloak's JVM
+and the `runtime: java` images run without the vulnerable Base64
+intrinsic) and replaces the forge: **Forgejo 15 LTS instead of Gitea 1.24**
+([ADR-0034](decisions/0034-forgejo-lts-forge.md)).
+
+Forgejo can't open the database of Gitea 1.24, so a platform created by
+0.1.0 can't be bootstrapped again in place: `urbex bootstrap` with 0.2.0
+sees that its forge is Gitea and refuses, changing nothing. To get
+0.2.0's platform, Java4Shell's mitigation included, start the platform
+again:
+
+1. Back up what you keep in the applications' named volumes ([back up
+   and restore an application's data](cookbook.md#back-up-and-restore-an-applications-data)):
+   they go with their LXCs.
+2. `urbex destroy <env>` for each environment of each project.
+3. `urbex teardown --yes`: the platform's LXCs go, Gitea's repositories
+   and images with them.
+4. Upgrade the tools (below), then `urbex bootstrap`.
+5. Push each project's repository again from your clone, and `urbex
+   apply` its environments; restore the volumes' data.
+
+The workspace needs no change: the credentials and the platform config
+that 0.1.0 wrote are read as they are (`giteaToken`, `git.giteaUrl`; the
+new names `forgeToken`, `git.forgeUrl` win when both are set).
+
+Staying on 0.1.0 is possible: keep its `urbex-op` and don't run 0.2.0
+against that platform. Its Keycloak then keeps the Java4Shell exposure
+on CPUs with AVX-512 VBMI (see the [known limitations](known-limitations.md#operations-and-security)).
+
 ## With urbex-op
 
 Download the new release's `urbex-op` over the old one. Its next command
@@ -51,13 +82,14 @@ that Terraform, Ansible, sops and age are at the versions the release's
 
 The plugin has its own version. It works with any `urbex` of the same
 major version (0 today). While both are 0.x it also needs a minimum,
-which its `cli` skill states: urbex 0.1.0 for plugin 0.2.2.
+which its `cli` skill states: urbex 0.1.0 for plugin 0.2.3. urbex 0.2.0
+needs no newer plugin.
 
 ### Plugin and CLI versions
 
 | Plugin | urbex |
 |---|---|
-| 0.2.0, 0.2.1, 0.2.2 | 0.1.0 or later, major 0 |
+| 0.2.0 to 0.2.3 | 0.1.0 or later, major 0 |
 
 The plugin checks `urbex version` once per session. When `urbex` is
 older than it needs, it says so and points here. When the major versions

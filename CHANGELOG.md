@@ -20,6 +20,15 @@ workflow refuses a tag whose version has no entry here.
 
 ## [Unreleased]
 
+### Plugin 0.2.3
+
+Needs **urbex 0.1.0 or later, major 0**; works with urbex 0.2.0.
+
+- **Changed**: the `cli` skill knows `urbex bootstrap`'s refusal on a
+  platform created by 0.1.0 (its forge is Gitea): it explains it and
+  points to the upgrading guide, and runs none of the destroying steps
+  unless asked (urbforge/urbex-cli#134).
+
 ### Plugin 0.2.2
 
 Needs **urbex 0.1.0 or later, major 0**.
@@ -40,6 +49,9 @@ Needs **urbex 0.1.0 or later, major 0**.
 
 ### Docs
 
+- **Added**: *From 0.1.0 to 0.2.0* in the upgrading guide - Forgejo in
+  place of Gitea, why a 0.1.0 platform is started again rather than
+  upgraded, the steps, and that 0.2.0 carries the Java4Shell mitigation.
 - **Changed**: getting started installs the plugin from the terminal too
   (`claude plugin ...`, then `/reload-plugins`), and gives the test
   node's durations; the default workspace is `~/urbex-work` everywhere.
