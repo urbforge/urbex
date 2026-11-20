@@ -112,10 +112,11 @@ at their IP and port. Choose one:
 | **Quick Tunnel** | A public `https://*.trycloudflare.com` address per public service | No account ([ADR-0025](decisions/0025-cloudflare-quick-tunnel.md)) |
 | **Your zone** | Public HTTPS on your domain; Forgejo, Komodo and the consoles behind Cloudflare Access | A Cloudflare account, the domain's zone on it, an API token ([credentials](reference/credentials.md)) |
 
-Without Cloudflare, a VPN (Tailscale, WireGuard) to your LAN reaches
-everything by its internal name; access modes for the VPN and for a
-reverse proxy of your own (Caddy) are planned in
-[ADR-0035](decisions/0035-access-without-cloudflare.md).
+Without Cloudflare, a VPN (NetBird, Tailscale) to your LAN reaches
+everything by its internal name. Access modes without Cloudflare are
+planned in [ADR-0035](decisions/0035-access-without-cloudflare.md):
+Pangolin on a VPS of yours for public services without open ports, a
+VPN for nothing public, or your own reverse proxy.
 
 You can add Cloudflare later: see
 [Put the platform on the internet](cookbook.md#put-the-platform-on-the-internet).
@@ -147,6 +148,12 @@ that they never go through a chat.
 
 ## Where to go from here
 
+- **A home lab**: self-hosted apps from their images - one app with its
+  data ([Vaultwarden](cookbook.md#run-a-home-lab-app-from-its-image)),
+  a stack of linked apps
+  ([Paperless-ngx with PostgreSQL and Redis](cookbook.md#run-a-stack-of-linked-apps-paperless-ngx-with-postgresql-and-redis)),
+  a stack spread over several LXCs sharing a NAS
+  ([the *arr stack with Jellyfin](cookbook.md#run-a-distributed-stack-the-arr-stack-with-jellyfin-and-a-nas)).
 - [Cookbook](cookbook.md): rolling back, adding a service, putting the
   platform on the internet, running from another machine, and more.
 - [Reference](reference/): every command, manifest field, platform

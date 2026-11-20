@@ -47,6 +47,9 @@ copy of the GitOps repo.
 - [Back up and restore an application's data](#back-up-and-restore-an-applications-data)
 - [Mount a NAS share](#mount-a-nas-share)
 - [Link a database to the applications that use it](#link-a-database-to-the-applications-that-use-it)
+- [Run a home lab app from its image](#run-a-home-lab-app-from-its-image)
+- [Run a stack of linked apps: Paperless-ngx with PostgreSQL and Redis](#run-a-stack-of-linked-apps-paperless-ngx-with-postgresql-and-redis)
+- [Run a distributed stack: the *arr stack with Jellyfin and a NAS](#run-a-distributed-stack-the-arr-stack-with-jellyfin-and-a-nas)
 - [Several projects on one platform](#several-projects-on-one-platform)
 - [Decommission an environment or a project](#decommission-an-environment-or-a-project)
 - [Remove the whole platform](#remove-the-whole-platform)
@@ -856,6 +859,236 @@ the PostgreSQL of `<project>`:
 
 To go back instead, stop the Stack, put `pgdata-17` back as `pgdata` and
 `urbex deploy <env> --app db --version 17 --allow-major`.
+
+## Run a home lab app from its image
+
+Self-hosted apps - Vaultwarden, Jellyfin, Paperless-ngx, the *arr stack -
+come as published images. In Urbex each is an **application**: one
+service in an `urbex.yaml`, with `image` and `version` instead of a
+runtime, its own LXC, its data in named volumes. A project of such
+applications needs no code: its `urbex.yaml` alone, committed in a git
+repository of its own, which Urbex publishes on Forgejo the first time.
+A home lab usually runs it in production only (`environments: [prod]`).
+
+Vaultwarden, the password manager, in `~/urbex-work/projects/vault/urbex.yaml`:
+
+```yaml
+apiVersion: urbex/v1
+project: vault
+environments: [prod]
+
+services:
+  - name: vaultwarden
+    image: docker.io/vaultwarden/server
+    version: "1.37.5"            # the image's tag: check the current one
+    port: 80                     # no healthcheck: see below
+    volumes:
+      - { name: data, path: /data, size: 2Gi }
+```
+
+Commit it, then apply:
+
+```sh
+cd ~/urbex-work/projects/vault
+git init -b main && git add urbex.yaml && git commit -m "Vaultwarden"
+urbex-op 'cd /work/projects/vault && urbex apply prod'
+```
+
+Without the commit, `apply` creates the LXC and then stops with
+`creating branch main on gitea from .: git push: ... not a git repository`;
+commit and run it again. Later changes to `urbex.yaml` are committed the
+same way.
+
+`apply` creates the LXC, resolves `1.37.5` to its digest and runs it: on
+the LAN at the address it prints, and by its internal name
+(`vaultwarden.vault.urbex.example.com`, see [resolve a service by name](#resolve-a-service-by-name-on-the-lan)).
+Its data is in the named volume `data`, kept across redeploys and in
+Proxmox's backups ([keep an application's data](#keep-an-applications-data)).
+
+- **No `healthcheck`**: Urbex probes with `wget`, and this image has only
+  `curl`. Vaultwarden's image checks itself (its own Docker
+  `HEALTHCHECK` on `/alive`). Before declaring a `healthcheck` on an
+  image, check it has `wget`
+  ([known limitations](known-limitations.md#projects-and-deploys)).
+- **HTTPS for the web vault and the apps**: Bitwarden's clients refuse a
+  plain `http://` address other than `localhost`. On the LAN the page
+  loads but login doesn't. Give it HTTPS with `public: true`, through
+  Cloudflare ([publish a service](#publish-a-service)), and its login is
+  then its only gate; or behind your own reverse proxy.
+- **Close sign-ups once your account exists**: create it, then set
+  `SIGNUPS_ALLOWED=false` in the service's `config.env` in the GitOps
+  repo and redeploy ([change configuration](#change-configuration)).
+  Setting it in `env` from the start leaves no way to create the first
+  account without the admin page.
+
+Moving to a newer image is deliberate: `urbex updates` lists what is
+newer, `urbex deploy prod --app vaultwarden --version <tag>` runs it
+([applications from published images](reference/manifest.md#applications-from-published-images)).
+Secrets such as an admin token go in with `urbex secret`
+([add a secret](#add-rotate-or-remove-a-secret)), never in `env`.
+
+## Run a stack of linked apps: Paperless-ngx with PostgreSQL and Redis
+
+Apps that work together are **one stack**: the applications of one
+`urbex.yaml`, deployed and upgraded together. Each declares what it
+**uses**; Urbex gives it the address of what it uses, and starts it only
+once those are healthy ([linked applications](reference/manifest.md#linked-applications)).
+
+> **Not yet tested on our lab**: written from the manifest reference and
+> the images' documentation. Tell us how it goes.
+
+Paperless-ngx, the document manager, with its database and its queue:
+
+```yaml
+apiVersion: urbex/v1
+project: docs
+environments: [prod]
+
+services:
+  - name: db
+    image: docker.io/library/postgres
+    version: "17"
+    provides: postgres           # Urbex makes a role and a schema for each app that uses it
+    volumes:
+      - { name: data, path: /var/lib/postgresql, size: 10Gi }
+
+  - name: broker
+    image: docker.io/valkey/valkey
+    version: "8"
+    port: 6379
+    volumes:
+      - { name: data, path: /data, size: 1Gi }
+
+  - name: paperless
+    image: ghcr.io/paperless-ngx/paperless-ngx
+    version: "2.18"              # check the current tag
+    port: 8000                   # no healthcheck: the image has no wget
+    ready_within: 3m
+    uses: [db]
+    resources: { memory: 2Gi }
+    volumes:
+      - { name: data, path: /usr/src/paperless/data, size: 2Gi }
+      - { name: media, path: /usr/src/paperless/media, size: 20Gi }
+    env:
+      prod:
+        PAPERLESS_DBHOST: ${db.host}
+        PAPERLESS_DBNAME: ${db.database}
+        PAPERLESS_DBUSER: ${db.user}
+        PAPERLESS_DBPASS: ${db.password}
+        PAPERLESS_REDIS: redis://broker.docs.urbex.example.com:6379   # its internal name, in your zone
+```
+
+- `db` is a `postgres` provider: `paperless` gets a role and a schema of
+  its own, and the connection in `${db.*}`, which the image's own
+  variables read. The password stays encrypted in the GitOps repo.
+- `broker` isn't in `uses`: an application others use needs a
+  `healthcheck`, which is an HTTP path, and Valkey speaks no HTTP. So
+  `paperless` reaches it by its internal name
+  (`<app>.<project>.<zone>` in production, `<app>.staging.<project>.<zone>` in staging, as `urbex status` shows it) and isn't
+  held back until it answers; Paperless retries on its own. A check for
+  services that aren't HTTP is in the
+  [known limitations](known-limitations.md#projects-and-deploys).
+- Each application runs in its own LXC, by default; they reach each other
+  by internal name.
+
+Not every app fits a `postgres` provider yet: **Immich** needs PostgreSQL
+extensions (VectorChord) that only a superuser creates, and Urbex gives
+each application a role without those rights. See the
+[known limitations](known-limitations.md#projects-and-deploys).
+
+## Run a distributed stack: the *arr stack with Jellyfin and a NAS
+
+Sonarr, Radarr and Prowlarr find media, a download client fetches it,
+Jellyfin plays it - all reading and writing the same media folders on a
+NAS. In Urbex: one stack, an application each (so an LXC each), the NAS
+folder as a **share** mounted in every application that needs it.
+
+> **Not yet tested on our lab**: written from the manifest reference and
+> the images' documentation. Tell us how it goes.
+
+First declare the NAS folder, once, in `urbex.platform.yaml`
+([mount a NAS share](#mount-a-nas-share) has the NAS side: NFS or SMB,
+user 100000):
+
+```yaml
+storage:
+  shares:
+    media:
+      path: /mnt/pve/nas/media
+```
+
+Then the stack (the tags are examples: check the current ones):
+
+```yaml
+apiVersion: urbex/v1
+project: media
+environments: [prod]
+
+services:
+  - name: qbittorrent
+    image: lscr.io/linuxserver/qbittorrent
+    version: "5.1.2"
+    port: 8080
+    healthcheck: /               # its web UI: what sonarr and radarr wait for
+    volumes:
+      - { name: config, path: /config, size: 1Gi }
+      - { share: media, path: /data }
+
+  - name: prowlarr
+    image: lscr.io/linuxserver/prowlarr
+    version: "2.0.5"
+    port: 9696
+    volumes:
+      - { name: config, path: /config, size: 1Gi }
+
+  - name: sonarr
+    image: lscr.io/linuxserver/sonarr
+    version: "4.0.15"
+    port: 8989
+    uses: [qbittorrent]
+    volumes:
+      - { name: config, path: /config, size: 1Gi }
+      - { share: media, path: /data }
+
+  - name: radarr
+    image: lscr.io/linuxserver/radarr
+    version: "5.27.5"
+    port: 7878
+    uses: [qbittorrent]
+    volumes:
+      - { name: config, path: /config, size: 1Gi }
+      - { share: media, path: /data }
+
+  - name: jellyfin
+    image: docker.io/jellyfin/jellyfin
+    version: "10.10.7"
+    port: 8096                   # no healthcheck: the image has no wget
+    resources: { cpu: 2, memory: 4Gi }
+    volumes:
+      - { name: config, path: /config, size: 5Gi }
+      - { share: media, path: /data, readOnly: true }
+```
+
+- **The share** is mounted in each application that lists it, with
+  `/data` the same path everywhere, so the paths Sonarr and Radarr hand
+  over make sense to the download client and to Jellyfin. The first
+  `urbex apply prod` prints one `pct set` per LXC for the operator to run
+  on the node, as root ([mount a NAS share](#mount-a-nas-share), step 4);
+  Jellyfin mounts it read-only.
+- **The links**: `sonarr` and `radarr` use `qbittorrent`, so they start
+  after it and get `QBITTORRENT_HOST`/`_PORT`/`_URL`; you still enter that
+  address and the API keys in their web UIs, once - the apps keep it in
+  their `config` volume. `qbittorrent` has a `healthcheck` because others
+  use it.
+- **Who writes the files**: the linuxserver images run as `PUID`/`PGID`
+  (1000 by default). With the NAS squashing every user to 100000, as the
+  share recipe sets it, they all write as that user; files they create
+  are readable by the others.
+- **Hardware transcoding** (a GPU passed to Jellyfin) isn't supported yet:
+  Jellyfin transcodes on the CPU, so give it the cores
+  ([known limitations](known-limitations.md#projects-and-deploys)).
+- These apps stay on the LAN and the VPN; put one on the internet with
+  `public: true` only if its own login is enough.
 
 ## Several projects on one platform
 
