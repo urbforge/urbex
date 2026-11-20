@@ -80,6 +80,9 @@ cloudflare:
 | `dns.forwarders` | `proxmox.network.dnsServers`, or the gateway | IP addresses Technitium forwards every name outside `dns.zone` to. |
 | `dns.technitiumUrl` | | ⚠️ Not used: `urbex` finds Technitium itself from the allocated LAN IP. |
 | `keycloak.baseUrl`, `keycloak.platformRealm` (`platform`) | | ⚠️ Not used yet (SSO). |
+| `komodo.buildCache.keepStorage` | `3GB` | The builds' cache on Komodo's LXC is pruned, least recently used first, down to this size (`500MB`, `3GB`...). |
+| `komodo.buildCache.keepFor` | `168h` | ...and of what is older than this duration; so are the images no container uses, older than it. An hour or more. |
+| `komodo.buildCache.every` | `24h` | How often (the first run 10 minutes after the Stack starts). An hour or more. Changed by `urbex bootstrap`. |
 | `storage.shares.<name>.path` | none | A folder of the Proxmox node that applications mount by name: see [shares](#shares). An absolute path that isn't `/` and has no comma, space or tab. |
 
 ## Shares
