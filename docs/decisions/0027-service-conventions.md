@@ -171,7 +171,7 @@ where their compose files live and in who can repair them:
 
 | Kind | What | Komodo tag | Grafana label |
 |---|---|---|---|
-| the platform's services, created by Urbex | Gitea, Komodo, Technitium, Keycloak, Prometheus, Loki, Grafana, the tunnel | `platform` | `kind="platform"` |
+| the platform's services, created by Urbex | Gitea, Komodo, Technitium, Keycloak, Prometheus, Loki, Grafana, `pve-exporter`, the tunnel | `platform` | `kind="platform"` |
 | the users' applications | a project's services, frontends and databases | `app` | `kind="app"` |
 | technical agents running next to another service | Periphery, Alloy, the Quick Tunnel sidecar ([ADR-0025](0025-cloudflare-quick-tunnel.md)) | `agent` | `kind="agent"` |
 
@@ -199,6 +199,7 @@ where their compose files live and in who can repair them:
 | Grafana | `urbex-observability` | `grafana.<zone>` | behind Access | platform |
 | Prometheus | `urbex-observability` | `prometheus.<zone>` | UI behind Access; remote write internal | platform |
 | Loki | `urbex-observability` | `loki.<zone>` | API behind Access; push internal | platform |
+| `pve-exporter` - the Proxmox node's metrics, only with the [monitoring token](../reference/credentials.md#proxmox-monitoring-token) | `urbex-observability` | - (scraped inside the Stack) | none (calls the node's API) | platform |
 | Tunnel (`cloudflared`) | `urbex-tunnel` | `tunnel.<zone>` | none (outbound only) | platform |
 | Build cache pruning (`docker` CLI, urbforge/urbex-cli#92) | `urbex-komodo` | none (no endpoint) | none | platform |
 | Periphery | every LXC | - (connects out to Komodo) | internal | agent |
