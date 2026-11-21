@@ -22,6 +22,13 @@ here.
 
 ## [Unreleased]
 
+### Added
+
+- The README's *Try it early, tell us what's missing* sends testers to
+  [Urbex's Discord](https://discord.gg/hUGWTT6fQT): `#support` for
+  problems, `#feedback` for ideas, a 🧪 reaction to try early builds.
+  GitHub issues remain the other way to report.
+
 ## [0.2.0] - 2026-11-20
 
 The docs for urbex 0.2.0: Forgejo in place of Gitea and how to move a
