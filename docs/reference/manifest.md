@@ -110,7 +110,7 @@ Every application runs in an unprivileged LXC unless it says
 services:
   - name: backup
     image: rclone/rclone
-    version: "1.71"
+    version: "1.76"
     machine: vm
 ```
 
@@ -177,14 +177,14 @@ environments: [prod]
 services:
   - name: web
     image: docker.io/library/nginx
-    version: "1.29"
+    version: "1.31"
     port: 80
 ```
 
 On the first `urbex apply` of an environment, the tag in `version` is
 resolved, through the registry, to the digest of the image it refers to
 at that moment. The environment records both in its `version.env`
-(`VERSION=1.29@sha256:...`) and runs that digest. A new prod of a stack
+(`VERSION=1.31@sha256:...`) and runs that digest. A new prod of a stack
 with staging is the exception: it takes the tag and digest that staging
 runs, if staging has them, so that production never runs a digest
 staging has not run. The digest remains in
@@ -220,7 +220,7 @@ An application keeps data in volumes, mounted into its container at
 services:
   - name: jellyfin
     image: jellyfin/jellyfin
-    version: "10.10.7"
+    version: "10.11.11"
     port: 8096
     volumes:
       - { name: config, path: /config, size: 5Gi }
@@ -315,13 +315,13 @@ services:
       - { name: data, path: /var/lib/postgresql, size: 10Gi }
   - name: api
     image: docker.io/library/caddy
-    version: "2.10"
+    version: "2.11"
     port: 80
     healthcheck: /
     uses: [db]
   - name: web
     image: docker.io/library/caddy
-    version: "2.10"
+    version: "2.11"
     port: 80
     uses: [api, db]
     env:

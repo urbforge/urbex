@@ -98,7 +98,7 @@ prints it. Each check is `ok`, `warn`, `fail` or `skip`; a check that
 isn't `ok` has its fix under it. On the lab:
 
 ```
-urbex 0.1.0 (commit 1a2b3c4, built 2026-11-20T10:00:00Z, linux/amd64)
+urbex 0.2.0 (commit 1a2b3c4, built 2026-11-20T10:00:00Z, linux/amd64)
 
 tools:
   ok    git                git version 2.47.3
@@ -943,7 +943,7 @@ Says, for each application from a published image applied in `<env>`
 changes nothing:
 
 - **the tag `urbex.yaml` asks for points to another image** than the one
-  running (a tag like `17` or `1.29` moves): `urbex deploy <env>
+  running (a tag like `17` or `1.31` moves): `urbex deploy <env>
   --update` runs it;
 - **a newer tag of the same major** - a minor or patch version: deploy
   it with `urbex deploy <env> --app <app> --version <tag>`, and set it
@@ -953,8 +953,8 @@ changes nothing:
   [`--allow-major`](#urbex-deploy)).
 
 Only tags shaped like the asked one are compared: as many numbers, the
-same `v` and the same suffix - `1.29` with `1.30` and `2.0`, not with
-`1.30.1`, `1.30-alpine` or `latest`. A tag without a version
+same `v` and the same suffix - `1.31` with `1.32` and `2.0`, not with
+`1.32.1`, `1.32-alpine` or `latest`. A tag without a version
 (`latest`) has no newer tags. The tags come from the registry, asked
 anonymously, as `deploy --update` does.
 
@@ -1021,7 +1021,7 @@ version; a build from source says `dev`, the commit and its date, and
 
 ```
 $ urbex version
-urbex 0.1.0 (commit 1a2b3c4, built 2026-11-20T10:00:00Z, linux/amd64)
+urbex 0.2.0 (commit 1a2b3c4, built 2026-11-20T10:00:00Z, linux/amd64)
 $ urbex version              # built from a checkout
 urbex dev (commit 9df118e-dirty, committed 2026-11-16T17:38:34Z, linux/amd64)
 ```
@@ -1030,7 +1030,7 @@ urbex dev (commit 9df118e-dirty, committed 2026-11-16T17:38:34Z, linux/amd64)
 
 ```json
 {
-  "version": "0.1.0",
+  "version": "0.2.0",
   "commit": "1a2b3c4d5e6f...",
   "date": "2026-11-20T10:00:00Z",
   "go": "go1.26.5",
