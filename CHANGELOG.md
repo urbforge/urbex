@@ -14,11 +14,29 @@ works with any `urbex` of the same major version; while both are 0.x a
 minor may still break, so each plugin version states the minimum `urbex`
 it needs (see [Upgrading](docs/upgrading.md#plugin-and-cli-versions)).
 
-A pull request that changes what users see adds a line under
-*Unreleased*; a release moves them under its version - the release
-workflow refuses a tag whose version has no entry here.
+Feature and fix pull requests don't touch this file: what users see is
+written here in one pull request when a release is prepared (see
+`docs/development.md` in urbforge/redemptor), under the release's
+version - the release workflow refuses a tag whose version has no entry
+here.
 
 ## [Unreleased]
+
+## [0.2.0] - 2026-11-20
+
+The docs for urbex 0.2.0: Forgejo in place of Gitea and how to move a
+0.1.0 platform ([upgrading](docs/upgrading.md)), the Java4Shell and
+NGINX2Root notes, the home-lab recipes, alerts to Telegram or Discord,
+and the plugin up to 0.2.3, which works with urbex 0.1.0 and 0.2.0.
+
+### Plugin 0.2.3
+
+Needs **urbex 0.1.0 or later, major 0**; works with urbex 0.2.0.
+
+- **Changed**: the `cli` skill knows `urbex bootstrap`'s refusal on a
+  platform created by 0.1.0 (its forge is Gitea): it explains it and
+  points to the upgrading guide, and runs none of the destroying steps
+  unless asked (urbforge/urbex-cli#134).
 
 ### Plugin 0.2.2
 
@@ -40,6 +58,9 @@ Needs **urbex 0.1.0 or later, major 0**.
 
 ### Docs
 
+- **Added**: *From 0.1.0 to 0.2.0* in the upgrading guide - Forgejo in
+  place of Gitea, why a 0.1.0 platform is started again rather than
+  upgraded, the steps, and that 0.2.0 carries the Java4Shell mitigation.
 - **Changed**: getting started installs the plugin from the terminal too
   (`claude plugin ...`, then `/reload-plugins`), and gives the test
   node's durations; the default workspace is `~/urbex-work` everywhere.
@@ -53,6 +74,7 @@ Needs **urbex 0.1.0 or later, major 0**.
   pruning in the platform resources, the cookbook and ADR-0027's table.
 - **Added**: Java4Shell (CVE-2026-114938) in the known limitations - mitigated in Keycloak and the `runtime: java` images, until fixed images exist (urbforge/urbex-cli#130).
 - **Added**: getting Urbex's alerts on Telegram, Discord or a webhook - the cookbook's steps (BotFather, the chat id, Discord's webhook), `observability.alerts` in the platform config, the three credentials, `urbex doctor --test-alerts` (urbforge/urbex-cli#95).
+- **Changed**: the examples' images moved to current versions - nginx `1.31` (NGINX2Root, CVE-2026-123007, is fixed in 1.31.9), Caddy `2.11`, Vaultwarden `1.37.5`, Jellyfin `10.11.11`, rclone `1.76` - and a cookbook recipe on keeping applications from images up to date, with the HTTP/2 note for nginx (urbforge/urbex#99).
 
 - **Added**: [ADR-0034](docs/decisions/0034-forgejo-lts-forge.md) -
   Forgejo LTS is the platform's forge, in place of Gitea; the known

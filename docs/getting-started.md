@@ -7,7 +7,7 @@ any other AI agent, or the commands typed by you. Allow an hour the
 first time, most of it spent waiting for downloads.
 
 > ⚠️ Urbex is a preview release
-> ([v0.1.0](https://github.com/urbforge/urbex-cli/releases/tag/v0.1.0)).
+> ([v0.2.0](https://github.com/urbforge/urbex-cli/releases/tag/v0.2.0)).
 > Everything here has been run end to end on a real Proxmox VE 9.2 node -
 > see [`status.md`](status.md) and
 > [`known-limitations.md`](known-limitations.md).
@@ -72,7 +72,9 @@ creating the platform and the environments, releasing, promoting.
   pveum user token add urbex@pve cli --privsep 0 --comment "urbex"   # prints the token once: keep it
   ```
   The token is `urbex@pve!cli=<value>`, with the value the last command
-  prints.
+  prints. **Optional:** a second, read-only token puts the node's own
+  CPU, memory and storages in Grafana, with alerts
+  ([Proxmox monitoring token](reference/credentials.md#proxmox-monitoring-token)).
 - **Memory, disk and CPU**: about **6 GiB of free memory** (8 to be
   comfortable) and **30 GiB of free disk** for the platform and a first
   app in two environments. Measured on the test node (Proxmox VE 9.2,

@@ -38,6 +38,7 @@ copy of the GitOps repo.
 **Shape of a project**
 
 - [Add a service](#add-a-service)
+- [Keep applications from images up to date](#keep-applications-from-images-up-to-date)
 - [Use your own Dockerfile](#use-your-own-dockerfile)
 - [Several services in one repo](#several-services-in-one-repo)
 - [Change a port or the healthcheck](#change-a-port-or-the-healthcheck)
@@ -63,6 +64,7 @@ copy of the GitOps repo.
 - [Run urbex from a container](#run-urbex-from-a-container)
 - [Run urbex from another machine or a new agent session](#run-urbex-from-another-machine-or-a-new-agent-session)
 - [A push didn't deploy](#a-push-didnt-deploy)
+- [Pull from Docker Hub through a cache](#pull-from-docker-hub-through-a-cache)
 - [A build or a deploy failed](#a-build-or-a-deploy-failed)
 - [The reconciler holds applications back](#the-reconciler-holds-applications-back)
 - [The reconciler is not running](#the-reconciler-is-not-running)
@@ -412,6 +414,31 @@ The other services are untouched. Staging then runs the worker built from
 `main`. For prod, `urbex apply prod`, then release and promote as usual -
 releases made before the worker existed have no image for it.
 
+## Keep applications from images up to date
+
+An application from a published image runs the digest it was given
+until you move it: a security fix in nginx, PostgreSQL or Vaultwarden
+reaches it only through you. Check now and then, and when an image's
+project announces a vulnerability:
+
+```sh
+urbex updates
+```
+
+It lists, per environment, the newer images: the tag you asked for
+moved (`urbex deploy <env> --update` runs it), a newer minor or patch
+(`urbex deploy <env> --app <app> --version <tag>`), a new major (read
+its release notes first). See [`urbex updates`](reference/cli.md#urbex-updates).
+
+Pin a tag that receives fixes - `1.31` rather than `1.31.9` - so that
+`--update` picks them up, and follow the project's security notices.
+A case in point, [NGINX2Root](https://xint.io/blog/nginx2root-remote-code-execution)
+(CVE-2026-123007): remote code execution in nginx 1.9.5 to 1.31.8 when
+it serves **HTTP/2**, fixed in 1.31.9. Through the Cloudflare Tunnel an
+application is reached over HTTP/1.1, but don't turn on HTTP/2 in an
+nginx older than 1.31.9, and move such an image to `1.31` with
+`urbex deploy <env> --app <app> --version 1.31`.
+
 ## Use your own Dockerfile
 
 ```yaml
@@ -486,7 +513,7 @@ else stays in LXCs.
    services:
      - name: web
        image: docker.io/library/nginx
-       version: "1.29"
+       version: "1.31"
        port: 80
        healthcheck: /
        machine: vm
@@ -499,7 +526,7 @@ else stays in LXCs.
    VM template ready: new VMs are linked clones of urbex-vm-template (9080).
    ...
    Deployed acme-app (prod):
-     web              http://192.168.1.233:80  1.29@sha256:1881968a...
+     web              http://192.168.1.233:80  1.31@sha256:689fbc6a...
    ```
 
 The VM is `<project>-<service>-<env>` in the pool, with its address from
@@ -520,7 +547,7 @@ Declare a named volume where the application writes:
 services:
   - name: vault
     image: vaultwarden/server
-    version: "1.34.3"
+    version: "1.37.5"
     port: 80
     volumes:
       - { name: data, path: /data, size: 5Gi }
@@ -786,7 +813,7 @@ services:
     uses: [db]
   - name: web
     image: docker.io/library/nginx
-    version: "1.29"
+    version: "1.31"
     port: 80
     uses: [api]
     env:
@@ -1288,7 +1315,7 @@ the first time. It works on a **workspace**: one folder with the
 credentials, the SSH and age keys, the GitOps repo and your projects.
 
 ```sh
-curl -fsSLo ~/bin/urbex-op https://github.com/urbforge/urbex-cli/releases/download/v0.1.0/urbex-op
+curl -fsSLo ~/bin/urbex-op https://github.com/urbforge/urbex-cli/releases/download/v0.2.0/urbex-op
 chmod +x ~/bin/urbex-op
 urbex-op -w ~/urbex-work init      # SSH key, age key, folders
 urbex-op -w ~/urbex-work set proxmoxToken   # stored in the workspace (or export URBEX_PROXMOX_TOKEN)
@@ -1331,6 +1358,39 @@ urbex deploy staging --follow-main      # or: urbex deploy <env> --version <its 
 
 The `urbex` commands themselves account for this; it only concerns pushes
 made by hand.
+
+## Pull from Docker Hub through a cache
+
+Docker Hub limits anonymous pulls to 100 an hour per address, and every
+machine of the platform pulls from the same address. A bootstrap, a
+first `apply` of a large stack, or a few redeploys in an hour can reach
+it; the deploy then fails with `429 Too Many Requests` from
+`registry-1.docker.io`.
+
+A pull-through cache on the LAN pulls each image once and serves it from
+then on. Docker's own registry does it, on any machine with Docker - a
+NAS, the node's other host:
+
+```sh
+docker run -d --name hub-cache --restart unless-stopped -p 5000:5000 \
+  -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io \
+  -v hub-cache:/var/lib/registry docker.io/library/registry:3.1.2
+```
+
+With a Docker Hub account, add `-e REGISTRY_PROXY_USERNAME=<user>` and
+`-e REGISTRY_PROXY_PASSWORD=<access token>`: its pulls count against
+the account's larger limit. Then, in `urbex.platform.yaml`:
+
+```yaml
+docker:
+  registryMirrors: ["http://192.168.1.50:5000"]
+```
+
+and `urbex bootstrap` (the platform's machines), then `urbex apply
+<env>` for each environment. Their Docker pulls Docker Hub's images
+through the cache, and falls back to Docker Hub if it doesn't answer.
+Images from other registries (`ghcr.io`, `quay.io`, `lscr.io`) are not
+cached.
 
 ## A build or a deploy failed
 
@@ -1400,6 +1460,16 @@ group `urbex-resources`), for the platform's LXCs and the applications':
 | A disk is filling up | a filesystem above 85% for 10 minutes | `warning` |
 | A disk is almost full | a filesystem above 95% for 5 minutes | `critical` |
 | A machine is running out of memory | less than 10% of its memory available for 10 minutes | `warning` |
+| The Proxmox node is running out of memory | the node's memory above 90% used for 10 minutes | `warning` |
+| A Proxmox storage is filling up | a storage of the node above 85% for 5 minutes | `warning` |
+| A Proxmox storage is nearly full | a storage of the node above 95% for 5 minutes | `critical` |
+
+The last three, and the *Proxmox node* row of the *Urbex resources*
+dashboard (CPU, memory used against its total, each storage's use), need
+the optional read-only [monitoring token](reference/credentials.md#proxmox-monitoring-token):
+the node's memory counts what Proxmox's *Summary* counts, the guests
+outside urbex and ZFS's ARC included. They carry `service="proxmox"`,
+`node` and `storage`.
 
 Every real filesystem counts: the LXC's root disk and its named volumes
 (`/srv/volumes/<service>/<volume>`), not `tmpfs`. Each alert carries the
