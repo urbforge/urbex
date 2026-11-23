@@ -817,8 +817,9 @@ and prints the command for the administrator of the node:
 ```
 
 Run it on the node, as root (Proxmox VE 8.1 or later), then
-`urbex apply prod` again: it restarts the LXC once, so that it has the
-device, and deploys the application. `urbex doctor`, run in the
+`urbex apply prod` again: it deploys the application. Proxmox VE 9 passes
+the device to the running LXC at once; if your node leaves it pending,
+`apply` restarts the LXC first. `urbex doctor`, run in the
 project's folder, says which LXCs still miss a device, with the
 command.
 

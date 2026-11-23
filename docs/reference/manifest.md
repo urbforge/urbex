@@ -326,10 +326,12 @@ Some applications need shares or devices their LXC doesn't have yet. Binding a f
   pct set 9114 -dev0 /dev/net/tun
 An application in a VM (machine: vm) needs no command for /dev/net/tun: the VM has its own.
 Then run 'urbex apply prod' again.
+not deployed until their LXC has what they keep and the devices they need: gluetun
 ```
 
-Proxmox passes a device to a running LXC when it restarts: the next
-`apply` restarts it once, saying so, and deploys the application. A
+Proxmox VE 9 passes the device to the running LXC at once, and the next
+`apply` deploys the application. A device Proxmox leaves pending until
+the LXC restarts makes `apply` restart it once, saying so first. A
 device the operator passed with options (`,gid=104`, `,mode=0666`) counts
 as passed: urbex compares the path. [`urbex doctor`](cli.md#urbex-doctor),
 run in the project's folder, checks the devices of each environment's
@@ -496,7 +498,7 @@ command uses them yet (see [`status.md`](../status.md)).
 | `machine` | `urbex apply <env>`, which replaces the machine; refused for one with named volumes. |
 | `provides`, `uses`, `ready_within`, references in `env` | `urbex apply <env>`, which regenerates the generated files and the wait. |
 | `volumes` | `urbex apply <env>`, which adds a new named volume and grows a bigger one. A new share needs the operator's `pct set` first. |
-| `devices` | `urbex apply <env>`, after the operator's `pct set` for a new device on an LXC; it restarts the LXC once and regenerates the compose file. |
+| `devices` | `urbex apply <env>`, after the operator's `pct set` for a new device on an LXC; it regenerates the compose file, and restarts the LXC if the device is still pending. |
 | A new service | `urbex apply <env>` in each environment. |
 | `public` | `urbex apply <env>` (it routes or unroutes the service). |
 | `frontend` added | `urbex apply <env>` in each environment. |
