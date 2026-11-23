@@ -64,6 +64,7 @@ copy of the GitOps repo.
 - [Run urbex from a container](#run-urbex-from-a-container)
 - [Run urbex from another machine or a new agent session](#run-urbex-from-another-machine-or-a-new-agent-session)
 - [A push didn't deploy](#a-push-didnt-deploy)
+- [Pull from Docker Hub through a cache](#pull-from-docker-hub-through-a-cache)
 - [A build or a deploy failed](#a-build-or-a-deploy-failed)
 - [The reconciler holds applications back](#the-reconciler-holds-applications-back)
 - [The reconciler is not running](#the-reconciler-is-not-running)
@@ -1358,6 +1359,39 @@ urbex deploy staging --follow-main      # or: urbex deploy <env> --version <its 
 The `urbex` commands themselves account for this; it only concerns pushes
 made by hand.
 
+## Pull from Docker Hub through a cache
+
+Docker Hub limits anonymous pulls to 100 an hour per address, and every
+machine of the platform pulls from the same address. A bootstrap, a
+first `apply` of a large stack, or a few redeploys in an hour can reach
+it; the deploy then fails with `429 Too Many Requests` from
+`registry-1.docker.io`.
+
+A pull-through cache on the LAN pulls each image once and serves it from
+then on. Docker's own registry does it, on any machine with Docker - a
+NAS, the node's other host:
+
+```sh
+docker run -d --name hub-cache --restart unless-stopped -p 5000:5000 \
+  -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io \
+  -v hub-cache:/var/lib/registry docker.io/library/registry:3.1.2
+```
+
+With a Docker Hub account, add `-e REGISTRY_PROXY_USERNAME=<user>` and
+`-e REGISTRY_PROXY_PASSWORD=<access token>`: its pulls count against
+the account's larger limit. Then, in `urbex.platform.yaml`:
+
+```yaml
+docker:
+  registryMirrors: ["http://192.168.1.50:5000"]
+```
+
+and `urbex bootstrap` (the platform's machines), then `urbex apply
+<env>` for each environment. Their Docker pulls Docker Hub's images
+through the cache, and falls back to Docker Hub if it doesn't answer.
+Images from other registries (`ghcr.io`, `quay.io`, `lscr.io`) are not
+cached.
+
 ## A build or a deploy failed
 
 - **Build:** Komodo → Actions → `urbex-release` shows the run for the
@@ -1426,6 +1460,16 @@ group `urbex-resources`), for the platform's LXCs and the applications':
 | A disk is filling up | a filesystem above 85% for 10 minutes | `warning` |
 | A disk is almost full | a filesystem above 95% for 5 minutes | `critical` |
 | A machine is running out of memory | less than 10% of its memory available for 10 minutes | `warning` |
+| The Proxmox node is running out of memory | the node's memory above 90% used for 10 minutes | `warning` |
+| A Proxmox storage is filling up | a storage of the node above 85% for 5 minutes | `warning` |
+| A Proxmox storage is nearly full | a storage of the node above 95% for 5 minutes | `critical` |
+
+The last three, and the *Proxmox node* row of the *Urbex resources*
+dashboard (CPU, memory used against its total, each storage's use), need
+the optional read-only [monitoring token](reference/credentials.md#proxmox-monitoring-token):
+the node's memory counts what Proxmox's *Summary* counts, the guests
+outside urbex and ZFS's ARC included. They carry `service="proxmox"`,
+`node` and `storage`.
 
 Every real filesystem counts: the LXC's root disk and its named volumes
 (`/srv/volumes/<service>/<volume>`), not `tmpfs`. Each alert carries the
