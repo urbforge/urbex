@@ -49,7 +49,7 @@ skill.
    become `volumes`, `depends_on` becomes `uses`.
 3. **Check the conventions** of the runtimes in the reference
    (*Runtimes*): the service must listen on `$PORT`; with a `healthcheck`
-   the image needs `wget` (Urbex's images have it). If the code listens on
+   the image needs `wget` or `curl` (Urbex's images have `wget`). If the code listens on
    a fixed port, say so and propose reading `PORT`, or use that port.
 4. **Propose, don't ask.** Decide every value from the code and these
    defaults, and let the user correct them in step 6: the project name

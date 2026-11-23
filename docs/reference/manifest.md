@@ -88,7 +88,7 @@ nor an image of its own: its LXC pulls the image it declares (see
 | `dockerfile` | path | required with `docker` | Path of the Dockerfile from the repo root; its directory is the build context. Ignored for other runtimes. |
 | `public` | boolean | `false` | Publish the service on the internet through the platform's Cloudflare Tunnel, at `<service>-<project>-urbex.<domain>` (prod) and `<service>-staging-<project>-urbex.<domain>` (staging). Its own auth is its gate. Needs Cloudflare in the [platform config](platform-config.md#public-hostnames). |
 | `port` | 1-65535 | required with `runtime` | The port the service listens on. The container gets `PORT` set to it, and it is published on the LXC's IP at the same number. An application from a published image may omit it; if it declares one, the port is published in the same way, but `PORT` is not set, since such an image reads its own variables. `public` and `healthcheck` require a port. |
-| `healthcheck` | HTTP path | none | Path probed every 30 s from inside the container (`wget -q --spider http://localhost:<port><path>`); three failures mark the container unhealthy, and `urbex` waits for healthy. Without it, a running container counts. |
+| `healthcheck` | HTTP path | none | Path probed every 30 s from inside the container, with `wget -q --spider http://localhost:<port><path>`, or `curl -fsS` when the image has no `wget`; an image with neither (or without a shell, such as a distroless one) can't be probed, and Docker's health log says so; three failures mark the container unhealthy, and `urbex` waits for healthy. Without it, a running container counts. |
 | `volumes` | list | | What the application keeps: named volumes and shares, mounted in the container. See [volumes](#volumes). |
 | `provides` | `postgres` | none | The interface the application implements, so that Urbex configures it and passes its connection to the applications that use it. See [linked applications](#linked-applications). |
 | `uses` | list of names | | The applications of the stack this one needs. Its Stack waits until they are healthy before it starts, and it gets their connection. See [linked applications](#linked-applications). |
@@ -159,7 +159,7 @@ In every case:
 
 - the service must listen on `$PORT`;
 - the build gets `--build-arg SERVICE=<service name>`;
-- with a `healthcheck`, the image must contain `wget` (Urbex's do);
+- with a `healthcheck`, the image must contain `wget` or `curl` (Urbex's have `wget`);
 - there is one image per commit of `main`, tagged with the commit's short
   hash, plus one tag per release (`1.4.2`) on the same image.
 
