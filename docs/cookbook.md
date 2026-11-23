@@ -47,6 +47,7 @@ copy of the GitOps repo.
 - [Keep an application's data](#keep-an-applications-data)
 - [Back up and restore an application's data](#back-up-and-restore-an-applications-data)
 - [Mount a NAS share](#mount-a-nas-share)
+- [Give an application a device of the node](#give-an-application-a-device-of-the-node)
 - [Link a database to the applications that use it](#link-a-database-to-the-applications-that-use-it)
 - [Run a home lab app from its image](#run-a-home-lab-app-from-its-image)
 - [Run a stack of linked apps: Paperless-ngx with PostgreSQL and Redis](#run-a-stack-of-linked-apps-paperless-ngx-with-postgresql-and-redis)
@@ -791,6 +792,45 @@ check in this order:
 
 A share through a VM, without root on the node, is tracked in
 [urbex-cli#40](https://github.com/urbforge/urbex-cli/issues/40).
+
+## Give an application a device of the node
+
+A VPN client such as Gluetun needs `/dev/net/tun`; a media server that
+transcodes on the GPU needs `/dev/dri/renderD128`. Declare them on the
+application:
+
+```yaml
+# urbex.yaml
+services:
+  - name: gluetun
+    image: qmcgaw/gluetun
+    version: v3.40.0
+    devices: [/dev/net/tun]
+```
+
+The LXCs are unprivileged, and passing a device of the node to one needs
+`root@pam`, so the first `urbex apply prod` deploys the rest of the stack
+and prints the command for the administrator of the node:
+
+```
+  pct set 9114 -dev0 /dev/net/tun
+```
+
+Run it on the node, as root (Proxmox VE 8.1 or later), then
+`urbex apply prod` again: it restarts the LXC once, so that it has the
+device, and deploys the application. `urbex doctor`, run in the
+project's folder, says which LXCs still miss a device, with the
+command.
+
+For `/dev/dri/renderD128`, the container's user must be in the group
+that owns it: add `,gid=<the render group's id in the LXC>` to the
+command (`getent group render` in the LXC). Urbex compares only the
+path, so any options you add are kept.
+
+**Without root on the node**, run the application in a VM
+(`machine: vm`, see [run an application in a VM](#run-an-application-in-a-vm)):
+a VM has `/dev/net/tun` of its own, and `urbex apply` prints no command.
+A GPU in a VM needs PCI passthrough, which Urbex doesn't set up.
 
 ## Link a database to the applications that use it
 
