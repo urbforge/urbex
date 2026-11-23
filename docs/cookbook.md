@@ -1460,6 +1460,16 @@ group `urbex-resources`), for the platform's LXCs and the applications':
 | A disk is filling up | a filesystem above 85% for 10 minutes | `warning` |
 | A disk is almost full | a filesystem above 95% for 5 minutes | `critical` |
 | A machine is running out of memory | less than 10% of its memory available for 10 minutes | `warning` |
+| The Proxmox node is running out of memory | the node's memory above 90% used for 10 minutes | `warning` |
+| A Proxmox storage is filling up | a storage of the node above 85% for 5 minutes | `warning` |
+| A Proxmox storage is nearly full | a storage of the node above 95% for 5 minutes | `critical` |
+
+The last three, and the *Proxmox node* row of the *Urbex resources*
+dashboard (CPU, memory used against its total, each storage's use), need
+the optional read-only [monitoring token](reference/credentials.md#proxmox-monitoring-token):
+the node's memory counts what Proxmox's *Summary* counts, the guests
+outside urbex and ZFS's ARC included. They carry `service="proxmox"`,
+`node` and `storage`.
 
 Every real filesystem counts: the LXC's root disk and its named volumes
 (`/srv/volumes/<service>/<volume>`), not `tmpfs`. Each alert carries the
