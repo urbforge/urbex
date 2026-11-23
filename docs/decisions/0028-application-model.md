@@ -6,7 +6,9 @@ Accepted. Tracked by [urbforge/urbex#26](https://github.com/urbforge/urbex/issue
 Amended on 2026-10-30 after the review of
 [urbforge/urbex-cli#43](https://github.com/urbforge/urbex-cli/issues/43).
 It adds the order between stacks, *ready* and *healthy*, and the
-generated variables in their own file.
+generated variables in their own file. Extended by
+[ADR-0037](0037-groups-and-presets.md): applications grouped on one LXC
+(`lxc: <name>`, of which `placement: stack` is a case), and presets.
 Refines [ADR-0002](0002-app-manifest-in-app-repo.md) (a manifest
 without code, several stacks in one repository), [ADR-0009](0009-one-lxc-per-service-per-env.md) (one LXC
 per stack as a choice), [ADR-0020](0020-trunk-releases-gitops-environments.md)
