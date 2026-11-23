@@ -922,10 +922,11 @@ git init -b main && git add urbex.yaml && git commit -m "Vaultwarden"
 urbex-op 'cd /work/projects/vault && urbex apply prod'
 ```
 
-Without the commit, `apply` creates the LXC and then stops with
-`creating branch main on gitea from .: git push: ... not a git repository`;
-commit and run it again. Later changes to `urbex.yaml` are committed the
-same way.
+Without the commit, `apply` stops before creating anything:
+`urbex.yaml isn't in a git repository (--repo-dir .): urbex creates the
+project's repo on Forgejo from it`, with the command to run. The
+project's changes, `urbex.yaml`'s among them, go through this
+repository: later changes to `urbex.yaml` are committed the same way.
 
 `apply` creates the LXC, resolves `1.37.5` to its digest and runs it: on
 the LAN at the address it prints, and by its internal name

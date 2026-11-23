@@ -65,7 +65,7 @@ Shared flags:
 ## `urbex doctor`
 
 ```
-urbex doctor [--test-alerts] [--gitops-repo <dir>] [--output text|json]
+urbex doctor [--test-alerts] [--gitops-repo <dir>] [--file urbex.yaml] [--repo-dir .] [--output text|json]
 ```
 
 Checks that this machine, the workspace, Proxmox and Cloudflare have
@@ -92,6 +92,10 @@ fails for no clear reason.
   out, or the channel's error (a wrong bot token, a chat the bot isn't
   in). This one check sends something; the others change nothing. See
   [get the alerts on Telegram or Discord](../cookbook.md#get-the-alerts-on-telegram-or-discord).
+- **project**, run in a project's folder (with `urbex.yaml`, or
+  `--file`): whether `urbex.yaml` is committed in the git repository at
+  `--repo-dir`. A `warn`, not a `fail`: a project already on Forgejo no
+  longer needs it.
 
 It starts with urbex's own version, as [`urbex version`](#urbex-version)
 prints it. Each check is `ok`, `warn`, `fail` or `skip`; a check that
@@ -327,7 +331,7 @@ Needs: `URBEX_PROXMOX_TOKEN`, `URBEX_AGE_KEY`, `terraform`,
 ## `urbex plan`
 
 ```
-urbex plan <env> [--file urbex.yaml] [--gitops-repo <dir>]
+urbex plan <env> [--file urbex.yaml] [--gitops-repo <dir>] [--repo-dir .]
 ```
 
 Shows what `apply` would change in the infrastructure, without changing
@@ -341,6 +345,10 @@ hand, say), printing `LXC <vmid> is gone from Proxmox: forgetting ...`.
 Terraform would find out by itself with an unrestricted token, but a
 token scoped to a resource pool gets `403 Permission check failed` for a
 VMID outside the pool - which a deleted LXC is.
+
+Like `apply`, it first refuses an `urbex.yaml` that isn't committed in
+the git repository at `--repo-dir` (default `.`) while the project has
+no `main` branch on Forgejo.
 
 Needs: `URBEX_PROXMOX_TOKEN`, `URBEX_AGE_KEY`, `terraform`.
 
@@ -432,7 +440,7 @@ Fix it and run `apply` again.
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `--repo-dir <dir>` | `.` | The project's local repo, used only if Forgejo has no `main` yet. |
+| `--repo-dir <dir>` | `.` | The project's local repo, used only if Forgejo has no `main` yet: then `urbex.yaml` must be committed in it (a commit, and the file tracked), and `apply` checks it before creating anything, saying what to run. Uncommitted changes to a tracked `urbex.yaml` are fine: `apply` reads the file. |
 | `--delete-data` | off | Let `apply` delete the LXC of an application removed from `urbex.yaml`, with its named volumes, and drop the PostgreSQL roles and schemas no application uses any more, with their data. `apply` names them first. Nothing is kept. A replacement of an LXC with volumes is refused with it as well. |
 
 Needs: `URBEX_PROXMOX_TOKEN`, `URBEX_AGE_KEY`, the platform credentials
