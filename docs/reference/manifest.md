@@ -95,6 +95,8 @@ nor an image of its own: its LXC pulls the image it declares (see
 | `uses` | list of names | | The applications of the stack this one needs. Its Stack waits until they are healthy before it starts, and it gets their connection. See [linked applications](#linked-applications). |
 | `ready_within` | `<n>s` or `<n>m` | `60s` | How long the application may take to be healthy after it starts. The applications that use it wait for it that long, and after a reboot Proxmox waits that long, up to 5 minutes, before it starts their LXCs. |
 | `lxc` | group name | none | The machine the application shares with the applications of the stack that name the same group, one per environment (`<project>-<lxc>-<env>`). Same rules as `name`. See [LXC groups](#lxc-groups). |
+| `network` | name of an application | none | An application of the same group whose network this one joins, as qBittorrent joins Gluetun's: it has no network of its own, and starts once the other is healthy. See [a shared network](#a-shared-network). |
+| `capabilities` | `[NET_ADMIN]` | none | Linux capabilities the container gets beyond Docker's defaults: `NET_ADMIN`, which a VPN client needs. |
 | `machine` | `lxc`, `vm` | `lxc` | What the application runs on: an unprivileged LXC, or a VM in the platform's pool for what an LXC can't do without root - the `keyctl`, `mount` or `fuse` features. See [machine](#machine). |
 | `resources.cpu` | integer ≥ 1 | `1` | Cores of the LXC or VM. |
 | `resources.memory` | `<n>Mi` or `<n>Gi` | `1Gi` | Memory of the LXC or VM. A VM gets at least `1Gi`, and gives back what it doesn't use down to half of it (ballooning). |
@@ -258,6 +260,51 @@ services:
   refuses and names them. `--delete-data` starts it on its new machine
   with empty volumes, and the old ones stay where they are until that
   machine is destroyed. Back the data up first.
+
+### A shared network
+
+An application of a group can join another's network, the way a
+download client goes through a VPN client
+([urbforge/urbex-cli#139](https://github.com/urbforge/urbex-cli/issues/139)):
+
+```yaml
+services:
+  - name: gluetun
+    image: docker.io/qmcgaw/gluetun
+    version: v3.40.0
+    port: 8000                  # its control server
+    healthcheck: /v1/publicip/ip
+    lxc: download
+    capabilities: [NET_ADMIN]
+    devices: [/dev/net/tun]
+  - name: qbittorrent
+    image: lscr.io/linuxserver/qbittorrent
+    version: "5.1"
+    port: 8080
+    lxc: download
+    network: gluetun
+```
+
+- **One network, held by `net`**: Gluetun's Stack gets a `net` service,
+  a container that only holds the network. Gluetun and qBittorrent both
+  join it (`network_mode:`), so everything qBittorrent sends goes where
+  Gluetun's rules send it, and nothing gets out while Gluetun is down.
+- **Ports on `net`**: `net` publishes 8000 and 8080 on the group's
+  address, where both applications' internal names point.
+- **It uses the other**: `network` implies `uses`, so qBittorrent's Stack
+  starts once Gluetun is healthy. Gluetun needs a `port` and a
+  `healthcheck`, as any application others use.
+- **Gluetun can be recreated**, with a new version for instance, without
+  qBittorrent noticing: the network is `net`'s. When `net` itself starts
+  again, as after a reboot of the node, a `rejoin` service in Gluetun's
+  Stack restarts Gluetun and qBittorrent onto it.
+- **Refused**: joining an application outside the group, or one that
+  joins another itself; a provider (`provides`) joining one.
+
+The VPN provider's credentials are secrets of Gluetun's
+(`urbex secret set prod gluetun WIREGUARD_PRIVATE_KEY`), never in
+`urbex.yaml`. An unprivileged LXC gets `/dev/net/tun` from the operator
+([devices](#devices)).
 
 ## Volumes
 
@@ -546,6 +593,7 @@ command uses them yet (see [`status.md`](../status.md)).
 | `environments` | `urbex apply <env>` for an environment added; an environment removed from the list is not destroyed: run `urbex destroy <env>` before removing it. |
 | `resources` | `urbex plan <env>`, then `urbex apply <env>`. |
 | `machine` | `urbex apply <env>`, which replaces the machine; refused for one with named volumes. |
+| `network`, `capabilities` | `urbex apply <env>`, which regenerates both applications' compose files. |
 | `lxc` | `urbex apply <env>`: the application moves to its new machine; refused for one with named volumes unless `--delete-data`, which starts it with empty volumes (the old ones stay on their machine until it is destroyed). |
 | `provides`, `uses`, `ready_within`, references in `env` | `urbex apply <env>`, which regenerates the generated files and the wait. |
 | `volumes` | `urbex apply <env>`, which adds a new named volume and grows a bigger one. A new share needs the operator's `pct set` first. |
