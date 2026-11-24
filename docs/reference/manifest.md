@@ -282,19 +282,19 @@ services:
     network: gluetun
 ```
 
-- **No network of its own**: qBittorrent's container joins Gluetun's
-  (`network_mode: container:`), so everything it sends goes where
-  Gluetun sends it, and nothing when Gluetun is down.
-- **Its port is published by the other**: Gluetun's container publishes
-  8080 as well as 8000, on the group's address, where qBittorrent's
-  internal name points.
-- **It uses the other**: `network` implies `uses`, so its Stack starts
-  once Gluetun is healthy. Gluetun needs a `port` and a `healthcheck`,
-  as any application others use.
-- **Back after a restart**: a container keeps the network it joined,
-  which goes when Gluetun's container restarts or is recreated. Gluetun's
-  Stack has a `rejoin` service that, each time Gluetun turns healthy,
-  restarts the applications that joined it before its last start.
+- **One network, held by `net`**: Gluetun's Stack gets a `net` service,
+  a container that only holds the network. Gluetun and qBittorrent both
+  join it (`network_mode:`), so everything qBittorrent sends goes where
+  Gluetun's rules send it, and nothing gets out while Gluetun is down.
+- **Ports on `net`**: `net` publishes 8000 and 8080 on the group's
+  address, where both applications' internal names point.
+- **It uses the other**: `network` implies `uses`, so qBittorrent's Stack
+  starts once Gluetun is healthy. Gluetun needs a `port` and a
+  `healthcheck`, as any application others use.
+- **Gluetun can be recreated**, with a new version for instance, without
+  qBittorrent noticing: the network is `net`'s. When `net` itself starts
+  again, as after a reboot of the node, a `rejoin` service in Gluetun's
+  Stack restarts Gluetun and qBittorrent onto it.
 - **Refused**: joining an application outside the group, or one that
   joins another itself; a provider (`provides`) joining one.
 
