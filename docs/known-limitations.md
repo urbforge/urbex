@@ -54,7 +54,6 @@ minor release may change how something works (see
 
 | Limitation | Workaround / consequence |
 |---|---|
-| **A `healthcheck` probes with `wget` inside the container**: many published images (Vaultwarden, Paperless-ngx, Jellyfin) have only `curl`, and the container then never turns healthy. | Leave `healthcheck` out on such an image (its own Docker `HEALTHCHECK`, if it has one, still runs); an application others `use` needs one, so pick an image with `wget` or don't link it. |
 | **A `healthcheck` is an HTTP path**: an application others `use` needs one (or the `postgres` interface), so a service that speaks no HTTP - Redis/Valkey, MQTT, a game server - can't be in `uses`. | Reach it by its internal name in `env`, without `uses`, as the [Paperless-ngx recipe](cookbook.md#run-a-stack-of-linked-apps-paperless-ngx-with-postgresql-and-redis) does; the app isn't held back until it answers. |
 | **A `postgres` provider gives each application a role without superuser rights**: an app that creates PostgreSQL extensions itself - Immich (VectorChord), some with PostGIS - can't use it. | None yet: such an app needs its database as an application of its own that it administers, which isn't supported. |
 | **No GPU or other device passed to an application**: hardware transcoding (Jellyfin, Plex), machine learning (Immich, Frigate) run on the CPU. | Give the application more `resources.cpu`. |

@@ -451,8 +451,8 @@ services:
     healthcheck: /health
 ```
 
-The container gets `PORT` set to `port`; a healthcheck runs `wget` inside
-the container, so the image needs it.
+The container gets `PORT` set to `port`; a healthcheck runs `wget`, or
+`curl`, inside the container, so the image needs one of them.
 
 ## Several services in one repo
 
@@ -950,7 +950,8 @@ services:
   - name: vaultwarden
     image: docker.io/vaultwarden/server
     version: "1.37.5"            # the image's tag: check the current one
-    port: 80                     # no healthcheck: see below
+    port: 80
+    healthcheck: /alive
     volumes:
       - { name: data, path: /data, size: 2Gi }
 ```
@@ -974,11 +975,8 @@ the LAN at the address it prints, and by its internal name
 Its data is in the named volume `data`, kept across redeploys and in
 Proxmox's backups ([keep an application's data](#keep-an-applications-data)).
 
-- **No `healthcheck`**: Urbex probes with `wget`, and this image has only
-  `curl`. Vaultwarden's image checks itself (its own Docker
-  `HEALTHCHECK` on `/alive`). Before declaring a `healthcheck` on an
-  image, check it has `wget`
-  ([known limitations](known-limitations.md#projects-and-deploys)).
+- **`healthcheck: /alive`** is Vaultwarden's own: the image has `curl`
+  and no `wget`, and Urbex's probe uses whichever the image has.
 - **HTTPS for the web vault and the apps**: Bitwarden's clients refuse a
   plain `http://` address other than `localhost`. On the LAN the page
   loads but login doesn't. Give it HTTPS with `public: true`, through
@@ -1031,7 +1029,8 @@ services:
   - name: paperless
     image: ghcr.io/paperless-ngx/paperless-ngx
     version: "2.18"              # check the current tag
-    port: 8000                   # no healthcheck: the image has no wget
+    port: 8000
+    healthcheck: /
     ready_within: 3m
     uses: [db]
     resources: { memory: 2Gi }
@@ -1131,7 +1130,8 @@ services:
   - name: jellyfin
     image: docker.io/jellyfin/jellyfin
     version: "10.10.7"
-    port: 8096                   # no healthcheck: the image has no wget
+    port: 8096
+    healthcheck: /health
     resources: { cpu: 2, memory: 4Gi }
     volumes:
       - { name: config, path: /config, size: 5Gi }
