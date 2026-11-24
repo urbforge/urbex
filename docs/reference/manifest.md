@@ -94,6 +94,7 @@ nor an image of its own: its LXC pulls the image it declares (see
 | `provides` | `postgres` | none | The interface the application implements, so that Urbex configures it and passes its connection to the applications that use it. See [linked applications](#linked-applications). |
 | `uses` | list of names | | The applications of the stack this one needs. Its Stack waits until they are healthy before it starts, and it gets their connection. See [linked applications](#linked-applications). |
 | `ready_within` | `<n>s` or `<n>m` | `60s` | How long the application may take to be healthy after it starts. The applications that use it wait for it that long, and after a reboot Proxmox waits that long, up to 5 minutes, before it starts their LXCs. |
+| `lxc` | group name | none | The machine the application shares with the applications of the stack that name the same group, one per environment (`<project>-<lxc>-<env>`). Same rules as `name`. See [LXC groups](#lxc-groups). |
 | `machine` | `lxc`, `vm` | `lxc` | What the application runs on: an unprivileged LXC, or a VM in the platform's pool for what an LXC can't do without root - the `keyctl`, `mount` or `fuse` features. See [machine](#machine). |
 | `resources.cpu` | integer ≥ 1 | `1` | Cores of the LXC or VM. |
 | `resources.memory` | `<n>Mi` or `<n>Gi` | `1Gi` | Memory of the LXC or VM. A VM gets at least `1Gi`, and gives back what it doesn't use down to half of it (ballooning). |
@@ -213,6 +214,50 @@ source and the digests of the applications from images.
 
 The image must be reachable without credentials: a registry that
 requires authentication is refused when the tag is resolved.
+
+## LXC groups
+
+By default each application has a machine of its own per environment.
+Applications of one stack that name the same `lxc` share one instead
+([ADR-0037](../decisions/0037-groups-and-presets.md)):
+
+```yaml
+services:
+  - name: sonarr
+    image: lscr.io/linuxserver/sonarr
+    version: "4"
+    port: 8989
+    lxc: arr
+  - name: radarr
+    image: lscr.io/linuxserver/radarr
+    version: "5"
+    port: 7878
+    lxc: arr
+  - name: jellyfin
+    image: docker.io/jellyfin/jellyfin
+    version: "10.11"
+    port: 8096
+```
+
+`media-arr-prod` runs Sonarr and Radarr; `media-jellyfin-prod`, Jellyfin.
+
+- **The group is the machine**: one LXC (or VM), one address, one Komodo
+  Server, one telemetry agent. Its cores, memory and root disk are the
+  sum of its applications' `resources`; its volumes and shares are all of
+  theirs. The machine's own metrics carry the group's name as `service`.
+- **Each application keeps** its own Komodo Stack, folder in the GitOps
+  repo, internal name (all pointing to the group's address), port,
+  healthcheck and version. Their containers' logs and metrics carry their
+  own name.
+- **Refused by `urbex apply`**: two applications of a group publishing
+  the same port; `lxc` and `vm` in one group; a group named after an
+  application that isn't in it. With a Quick Tunnel, one public
+  application per machine.
+- **Moving an application** to another group, into one or out of one is
+  a replacement: without named volumes it moves; with them `apply`
+  refuses and names them. `--delete-data` starts it on its new machine
+  with empty volumes, and the old ones stay where they are until that
+  machine is destroyed. Back the data up first.
 
 ## Volumes
 
@@ -496,6 +541,7 @@ command uses them yet (see [`status.md`](../status.md)).
 | `environments` | `urbex apply <env>` for an environment added; an environment removed from the list is not destroyed: run `urbex destroy <env>` before removing it. |
 | `resources` | `urbex plan <env>`, then `urbex apply <env>`. |
 | `machine` | `urbex apply <env>`, which replaces the machine; refused for one with named volumes. |
+| `lxc` | `urbex apply <env>`: the application moves to its new machine; refused for one with named volumes unless `--delete-data`, which starts it with empty volumes (the old ones stay on their machine until it is destroyed). |
 | `provides`, `uses`, `ready_within`, references in `env` | `urbex apply <env>`, which regenerates the generated files and the wait. |
 | `volumes` | `urbex apply <env>`, which adds a new named volume and grows a bigger one. A new share needs the operator's `pct set` first. |
 | `devices` | `urbex apply <env>`, after the operator's `pct set` for a new device on an LXC; it regenerates the compose file, and restarts the LXC if the device is still pending. |

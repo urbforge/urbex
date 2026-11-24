@@ -228,13 +228,25 @@ trimmed once its base services are settled):
 2. Deploy an app of yours to staging, then promote it to production.
 3. Break something: a secret, a rollback, a reboot of the node.
 
-**How to tell us**: open an
-[issue](https://github.com/urbforge/urbex/issues) - what you deployed,
-where it stopped, what you expected, the output of the command that
-failed, and `urbex version` (or `urbex-op 'urbex version'`). A problem with the CLI itself can also go to
-[urbex-cli's issues](https://github.com/urbforge/urbex-cli/issues). If
-you help people take their apps to production and see what's missing,
-tell us too: it shapes the roadmap.
+**How to tell us**: on [Urbex's Discord](https://discord.gg/hUGWTT6fQT).
+
+- **`#support`** - something doesn't work: open a post, one per problem,
+  with what you deployed, where it stopped, what you expected, the
+  output of the command that failed, and `urbex version` (or
+  `urbex-op 'urbex version'`).
+- **`#feedback`** - ideas, what's missing, docs that confused you. If you
+  help people take their apps to production and see what's missing,
+  tell us too: it shapes the roadmap.
+- **Early builds** - react 🧪 to the last message in `#welcome` to try
+  new builds before they're released.
+
+A bot answers first in the forums, from the docs of the latest release;
+Teg and Stefano, the maintainers, follow every thread, and what becomes
+work turns into an issue here, linked from your post.
+
+You can also open an [issue](https://github.com/urbforge/urbex/issues)
+directly, with the same details; a problem with the CLI itself can go to
+[urbex-cli's issues](https://github.com/urbforge/urbex-cli/issues).
 
 ## Repositories
 
