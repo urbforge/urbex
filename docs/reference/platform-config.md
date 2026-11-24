@@ -87,6 +87,13 @@ cloudflare:
 | `observability.alerts.telegram.chatId` | none | Send Urbex's alerts to this Telegram chat: a number, negative for a group, or a public channel's `@name`. Needs the credential `telegramBotToken`. See [get the alerts on Telegram or Discord](../cookbook.md#get-the-alerts-on-telegram-or-discord). |
 | `observability.alerts.discord` | `false` | Send them to a Discord channel's webhook, the credential `discordWebhookUrl`. |
 | `observability.alerts.webhook` | `false` | Post them as Grafana's JSON to the credential `alertsWebhookUrl`. Any of the three, or several; with none, the alerts stay in Grafana. Applied by `urbex bootstrap`; checked by `urbex doctor --test-alerts`. |
+| `backups.schedule` | `03:00` | When the backups run, every day, `HH:MM` in `backups.timezone`. See [backups](#backups). |
+| `backups.timezone` | `Etc/UTC` | The schedule's time zone, an IANA name such as `Europe/Rome` (Komodo runs in UTC). |
+| `backups.proxmox.storage` | none | The Proxmox storage the machines are backed up to: a Proxmox Backup Server datastore added to the node, or any storage with the `backup` content (an NFS share, a directory). **No default**: without it the Proxmox layer is off and nothing is backed up. Needs `proxmox.pool` and the credential [`proxmoxBackupToken`](credentials.md#proxmox-backup-token). |
+| `backups.proxmox.machines` | `[platform, projects]` | Which of the pool's machines: the platform's (Forgejo, Komodo, Keycloak, Technitium, observability, tunnel), the projects', or both. |
+| `backups.proxmox.mode` | `snapshot` | vzdump's mode: `snapshot` (no downtime), `suspend` or `stop`. |
+| `backups.proxmox.modes.<hostname>` | none | Another mode for one machine, e.g. `urbex-gitea: stop`. |
+| `backups.proxmox.keep.daily`, `.weekly`, `.monthly` | `7`, `4`, `6` | How many backups of each machine are kept (vzdump's `prune-backups`). |
 | `storage.shares.<name>.path` | none | A folder of the Proxmox node that applications mount by name: see [shares](#shares). An absolute path that isn't `/` and has no comma, space or tab. |
 
 ## Shares
@@ -111,6 +118,54 @@ run. Urbex never changes or deletes a share. The LXCs are unprivileged:
 their root is user 100000 on the node, so the files must be readable,
 or writable, by that user, as the NAS mounts them. The cookbook has the steps, for NFS and SMB:
 [Mount a NAS share](../cookbook.md#mount-a-nas-share).
+
+## Backups
+
+The Proxmox layer of [ADR-0036](../decisions/0036-backups-and-restore.md):
+every day, the pool's machines are backed up whole, with vzdump, to a
+storage you name, with a consistent dump of each database inside.
+
+```yaml
+proxmox:
+  pool: urbex                 # required: only the pool's machines are backed up
+backups:
+  schedule: "03:00"
+  timezone: Europe/Rome
+  proxmox:
+    storage: pbs              # a PBS datastore on another device, or a storage with the backup content
+    # machines: [platform, projects]
+    # mode: snapshot
+    # modes: {urbex-gitea: stop}
+    # keep: {daily: 7, weekly: 4, monthly: 6}
+```
+
+Add the storage to the node and create the
+[backup token](credentials.md#proxmox-backup-token) first, then run
+`urbex bootstrap`: it sets up the Komodo Procedure `urbex-backup`, which
+runs the Action `urbex-backup` on the schedule. A run:
+
+1. **dumps the databases into their volumes**: Komodo's own database
+   (Komodo's backup, into `/etc/komodo/backups` on its LXC), a consistent
+   copy of Forgejo's SQLite database (`/data/urbex-dumps/gitea.db`),
+   `pg_dump` of Keycloak's PostgreSQL and of every project's PostgreSQL
+   server (`provides: postgres`), in the custom format, one file per
+   database, into `urbex-dumps` next to its data directory - on the
+   server's volume. A snapshot of a running database is only
+   crash-consistent; the dump next to it is consistent;
+2. **backs the machines up** with vzdump through the Proxmox API, one
+   task per mode, and waits for each. Only the pool's machines, never a
+   template or another guest of the node. Another storage than a PBS
+   gets `zstd` compression; a PBS compresses and deduplicates by itself.
+
+A failed dump doesn't stop the backups: the machine is still saved,
+with its previous dump. A failure fails the run in Komodo and is sent
+to Loki (`{source="urbex-backup", level="error"}`). Run it now from
+Komodo (Procedures > `urbex-backup` > Run), and check the setup with
+`urbex doctor`. A changed schedule, storage or retention is applied by
+`urbex bootstrap`. Whole-machine restore is
+[urbforge/urbex-cli#121](https://github.com/urbforge/urbex-cli/issues/121)'s
+next step; meanwhile, restore a machine from Proxmox's UI (the machine >
+Backup > Restore).
 
 ## A VM image
 

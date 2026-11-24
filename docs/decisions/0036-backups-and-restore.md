@@ -2,7 +2,10 @@
 
 ## Status
 
-Proposed. The first task of E3, *Backups and restore*
+Proposed; amended by its first implementation task
+(urbforge/urbex-cli#121): the Proxmox layer runs with a dedicated
+backup token, not the platform's (point 3), and Komodo's database is
+dumped with Komodo's own backup (point 1). The first task of E3, *Backups and restore*
 (urbforge/redemptor#31); the implementation tasks follow it. Builds on
 [ADR-0027](0027-service-conventions.md) (every service through Komodo,
 monitored in Grafana), [ADR-0028](0028-application-model.md) (named
@@ -52,10 +55,11 @@ Hetzner 19%, Cloudflare R2 5%.
      with a consistent copy of its SQLite database taken first (SQLite's
      backup command, or `forgejo dump`'s export). The registry is included: a release's images can't be
      rebuilt identically, and promote relies on them.
-   - **Komodo**: its database, dumped through its PostgreSQL
-     (`pg_dump` of the DocumentDB database), or through FerretDB
-     (`mongodump`) if a restore test shows the former doesn't restore
-     cleanly - settled by the platform-backup task.
+   - **Komodo**: its database, with Komodo's own backup
+     (`BackupCoreDatabase`: compressed JSON lines in `/etc/komodo/backups`
+     on its LXC, restored with Komodo's CLI), rather than a `pg_dump` of
+     the DocumentDB database or a `mongodump` through FerretDB: it is
+     the format Komodo supports restoring.
    - **Keycloak**: `pg_dump` of its PostgreSQL.
    - **A project's PostgreSQL**: `pg_dump` of each database, in the
      custom format, so one application's schema can be restored alone.
@@ -83,8 +87,14 @@ Hetzner 19%, Cloudflare R2 5%.
    restores, the file layer for granular, off-site copies. On a VPS, the
    file layer.
 
-3. **The Proxmox layer: vzdump through the Proxmox API**, with the
-   platform's token (no `root@pam`):
+3. **The Proxmox layer: vzdump through the Proxmox API**, with a
+   **dedicated backup token** (`proxmoxBackupToken`, no `root@pam`):
+   it is scheduled by Komodo, so a token must be kept on the platform,
+   and the platform's token - which creates and destroys the pool's
+   machines - never leaves the operator's workspace. The backup token
+   may only see and back up the pool's machines and write to the named
+   storage. A whole-machine restore, run by `urbex restore` from the
+   workspace, uses the platform's token.
    - **What**: every machine of the platform's pool, or a subset
      (`backups.proxmox.machines`: `platform`, `projects`, or both).
      Never another guest: only the pool's VMIDs are passed to vzdump.
@@ -101,15 +111,17 @@ Hetzner 19%, Cloudflare R2 5%.
      documented:
      - **by hand, once, by the operator** - the default, least
        privilege: add the PBS storage (address, datastore, the PBS
-       user's token, the fingerprint), then grant the platform's token
+       user's token, the fingerprint), then grant the backup token
        `Datastore.AllocateSpace` and `Datastore.Audit` on it;
      - **with a separate, more privileged Proxmox token**, used only for
        that setup step (`urbex backup setup-proxmox` or its documented
        API calls) and **never stored on the platform** - passed in the
        environment for that one command.
 
-     Either way, urbex itself only ever needs `VM.Backup` on the pool and
-     `Datastore.AllocateSpace`/`Datastore.Audit` on that storage.
+     Either way, the backup token only ever needs `VM.Audit` and
+     `VM.Backup` on the pool and `Datastore.AllocateSpace`/`Datastore.Audit`
+     on that storage. The separate setup token is not implemented yet: the
+     storage is added by hand.
    - **Mode**: `snapshot` by default (no downtime; on ZFS or LVM-thin a
      storage snapshot, on PBS its incremental, deduplicated format);
      `suspend` or `stop` per machine when asked (`backups.proxmox.mode`).
@@ -118,11 +130,12 @@ Hetzner 19%, Cloudflare R2 5%.
      (point 1's dumps, through Komodo), and the snapshot holds a
      consistent dump next to the live files. VMs (ADR-0033) have the
      QEMU guest agent: vzdump freezes their filesystems (fsfreeze) for
-     the snapshot. Per-guest hookscripts aren't used: setting one needs
+     the snapshot; Proxmox freezes an LXC's filesystem during its
+     snapshot too. Per-guest hookscripts aren't used: setting one needs
      `root@pam`.
-   - **Token permissions**: `VM.Backup` on the pool, and
-     `Datastore.AllocateSpace` (plus `Datastore.Audit`, to list the
-     backups) on the named storage. `urbex doctor` checks them, and
+   - **Token permissions**: `VM.Audit` (to list the pool's machines)
+     and `VM.Backup` on the pool, and `Datastore.AllocateSpace` (plus
+     `Datastore.Audit`, to list the backups) on the named storage. `urbex doctor` checks them, and
      bootstrap's Proxmox preparation documents the one extra grant on
      the storage.
    - **Scheduling**: by Komodo, like every other platform job (point 6):
@@ -229,10 +242,11 @@ Hetzner 19%, Cloudflare R2 5%.
   only on Proxmox and only as far off the node as its storage is; restic
   restores one database or volume, goes off-site by design, and is the
   only option on a VPS. Neither alone covers both.
-- The Proxmox layer through the API, scheduled by Komodo, because the
-  platform's pool-scoped token may back up and restore its own machines
-  but may not create a cluster backup job; it also keeps urbex's
-  machines, and only them, in the backup.
+- The Proxmox layer through the API, scheduled by Komodo, because a
+  pool-scoped token may back up and restore its own machines but may not
+  create a cluster backup job; it also keeps urbex's machines, and only
+  them, in the backup. A dedicated token, because the one kept on the
+  platform should be able to back up and nothing more.
 - Running restic through Komodo keeps backups like every other service:
   deployed from the GitOps repo, visible and scheduled in Komodo, logged
   in Loki - and the same on Proxmox and on a VPS.
