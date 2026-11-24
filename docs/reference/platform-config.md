@@ -93,7 +93,7 @@ cloudflare:
 | `backups.proxmox.machines` | `[platform, projects]` | Which of the pool's machines: the platform's (Forgejo, Komodo, Keycloak, Technitium, observability, tunnel), the projects', or both. |
 | `backups.proxmox.mode` | `snapshot` | vzdump's mode: `snapshot` (no downtime), `suspend` or `stop`. |
 | `backups.proxmox.modes.<hostname>` | none | Another mode for one machine, e.g. `urbex-gitea: stop`. |
-| `backups.proxmox.keep.daily`, `.weekly`, `.monthly` | `7`, `4`, `6` | How many backups of each machine are kept (vzdump's `prune-backups`). |
+| `backups.proxmox.keep.daily`, `.weekly`, `.monthly` | `7`, `4`, `6` | How many backups of each machine are kept: after each run, the older ones of the backed-up machines are pruned, machine by machine. |
 | `storage.shares.<name>.path` | none | A folder of the Proxmox node that applications mount by name: see [shares](#shares). An absolute path that isn't `/` and has no comma, space or tab. |
 
 ## Shares
@@ -156,6 +156,10 @@ runs the Action `urbex-backup` on the schedule. A run:
    task per mode, and waits for each. Only the pool's machines, never a
    template or another guest of the node. Another storage than a PBS
    gets `zstd` compression; a PBS compresses and deduplicates by itself.
+3. **prunes** each backed-up machine's older backups to
+   `backups.proxmox.keep`, through the storage's prune, one machine at a
+   time: only those machines' backups, never another guest's or a file
+   that isn't a backup.
 
 A failed dump doesn't stop the backups: the machine is still saved,
 with its previous dump. A failure fails the run in Komodo and is sent

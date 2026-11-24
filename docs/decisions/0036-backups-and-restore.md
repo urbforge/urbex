@@ -145,8 +145,12 @@ Hetzner 19%, Cloudflare R2 5%.
      (Datacenter > Backup) is the alternative the operator may prefer,
      but creating one needs privileges on `/` that a pool-scoped token
      doesn't have: urbex documents it and doesn't create it.
-   - **Retention**: `backups.proxmox.keep`, passed to vzdump's
-     `prune-backups` (a PBS datastore may also prune on its own).
+   - **Retention**: `backups.proxmox.keep`, applied after the backup
+     machine by machine through the storage's `prunebackups` API with
+     the machine's VMID - which needs only `Datastore.AllocateSpace` and
+     `VM.Backup`, while vzdump's `prune-backups` would need
+     `Datastore.Allocate`, the privilege to create and remove storages
+     (a PBS datastore may also prune on its own).
    - **Restore**: a whole machine, through the API (`restore` from the
      backup volume onto the same VMID, with `force`), by `urbex restore
      <env|platform> --machine <name> --from proxmox [--at <time>]`. The
@@ -192,7 +196,7 @@ Hetzner 19%, Cloudflare R2 5%.
    - the file layer keeps 7 daily, 4 weekly and 6 monthly snapshots
      (`restic forget`), pruned once a week, `restic check` of a sample
      once a month; the Proxmox layer keeps the same counts by default
-     (`prune-backups`).
+     (the storage's `prunebackups`).
 
 7. **Restore** - restoring is never automatic:
    - `urbex restore <env> [--app <app>] [--at <time>]`: a project's
