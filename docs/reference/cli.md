@@ -65,7 +65,7 @@ Shared flags:
 ## `urbex doctor`
 
 ```
-urbex doctor [--test-alerts] [--gitops-repo <dir>] [--file urbex.yaml] [--repo-dir .] [--output text|json]
+urbex doctor [--test-alerts] [--gitops-repo <dir>] [--file <urbex.yaml>] [--repo-dir .] [--output text|json]
 ```
 
 Checks that this machine, the workspace, Proxmox and Cloudflare have
@@ -96,6 +96,11 @@ fails for no clear reason.
   `--file`): whether `urbex.yaml` is committed in the git repository at
   `--repo-dir`. A `warn`, not a `fail`: a project already on Forgejo no
   longer needs it.
+- **devices**, run in a project whose `urbex.yaml` (or `--file`)
+  declares [devices](manifest.md#devices): for each application and
+  environment, whether its LXC has them, with the `pct set` commands
+  that are missing (`fail`); `skip` for an LXC not created yet, `ok` for
+  a VM.
 
 It starts with urbex's own version, as [`urbex version`](#urbex-version)
 prints it. Each check is `ok`, `warn`, `fail` or `skip`; a check that
