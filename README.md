@@ -122,6 +122,45 @@ mobile apps registered with Keycloak, services in Java, Python, Go or any
 Docker image - describes itself in `urbex.yaml`, and the `urbex` CLI
 creates and keeps what it needs in every environment.
 
+The CLI is the one interface. Claude Code with Urbex's plugin, another
+LLM agent with a shell, or you in a terminal run the same commands,
+and the CLI drives proven open-source tools on your node:
+
+```mermaid
+flowchart TB
+    subgraph who["Who drives it: the same commands"]
+        direction LR
+        CC["<b>Claude Code</b><br/>the urbex plugin:<br/>setup, manifest and cli skills"]
+        LLM["<b>Other LLM agents</b><br/>Codex, or any agent<br/>with a shell"]
+        You["<b>You</b>, in a terminal<br/>tokens always set by you,<br/>never through a chat"]
+    end
+
+    CLI["<b>urbex CLI</b><br/>bootstrap · init · plan · apply · release · promote · status · doctor<br/>reads urbex.platform.yaml and the app's urbex.yaml<br/>runs in the urbex-op image, with terraform, ansible, sops and age"]
+
+    subgraph tools["What it drives"]
+        direction LR
+        Prov["<b>Provisioning</b><br/>Terraform · Ansible<br/>Proxmox API"]
+        Git["<b>GitOps and builds</b><br/>Forgejo · Komodo"]
+        Sec["<b>Secrets</b><br/>SOPS + age"]
+        Net["<b>Network</b><br/>Technitium DNS<br/>Cloudflare Tunnel"]
+        Id["<b>Identity</b><br/>Keycloak"]
+        Obs["<b>Observability</b><br/>Prometheus · Loki<br/>Grafana"]
+    end
+
+    subgraph node["Your Proxmox node: unprivileged Debian LXCs running Docker"]
+        direction LR
+        Base["<b>Platform services</b><br/>urbex bootstrap"]
+        Stg["<b>Your project, staging</b><br/>follows main"]
+        Prd["<b>Your project, production</b><br/>urbex promote"]
+    end
+
+    who --> CLI
+    CLI --> tools
+    tools --> node
+```
+
+Every component and how they connect: [architecture](docs/architecture.md).
+
 ## What works today
 
 The `urbex` CLI implements it: bootstrap
