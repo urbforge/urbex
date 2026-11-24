@@ -378,9 +378,11 @@ Proxmox VE 9 passes the device to the running LXC at once, and the next
 `apply` deploys the application. A device Proxmox leaves pending until
 the LXC restarts makes `apply` restart it once, saying so first. A
 device the operator passed with options (`,gid=104`, `,mode=0666`) counts
-as passed: urbex compares the path. [`urbex doctor`](cli.md#urbex-doctor),
+as passed: urbex compares the path. In a group (`lxc: <group>`), the
+LXC has the devices of all its applications: a device two of them need
+is one command, printed once. [`urbex doctor`](cli.md#urbex-doctor),
 run in the project's folder, checks the devices of each environment's
-LXCs and prints the missing commands.
+LXCs, once per machine, and prints the missing commands.
 
 In a VM (`machine: vm`), `/dev/net/tun` is there without any command
 on the node. Hardware such as a GPU for transcoding (`/dev/dri/...`) is
