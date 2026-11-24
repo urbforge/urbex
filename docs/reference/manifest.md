@@ -324,7 +324,10 @@ such as a NAS's media library. The operator declares it once in
 `/srv/shares/<share>` on its LXC. `urbex plan` and `urbex apply` refuse
 a share the platform doesn't declare. Binding a folder of the node into an
 LXC needs `root@pam`, which an API token never has, so the operator
-binds it. Until an application's LXC has its shares, `urbex apply`
+binds it. In a group (`lxc: <group>`), a share is one mount point of
+the group's LXC, whichever of its applications name it: one command,
+read-only on the LXC only if every one of them only reads it (each
+container still binds it read-only when it asks). Until an application's LXC has its shares, `urbex apply`
 prints the commands to run on the node, deploys the rest of the stack
 without that application, and exits with an error:
 
