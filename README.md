@@ -127,36 +127,46 @@ LLM agent with a shell, or you in a terminal run the same commands,
 and the CLI drives proven open-source tools on your node:
 
 ```mermaid
+%%{init: {"flowchart": {"padding": 14, "nodeSpacing": 24, "rankSpacing": 40}}}%%
 flowchart TB
-    subgraph who["Who drives it: the same commands"]
+    subgraph who["Who drives it: the same commands&nbsp;&nbsp;"]
         direction LR
-        CC["<b>Claude Code</b><br/>the urbex plugin:<br/>setup, manifest and cli skills"]
-        LLM["<b>Other LLM agents</b><br/>Codex, or any agent<br/>with a shell"]
-        You["<b>You</b>, in a terminal<br/>tokens always set by you,<br/>never through a chat"]
+        CC["Claude Code<br/>urbex plugin: setup,<br/>manifest and cli skills"]
+        LLM["Other LLM agents<br/>Codex, or any agent<br/>with a shell"]
+        You["You, in a terminal<br/>tokens set by you,<br/>never in a chat"]
     end
 
-    CLI["<b>urbex CLI</b><br/>bootstrap · init · plan · apply · release · promote · status · doctor<br/>reads urbex.platform.yaml and the app's urbex.yaml<br/>runs in the urbex-op image, with terraform, ansible, sops and age"]
-
-    subgraph tools["What it drives"]
+    subgraph cli["urbex CLI&nbsp;&nbsp;"]
         direction LR
-        Prov["<b>Provisioning</b><br/>Terraform · Ansible<br/>Proxmox API"]
-        Git["<b>GitOps and builds</b><br/>Forgejo · Komodo"]
-        Sec["<b>Secrets</b><br/>SOPS + age"]
-        Net["<b>Network</b><br/>Technitium DNS<br/>Cloudflare Tunnel"]
-        Id["<b>Identity</b><br/>Keycloak"]
-        Obs["<b>Observability</b><br/>Prometheus · Loki<br/>Grafana"]
+        Cmds["bootstrap · init · plan<br/>apply · release · promote<br/>status · doctor"]
+        Man["reads urbex.platform.yaml<br/>and the app's urbex.yaml"]
+        Op["runs in urbex-op:<br/>terraform · ansible<br/>sops · age"]
     end
 
-    subgraph node["Your Proxmox node: unprivileged Debian LXCs running Docker"]
+    subgraph tools["What it drives&nbsp;&nbsp;"]
         direction LR
-        Base["<b>Platform services</b><br/>urbex bootstrap"]
-        Stg["<b>Your project, staging</b><br/>follows main"]
-        Prd["<b>Your project, production</b><br/>urbex promote"]
+        Prov["Provisioning<br/>Terraform · Ansible<br/>Proxmox API"]
+        Git["GitOps, builds<br/>Forgejo · Komodo"]
+        Sec["Secrets<br/>SOPS + age"]
+        Net["Network<br/>Technitium DNS<br/>Cloudflare Tunnel"]
+        Id["Identity<br/>Keycloak"]
+        Obs["Observability<br/>Prometheus · Loki<br/>Grafana"]
     end
 
-    who --> CLI
-    CLI --> tools
-    tools --> node
+    subgraph pve["Your Proxmox node: unprivileged Debian LXCs with Docker&nbsp;&nbsp;"]
+        direction LR
+        Base["Platform services<br/>urbex bootstrap"]
+        Stg["Your project, staging<br/>follows main"]
+        Prd["Your project, production<br/>urbex promote"]
+    end
+
+    who --> cli
+    cli --> tools
+    tools --> pve
+
+    classDef inner font-size:13px
+    class CC,LLM,You,Cmds,Man,Op,Prov,Git,Sec,Net,Id,Obs,Base,Stg,Prd inner
+    style cli stroke:#d9541e,stroke-width:3px
 ```
 
 Every component and how they connect: [architecture](docs/architecture.md).
