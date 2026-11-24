@@ -103,6 +103,9 @@ Read the reference's section before using each.
   never shrink. A share (`{ share: media, path: /media, readOnly: true }`)
   must be declared in the platform's `storage.shares` first, and the
   operator runs a `pct set` as root on the node that `apply` prints.
+  `devices: [/dev/net/tun]` (a VPN client) works the same way on an LXC:
+  `apply` prints the `pct set ... -dev<n>` for the operator, `doctor`
+  checks it; a VM (`machine: vm`) has `/dev/net/tun` of its own.
 - **Public on the internet**: `public: true` on a service with a `port`,
   through the platform's Cloudflare Tunnel. Its own authentication is its
   only gate: say so. Without Cloudflare in the platform it can't be

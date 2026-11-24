@@ -65,7 +65,7 @@ Shared flags:
 ## `urbex doctor`
 
 ```
-urbex doctor [--test-alerts] [--gitops-repo <dir>] [--output text|json]
+urbex doctor [--test-alerts] [--gitops-repo <dir>] [--file <urbex.yaml>] [--output text|json]
 ```
 
 Checks that this machine, the workspace, Proxmox and Cloudflare have
@@ -92,6 +92,11 @@ fails for no clear reason.
   out, or the channel's error (a wrong bot token, a chat the bot isn't
   in). This one check sends something; the others change nothing. See
   [get the alerts on Telegram or Discord](../cookbook.md#get-the-alerts-on-telegram-or-discord).
+- **devices**, run in a project whose `urbex.yaml` (or `--file`)
+  declares [devices](manifest.md#devices): for each application and
+  environment, whether its LXC has them, with the `pct set` commands
+  that are missing (`fail`); `skip` for an LXC not created yet, `ok` for
+  a VM.
 
 It starts with urbex's own version, as [`urbex version`](#urbex-version)
 prints it. Each check is `ok`, `warn`, `fail` or `skip`; a check that
