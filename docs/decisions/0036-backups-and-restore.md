@@ -118,8 +118,8 @@ Hetzner 19%, Cloudflare R2 5%.
        API calls) and **never stored on the platform** - passed in the
        environment for that one command.
 
-     Either way, the backup token only ever needs `VM.Audit` and
-     `VM.Backup` on the pool and `Datastore.AllocateSpace`/`Datastore.Audit`
+     Either way, the backup token only ever needs `Pool.Audit`,
+     `VM.Audit` and `VM.Backup` on the pool and `Datastore.AllocateSpace`/`Datastore.Audit`
      on that storage. The separate setup token is not implemented yet: the
      storage is added by hand.
    - **Mode**: `snapshot` by default (no downtime; on ZFS or LVM-thin a
@@ -133,8 +133,9 @@ Hetzner 19%, Cloudflare R2 5%.
      the snapshot; Proxmox freezes an LXC's filesystem during its
      snapshot too. Per-guest hookscripts aren't used: setting one needs
      `root@pam`.
-   - **Token permissions**: `VM.Audit` (to list the pool's machines)
-     and `VM.Backup` on the pool, and `Datastore.AllocateSpace` (plus
+   - **Token permissions**: `Pool.Audit` and `VM.Audit` (to list the
+     pool's machines: Proxmox names a machine's pool only with
+     `Pool.Audit`) and `VM.Backup` on the pool, and `Datastore.AllocateSpace` (plus
      `Datastore.Audit`, to list the backups) on the named storage. `urbex doctor` checks them, and
      bootstrap's Proxmox preparation documents the one extra grant on
      the storage.

@@ -138,13 +138,15 @@ workspace.
   without it, and removes the token from Komodo when the storage is
   unset; the `urbex-backup` Action; `urbex doctor`, which checks its
   privileges and the storage.
-- **Privileges**, nothing else: `VM.Audit` and `VM.Backup` on the pool
-  (`/pool/<proxmox.pool>`), `Datastore.AllocateSpace` and
+- **Privileges**, nothing else: `Pool.Audit`, `VM.Audit` and `VM.Backup`
+  on the pool (`/pool/<proxmox.pool>`) - Proxmox tells which pool a
+  machine is in only to who has `Pool.Audit` on it, and the Action backs
+  up nothing it can't place in the pool - `Datastore.AllocateSpace` and
   `Datastore.Audit` on the storage (`/storage/<backups.proxmox.storage>`).
 - **Create it**, once, as root on the node, for the pool `urbex` and the
   storage `pbs`:
   ```sh
-  pveum role add UrbexBackup --privs "VM.Audit,VM.Backup"
+  pveum role add UrbexBackup --privs "Pool.Audit,VM.Audit,VM.Backup"
   pveum user add urbex-backup@pve --comment "Urbex: backups"
   pveum acl modify /pool/urbex --users urbex-backup@pve --roles UrbexBackup
   pveum acl modify /storage/pbs --users urbex-backup@pve --roles PVEDatastoreUser
