@@ -816,6 +816,14 @@ and prints the command for the administrator of the node:
   pct set 9114 -dev0 /dev/net/tun
 ```
 
+The applications that use the one waiting - such as a client that
+joins Gluetun's network (`network: gluetun`) - wait with it, and
+`apply` names them:
+
+```
+qbittorrent: not deployed until gluetun is - it uses it, and started now it would wait for it in vain.
+```
+
 Run it on the node, as root (Proxmox VE 8.1 or later), then
 `urbex apply prod` again: it deploys the application. Proxmox VE 9 passes
 the device to the running LXC at once; if your node leaves it pending,
