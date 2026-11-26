@@ -122,6 +122,62 @@ memory and storages in Grafana (urbex's own token sees only the pool
   observability LXC, `docker rm -f urbex-pve-exporter-1` stops an exporter
   already running.
 
+### Proxmox backup token
+
+Optional. The token the platform backs its machines up with, every day,
+when `backups.proxmox.storage` is set ([ADR-0036](../decisions/0036-backups-and-restore.md),
+[backups](platform-config.md#backups)). It is the **only Proxmox token
+kept on the platform** - as a secret Komodo variable, read by the
+`urbex-backup` Action - so it may do nothing but back up: urbex's own
+token, which creates and destroys machines, never leaves the operator's
+workspace.
+
+- **Credentials file key / env var:** `proxmoxBackupToken` /
+  `URBEX_PROXMOX_BACKUP_TOKEN`, as `user@realm!name=secret`.
+- **Used by:** `urbex bootstrap`, which refuses a `backups.proxmox.storage`
+  without it, and removes the token from Komodo when the storage is
+  unset; the `urbex-backup` Action; `urbex doctor`, which checks its
+  privileges and the storage.
+- **Privileges**, nothing else: `Pool.Audit`, `VM.Audit` and `VM.Backup`
+  on the pool (`/pool/<proxmox.pool>`) - Proxmox tells which pool a
+  machine is in only to who has `Pool.Audit` on it, and the Action backs
+  up nothing it can't place in the pool - `Datastore.AllocateSpace` and
+  `Datastore.Audit` on the storage (`/storage/<backups.proxmox.storage>`).
+- **Create it**, once, as root on the node, for the pool `urbex` and the
+  storage `pbs`:
+  ```sh
+  pveum role add UrbexBackup --privs "Pool.Audit,VM.Audit,VM.Backup"
+  pveum user add urbex-backup@pve --comment "Urbex: backups"
+  pveum acl modify /pool/urbex --users urbex-backup@pve --roles UrbexBackup
+  pveum acl modify /storage/pbs --users urbex-backup@pve --roles PVEDatastoreUser
+  pveum user token add urbex-backup@pve backup --privsep 0 --comment "urbex backups"   # prints the token once
+  ```
+  Then `urbex-op set proxmoxBackupToken` with `urbex-backup@pve!backup=<value>`,
+  and `urbex bootstrap`.
+- **A privilege-separated token** (`--privsep 1`, Proxmox's default) has
+  only what **both** it and its user were granted: grant each ACL to the
+  user *and* to the token (`--tokens 'urbex-backup@pve!backup'`). A grant
+  to one of the two only is the usual reason a backup is refused with a
+  403; `urbex doctor` says which of the two lacks what.
+- **The storage** is added to the node by the operator, once
+  (Datacenter > Storage): a privilege the token doesn't have, and
+  shouldn't. For a Proxmox Backup Server: its address, the datastore,
+  a PBS user's token and the server's fingerprint. Inside PBS the same
+  rule holds: that PBS user, and its token if privilege-separated, both
+  need a role on the datastore - `DatastoreBackup` to back up and
+  restore, and to prune with `backups.proxmox.keep` a role that may prune
+  (`DatastorePowerUser`), or let the datastore's own prune job keep the
+  backups instead. **The PBS runs on another device**, never on the node
+  it backs up: one on the same node is lost with it. Backups on PBS are
+  not encrypted (`crypt-mode=none`) unless you add an encryption key to
+  the PBS storage in Proxmox.
+- **TLS:** with `proxmox.insecure: true` the Action doesn't verify the
+  node's certificate either, as urbex doesn't.
+- **Turning it off:** unset `backups.proxmox.storage` and run
+  `urbex bootstrap`: the Procedure, the Action and the token go from
+  Komodo. Then delete the token on the node (`pveum user token remove
+  urbex-backup@pve backup`).
+
 ### SSH key
 
 - **Where it's set:** `proxmox.sshPublicKey` in `urbex.platform.yaml`
