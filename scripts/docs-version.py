@@ -12,6 +12,10 @@ release preparation's bump (urbforge/urbex-cli#156).
       on a pull request: the references agree, and name no version newer
       than the latest tag - except the one a docs/release-vX.Y.Z branch
       prepares
+  scripts/docs-version.py bump 0.2.0 0.3.0
+      the release preparation (urbforge/urbex-cli#156): every reference
+      to 0.2.0 names 0.3.0, the allowed lines stay; then every reference
+      must name 0.3.0. Running it again changes nothing.
 
 Options: --root DIR (default: the repository), --conf FILE.
 Exit status: 0 ok, 1 a check failed, 2 a usage or configuration error.
@@ -86,6 +90,39 @@ def references(root, conf):
                         yield name, n, m.group(1), line
 
 
+def bump(root, conf, old, new):
+    """Replaces old with new in every reference; returns the lines changed,
+    as file:line."""
+    files, matches, allows = conf
+    changed = []
+    for name in files:
+        path = os.path.join(root, name)
+        with open(path, encoding="utf-8") as f:
+            lines = f.read().split("\n")
+        touched = False
+        for i, line in enumerate(lines):
+            if any(s == name and r.search(line) for s, r in allows):
+                continue
+            spans = set()
+            for scope, regex in matches:
+                if scope not in (None, name):
+                    continue
+                for m in regex.finditer(line):
+                    if m.group(1) == old:
+                        spans.add(m.span(1))
+            if not spans:
+                continue
+            for start, end in sorted(spans, reverse=True):
+                line = line[:start] + new + line[end:]
+            lines[i] = line
+            touched = True
+            changed.append("%s:%d" % (name, i + 1))
+        if touched:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write("\n".join(lines))
+    return changed
+
+
 def check(refs, tag=None, latest=None, branch=None):
     """Returns the problems found, one line each."""
     if not refs:
@@ -124,7 +161,8 @@ def check(refs, tag=None, latest=None, branch=None):
 def main(argv=None):
     here = os.path.dirname(os.path.abspath(__file__))
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    p.add_argument("command", choices=["list", "check"])
+    p.add_argument("command", choices=["list", "check", "bump"])
+    p.add_argument("versions", nargs="*", help="bump: the old and the new version")
     p.add_argument("--root", default=os.path.dirname(here))
     p.add_argument("--conf", default=None)
     p.add_argument("--tag", help="a release tag, vX.Y.Z: every reference names it")
@@ -139,6 +177,28 @@ def main(argv=None):
         p.error(str(err))
 
     conf = load_conf(a.conf or os.path.join(here, "docs-version.conf"))
+    if a.command == "bump":
+        if len(a.versions) != 2:
+            p.error("bump needs the old and the new version: bump 0.2.0 0.3.0")
+        old, new = (v.lstrip("v") for v in a.versions)
+        for v in (old, new):
+            try:
+                parse_version(v)
+            except ValueError as err:
+                p.error(str(err))
+        changed = bump(a.root, conf, old, new)
+        for where in changed:
+            print("%s: %s -> %s" % (where, old, new))
+        problems = check(list(references(a.root, conf)), tag="v" + new)
+        for line in problems:
+            print(line)
+        if problems:
+            print("Some references name neither %s nor %s: fix them by hand." % (old, new), file=sys.stderr)
+            return 1
+        print("ok: %s" % ("%d lines now name %s" % (len(changed), new) if changed else "every reference names %s already" % new))
+        return 0
+    elif a.versions:
+        p.error("only bump takes versions")
     refs = list(references(a.root, conf))
     if a.command == "list":
         for name, n, version, _ in refs:

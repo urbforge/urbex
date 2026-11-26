@@ -69,9 +69,10 @@ What it means for an agent, in practice:
 - The places where the docs name urbex's release - the install links,
   the image, sample `urbex version` output - are listed in
   `scripts/docs-version.conf`, and CI checks that they agree
-  (`scripts/docs-version.py`, `tests/docs-version.sh`). A new place
-  gets a line there; a reference to an old version on purpose gets an
-  `allow` line.
+  (`scripts/docs-version.py`, `tests/docs-version.sh`); the release
+  preparation moves them all with `scripts/bump-docs-version.sh OLD NEW`.
+  A new place gets a line there; a reference to an old version on
+  purpose gets an `allow` line.
 - Write for the reader who runs the commands: real commands and output,
   no secrets or private addresses (use `example.com`). Check that
   relative links and anchors resolve.

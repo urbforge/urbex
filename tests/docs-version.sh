@@ -74,6 +74,31 @@ fixture
 printf 'file README.md\nmatch nothing-matches-(this)\n' >"$tmp/empty.conf"
 expect fail "no reference found" "no version reference found" -- check --tag "v$current" --conf "$tmp/empty.conf"
 
+# The bump of the release preparation (urbforge/urbex-cli#156): what names
+# the release changes, what means another version stays, and a second
+# run changes nothing.
+fixture
+printf '\n`podman rmi ghcr.io/urbforge/urbex-op:%s`\n' "$current" >>"$tmp/root/docs/upgrading.md"
+printf '\n## From 0.1.0 to %s\n\nA project tagged v%s keeps its own version.\n' "$current" "$current" >>"$tmp/root/docs/upgrading.md"
+cp -r "$tmp/root" "$tmp/before"
+expect ok "bump $current to $next" "lines now name $next" -- bump "$current" "$next"
+expect ok "after the bump, a tag v$next" "" -- check --tag "v$next"
+grep -q "releases/download/v$next/urbex-op" "$tmp/root/docs/getting-started/with-the-cli.md" \
+  && echo "ok   the download link names $next" || { echo "FAIL the download link wasn't bumped"; failed=1; }
+for kept in "podman rmi ghcr.io/urbforge/urbex-op:$current" "## From 0.1.0 to $current" "A project tagged v$current"; do
+  grep -qF -- "$kept" "$tmp/root/docs/upgrading.md" \
+    && echo "ok   kept: $kept" || { echo "FAIL changed what means another version: $kept"; failed=1; }
+done
+cp -r "$tmp/root" "$tmp/once"
+expect ok "a second bump changes nothing" "names $next already" -- bump "$current" "$next"
+diff -r "$tmp/once" "$tmp/root" >/dev/null && echo "ok   idempotent" || { echo "FAIL the second bump changed files"; failed=1; }
+rm -rf "$tmp/once" "$tmp/before"
+
+# A reference to a third version is left for a person, and fails.
+fixture
+sed -i "s#releases/download/v$current/urbex-op#releases/download/v0.0.9/urbex-op#" "$tmp/root/docs/getting-started/with-the-cli.md"
+expect fail "bump with a stale reference" "names 0.0.9, expected $next" -- bump "$current" "$next"
+
 # A pre-release sorts before its release.
 python3 - "$script" <<'PY' && echo "ok   pre-release ordering" || failed=1
 import importlib.util, sys
