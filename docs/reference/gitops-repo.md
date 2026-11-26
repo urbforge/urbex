@@ -193,7 +193,7 @@ services:
     ports:
       - "8080:8080"
     healthcheck:
-      test: ["CMD-SHELL", "if command -v wget >/dev/null 2>&1; then wget -q --spider 'http://localhost:8080/healthz'; elif command -v curl >/dev/null 2>&1; then curl -fsS -o /dev/null 'http://localhost:8080/healthz'; else echo 'urbex healthcheck: the image has neither wget nor curl' >&2; exit 1; fi"]
+      test: ["CMD-SHELL", "if command -v wget >/dev/null 2>&1; then wget -q -O /dev/null 'http://localhost:8080/healthz'; elif command -v curl >/dev/null 2>&1; then curl -fsS -o /dev/null 'http://localhost:8080/healthz'; else echo 'urbex healthcheck: the image has neither wget nor curl' >&2; exit 1; fi"]
       interval: 30s
       timeout: 5s
       retries: 3
