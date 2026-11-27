@@ -121,8 +121,22 @@ or writable, by that user, as the NAS mounts them. The cookbook has the steps, f
 
 ## Backups
 
-The Proxmox layer of [ADR-0036](../decisions/0036-backups-and-restore.md):
-every day, the pool's machines are backed up whole, with vzdump, to a
+Two layers ([ADR-0036](../decisions/0036-backups-and-restore.md)), each
+off until you give it a target, and best used together on Proxmox:
+
+- **the Proxmox layer**: the pool's machines, whole, with vzdump, to a
+  storage of the node - for fast restores of a whole machine;
+- **the file layer**: the forge's, Komodo's and Keycloak's data, with
+  restic, to a bucket or a share - off the node, encrypted.
+
+Both run every day at `backups.schedule`, in one Komodo Procedure,
+`urbex-backup`: the databases' dumps first, then the Proxmox layer, then
+the file layer. Without either, nothing is backed up, and `urbex status`
+and `urbex doctor` say so.
+
+### The Proxmox layer
+
+Every day, the pool's machines are backed up whole, with vzdump, to a
 storage you name, with a consistent dump of each database inside.
 
 ```yaml
@@ -170,6 +184,86 @@ Komodo (Procedures > `urbex-backup` > Run), and check the setup with
 [urbforge/urbex-cli#121](https://github.com/urbforge/urbex-cli/issues/121)'s
 next step; meanwhile, restore a machine from Proxmox's UI (the machine >
 Backup > Restore).
+
+### The file layer
+
+restic copies the platform's data into **one repository per platform**,
+off the node, encrypted with a password urbex generates:
+
+- the forge's `/data` - its repositories, the container registry, its
+  database - with the consistent copy of its SQLite the dumps take first;
+- Komodo's database backups (`/etc/komodo/backups`);
+- the dump of Keycloak's PostgreSQL;
+- a copy of `credentials.yaml` **without `proxmoxToken` and
+  `cloudflareToken`**, which never go onto the platform
+  ([more](credentials.md#in-the-backups)).
+
+```yaml
+backups:
+  files:
+    target: s3:https://s3.eu-central-003.backblazeb2.com/my-bucket/urbex
+    # target: share:nas/urbex-backups    # or a folder of one of storage.shares
+    # keep: {daily: 7, weekly: 4, monthly: 6}
+```
+
+`target` is either:
+
+- **a bucket** of an S3-compatible service - Backblaze B2, Hetzner Object
+  Storage, Cloudflare R2, MinIO on a NAS - in restic's syntax,
+  `s3:https://<endpoint>/<bucket>[/<prefix>]`. Create a key that may read
+  and write that bucket, and store it as
+  [`backupS3AccessKeyId` and `backupS3SecretAccessKey`](credentials.md#backup-bucket-key).
+  The recommended target: off the node and off the house;
+- **a share**, `share:<name>[/<folder>]`: a folder of one of
+  [`storage.shares`](#shares), such as a NAS mounted on the node.
+  restic runs on three LXCs - the forge's, Komodo's and Keycloak's - so
+  the share is bound into each of them. That needs `root@pam`, so
+  `urbex bootstrap` prints the commands and doesn't run the file layer
+  until they have been run:
+
+  ```
+  pct set 9000 -mp0 /mnt/pve/nas,mp=/mnt/urbex-backup
+  pct set 9001 -mp1 /mnt/pve/nas,mp=/mnt/urbex-backup
+  pct set 9003 -mp0 /mnt/pve/nas,mp=/mnt/urbex-backup
+  ```
+
+  Run them on the node, as root, then `urbex bootstrap` again. The LXCs
+  are unprivileged: the folder must be writable by user 100000 on the
+  node ([how](../cookbook.md#mount-a-nas-share)).
+
+**The backup password.** The first `urbex bootstrap` with a target
+generates `backupPassword` into `credentials.yaml` and shows it once.
+**Store it off the platform, in a password manager, with the age key**:
+the backups can't be read without it, and nothing can recover it. `urbex doctor` warns until you have
+said so, with `urbex-op set backupSecretsStored` and `yes`. A teardown
+keeps it, so a new platform still reads the old backups.
+
+`urbex bootstrap` puts restic in a Stack next to each machine's data
+(`urbex-backup-gitea`, `-komodo`, `-keycloak`, each its own compose
+project). The repository, the password, the bucket's key and the copy
+of `credentials.yaml` are secret Komodo variables, never in the GitOps
+repo; each `urbex bootstrap` refreshes the copy. Each run of `urbex-backup`,
+after the dumps and the Proxmox layer:
+
+1. backs up each machine's data with `restic backup`, one machine after
+   another, as a snapshot tagged `platform` and named after the machine
+   (`urbex-gitea`, ...); the first run creates the repository;
+2. `restic forget` keeps, per machine, `backups.files.keep`: 7 daily, 4
+   weekly, 6 monthly snapshots by default;
+3. on Sundays, the forget also prunes - frees the data of the forgotten
+   snapshots;
+4. on the 1st of the month, `restic check` reads a tenth of the data, so
+   the whole repository is read back over the months.
+
+A machine that fails doesn't stop the others; a failure fails the run in
+Komodo and goes to Loki, as the Proxmox layer's. Removing `target` and
+running `urbex bootstrap` removes the Stacks and the variables; the
+repository stays where it is. Restoring the platform from the file layer
+(`urbex restore platform`) is the next step
+([urbforge/urbex-cli#122](https://github.com/urbforge/urbex-cli/issues/122)):
+until then, `restic restore` from a backup Stack restores files by hand.
+The projects' databases and volumes come with
+[urbforge/urbex-cli#123](https://github.com/urbforge/urbex-cli/issues/123).
 
 ## A VM image
 

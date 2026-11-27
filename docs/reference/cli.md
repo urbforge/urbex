@@ -92,6 +92,16 @@ fails for no clear reason.
   out, or the channel's error (a wrong bot token, a chat the bot isn't
   in). This one check sends something; the others change nothing. See
   [get the alerts on Telegram or Discord](../cookbook.md#get-the-alerts-on-telegram-or-discord).
+- **backups**, each layer of [the backups](platform-config.md#backups):
+  - the Proxmox layer: `warn` when it is off; else the backup token,
+    its privileges on the pool and the storage - saying, for one it
+    lacks, whether its user has it - and the storage;
+  - the file layer: `warn` when it is off (and, with both off, that
+    nothing is backed up); else the backup password, the bucket's key or
+    the share bound into the forge's, Komodo's and Keycloak's LXCs (the
+    `pct set` commands still to run); then a `warn` until
+    `backupSecretsStored` says the age key and the backup password are
+    stored off the platform.
 - **project**, run in a project's folder (with `urbex.yaml`, or
   `--file`): whether `urbex.yaml` is committed in the git repository at
   `--repo-dir`. A `warn`, not a `fail`: a project already on Forgejo no
@@ -628,7 +638,7 @@ urbex status --progress [--watch] [--events json]
 Without `<env>`: the platform and everything on it - which base-service
 LXCs exist on Proxmox, every address of the platform (by internal name,
 on the LAN and, with Cloudflare, public - a name whose record is missing
-or points elsewhere says so), where the logins are, and every project
+or points elsewhere says so), what is backed up, where the logins are, and every project
 environment of the GitOps repo: per service its LAN address, its public
 address (the tunnel's route, or the web frontend's Worker), the version
 it is set to, its Stack's state in Komodo, and its internal name,
@@ -649,6 +659,8 @@ Endpoints:
   Grafana                      http://grafana.urbex.example.com:3000        http://192.168.1.204:3000              https://grafana-urbex.example.com  (public: behind Cloudflare Access; dashboards Urbex logs, Urbex resources)
   Prometheus                   http://prometheus.urbex.example.com:9090     http://192.168.1.204:9090              https://prometheus-urbex.example.com  (public: behind Cloudflare Access; remote write internal only)
   Loki                         http://loki.urbex.example.com:3100           http://192.168.1.204:3100              https://loki-urbex.example.com  (public: behind Cloudflare Access; push internal only)
+
+Backups: the platform and projects machines with vzdump to pbs; the forge's, Komodo's and Keycloak's data with restic to s3:https://s3.eu-central-003.backblazeb2.com/my-bucket/urbex, every day at 03:00 Europe/Rome
 
 Logins: Forgejo and Komodo urbex-admin, Grafana admin, Keycloak admin, Technitium admin; passwords in ~/.urbex/credentials.yaml
 (forgeAdminPassword, komodoAdminPassword, grafanaAdminPassword, keycloakAdminPassword, technitiumAdminPassword).
@@ -700,6 +712,7 @@ Without `<env>`:
     "credentialsFile": "/home/me/urbex-work/home/.urbex/credentials.yaml",
     "users": [ { "service": "gitea", "user": "urbex-admin", "passwordKey": "forgeAdminPassword" } ]
   },
+  "backups": "the forge's, Komodo's and Keycloak's data with restic to share:nas/urbex, every day at 03:00 Etc/UTC",
   "projects": [
     {
       "project": "acme-app",
