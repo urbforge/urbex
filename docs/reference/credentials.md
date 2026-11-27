@@ -221,6 +221,21 @@ shown once - but it isn't like the other generated credentials:
 - It is kept on the platform as a secret Komodo variable, for the backup
   Stacks.
 
+#### In the backups
+
+With [`backups.files.target`](platform-config.md#the-file-layer), the
+file layer copies `credentials.yaml` into its backups, with Komodo's
+data, so a lost platform comes back with its passwords and tokens: the
+generated ones, the backup token, the alert channels' and the bucket's.
+**Except `proxmoxToken` and `cloudflareToken`**, which never go onto the
+platform ([ADR-0036](../decisions/0036-backups-and-restore.md), point 3):
+after a full loss, create them again ([Proxmox](#proxmox-api-token),
+[Cloudflare](#cloudflare-api-token)) - a few minutes. Each
+`urbex bootstrap` refreshes the copy, a secret Komodo variable; the
+backup Stack writes it to memory only, for restic. The age key and the
+backup password are still yours to keep off the platform: the backups
+can't be read without the password.
+
 ### SSH key
 
 - **Where it's set:** `proxmox.sshPublicKey` in `urbex.platform.yaml`

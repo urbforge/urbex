@@ -193,7 +193,10 @@ off the node, encrypted with a password urbex generates:
 - the forge's `/data` - its repositories, the container registry, its
   database - with the consistent copy of its SQLite the dumps take first;
 - Komodo's database backups (`/etc/komodo/backups`);
-- the dump of Keycloak's PostgreSQL.
+- the dump of Keycloak's PostgreSQL;
+- a copy of `credentials.yaml` **without `proxmoxToken` and
+  `cloudflareToken`**, which never go onto the platform
+  ([more](credentials.md#in-the-backups)).
 
 ```yaml
 backups:
@@ -237,8 +240,9 @@ keeps it, so a new platform still reads the old backups.
 
 `urbex bootstrap` puts restic in a Stack next to each machine's data
 (`urbex-backup-gitea`, `-komodo`, `-keycloak`, each its own compose
-project). The repository, the password and the bucket's key are secret
-Komodo variables, never in the GitOps repo. Each run of `urbex-backup`,
+project). The repository, the password, the bucket's key and the copy
+of `credentials.yaml` are secret Komodo variables, never in the GitOps
+repo; each `urbex bootstrap` refreshes the copy. Each run of `urbex-backup`,
 after the dumps and the Proxmox layer:
 
 1. backs up each machine's data with `restic backup`, one machine after
