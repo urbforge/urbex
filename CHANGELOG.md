@@ -22,6 +22,16 @@ here.
 
 ## [Unreleased]
 
+### Plugin 0.2.5
+
+Needs **urbex 0.1.0 or later, major 0**; the file layer of the backups
+needs the release after 0.2.0.
+
+- **Added**: the `setup` skill tells the user to store the backup
+  password with the age key, off the platform, when bootstrap shows it,
+  and to confirm it with `backupSecretsStored` - without repeating the
+  password itself (urbforge/urbex-cli#122).
+
 ## [0.2.0] - 2026-11-20
 
 The docs for urbex 0.2.0: Forgejo in place of Gitea and how to move a

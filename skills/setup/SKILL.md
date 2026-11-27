@@ -326,4 +326,8 @@ copy.
 End with what the user has: the platform's addresses, the app's staging
 address, where the age key and the workspace are and that they must be
 backed up, and the next commands in plain words ("deploy to staging",
-"release and promote", "set a secret").
+"release and promote", "set a secret"). If they set
+`backups.files.target`, bootstrap showed the **backup password** once:
+tell them to store it with the age key, off the platform - without both
+the backups can't be read - then `urbex-op set backupSecretsStored` with
+`yes`. Never repeat the password in the chat yourself.
