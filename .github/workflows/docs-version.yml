@@ -1,0 +1,33 @@
+# The docs name the release they install (urbforge/urbex#112): on every
+# pull request, the version references listed in
+# scripts/docs-version.conf agree with each other, and name no release
+# newer than the latest tag - except the one a docs/release-vX.Y.Z branch
+# prepares. The release workflow checks a tag's docs name that tag.
+name: docs-version
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # the tags
+      - name: Test the check
+        run: tests/docs-version.sh
+      - name: Check the docs' version
+        env:
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          # The latest release, pre-releases (v0.3.0-rc.1) aside.
+          latest=$(git tag -l 'v[0-9]*' | grep -v -- - | sort -V | tail -1)
+          scripts/docs-version.py check ${latest:+--latest "$latest"} --branch "$BRANCH"

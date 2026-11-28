@@ -66,6 +66,12 @@ What it means for an agent, in practice:
   `tests/plugin-scripts.sh`.
 - `schemas/urbex.schema.json` is the source of truth for the manifest;
   `urbex-cli` keeps a copy that must match it.
+- The places where the docs name urbex's release - the install links,
+  the image, sample `urbex version` output - are listed in
+  `scripts/docs-version.conf`, and CI checks that they agree
+  (`scripts/docs-version.py`, `tests/docs-version.sh`). A new place
+  gets a line there; a reference to an old version on purpose gets an
+  `allow` line.
 - Write for the reader who runs the commands: real commands and output,
   no secrets or private addresses (use `example.com`). Check that
   relative links and anchors resolve.
