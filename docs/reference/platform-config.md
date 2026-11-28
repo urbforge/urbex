@@ -166,10 +166,9 @@ with its previous dump. A failure fails the run in Komodo and is sent
 to Loki (`{source="urbex-backup", level="error"}`). Run it now from
 Komodo (Procedures > `urbex-backup` > Run), and check the setup with
 `urbex doctor`. A changed schedule, storage or retention is applied by
-`urbex bootstrap`. Whole-machine restore is
-[urbforge/urbex-cli#121](https://github.com/urbforge/urbex-cli/issues/121)'s
-next step; meanwhile, restore a machine from Proxmox's UI (the machine >
-Backup > Restore).
+`urbex bootstrap`. Restore a whole machine with
+[`urbex restore <env|platform> --machine <name> --from proxmox`](cli.md#urbex-restore),
+with the workspace's main Proxmox token.
 
 ## A VM image
 

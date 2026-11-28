@@ -17,7 +17,7 @@ Cloudflare Quick Tunnel
 ([ADR-0025](decisions/0025-cloudflare-quick-tunnel.md)) on the same node.
 
 **v0.2.0 is a preview release.** In short: no backups of the platform
-in v0.2.0 (on `main`, whole machines on Proxmox; restore and off-site
+in v0.2.0 (on `main`, whole machines on Proxmox, and their restore; off-site
 copies are planned in M3, [below](#operations-and-security)); Proxmox only
 (VPS support is planned in M3, E3-bis); a single operator, from one
 workspace; and while Urbex is 0.x, a
@@ -134,5 +134,5 @@ minor release may change how something works (see
 |---|---|
 | **Java4Shell (CVE-2026-114938) is mitigated, not fixed**: Keycloak's image (`quay.io/keycloak/keycloak:26.7.5`, OpenJDK 21.0.12.1) and the `runtime: java` images (Temurin 21) carry an OpenJDK whose Base64 intrinsic corrupts memory on x86-64 CPUs with AVX-512 VBMI (recent Intel Xeon and Core, AMD Zen 4 and 5); Keycloak decodes Base64 before login. Urbex starts both without that intrinsic (`-XX:-UseBASE64Intrinsics`), until images with a fixed OpenJDK exist ([urbex-cli#130](https://github.com/urbforge/urbex-cli/issues/130)). | Run `urbex bootstrap` with a urbex that has the fix (see the CHANGELOG) to apply it to an existing platform; a `runtime: java` service gets it with its next build. An app that sets its own `JAVA_TOOL_OPTIONS` replaces Urbex's and should add the flag. CPUs without AVX-512 VBMI aren't affected (`grep -c avx512vbmi /proc/cpuinfo` on the node gives 0). |
 | **Forgejo and its registry are plain HTTP on the LAN**, trusted by the LXCs' Docker as an insecure registry. | Keep the LAN trusted. |
-| **Backups are only whole machines, on Proxmox** ([ADR-0036](decisions/0036-backups-and-restore.md)): with `backups.proxmox.storage`, the pool's machines are backed up every day with vzdump, each database dumped first. `urbex restore`, the off-site file layer (restic), the backup metrics and alert, and a VPS's backups are still to come (E3). Without a storage, nothing is backed up. | Proxmox's own backups of the LXCs, which include the applications' named volumes (`backup=1`); a restore brings them back and `urbex apply` takes it as it is ([how](cookbook.md#back-up-and-restore-an-applications-data)). |
+| **Backups are only whole machines, on Proxmox** ([ADR-0036](decisions/0036-backups-and-restore.md)): with `backups.proxmox.storage`, the pool's machines are backed up every day with vzdump, each database dumped first. `urbex restore --machine --from proxmox` puts a whole machine back; restoring a single database or volume, the off-site file layer (restic), the backup metrics and alert, and a VPS's backups are still to come (E3). Without a storage, nothing is backed up. | For one database: the dump in the machine's backup (`urbex-dumps`), restored by hand. Without a storage: Proxmox's own backups of the LXCs, which include the applications' named volumes (`backup=1`); a restore brings them back and `urbex apply` takes it as it is ([how](cookbook.md#back-up-and-restore-an-applications-data)). |
 | **No fleet-wide status**: `urbex status <env>` is per project. | Komodo's UI; `grep -r '^VERSION' environments/` in the GitOps repo. |

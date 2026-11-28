@@ -624,9 +624,20 @@ original, so don't start the two together: stop the original first, or
 give the copy another address (*Network* on the copy) before starting
 it. Urbex doesn't know about the copy, so delete it when you are done.
 
-**Put the application back as it was at backup time**: shut down its
-LXC, then restore over it. From the UI: the LXC, *Backup*, the
-archive, *Restore*. Or:
+**Put the application back as it was at backup time**: with
+[`backups.proxmox`](reference/platform-config.md#backups) set, Urbex
+restores the machine for you, from its newest backup or the newest at
+or before `--at`:
+
+```sh
+urbex restore prod --machine vault --from proxmox            # says which backup
+urbex restore prod --machine vault --from proxmox --yes      # restores it
+```
+
+It stops the LXC, restores the backup over it and starts it again
+([reference](reference/cli.md#urbex-restore)). By hand, for a backup
+Urbex didn't take: shut down its LXC, then restore over it. From the
+UI: the LXC, *Backup*, the archive, *Restore*. Or:
 
 ```sh
 pct shutdown <vmid>

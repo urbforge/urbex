@@ -18,6 +18,7 @@ the [cookbook](../cookbook.md).
 - [`urbex status`](#urbex-status)
 - [`urbex destroy`](#urbex-destroy)
 - [`urbex teardown`](#urbex-teardown)
+- [`urbex restore`](#urbex-restore)
 - [`urbex updates`](#urbex-updates)
 - [`urbex users`](#urbex-users)
 - [`urbex version`](#urbex-version)
@@ -944,6 +945,64 @@ Destroys the platform `urbex bootstrap` created: the inverse of
 Needs: `URBEX_PROXMOX_TOKEN`, `URBEX_AGE_KEY`, `terraform`. The Proxmox
 resource pool, its storages, the token and the Debian template
 (`proxmox.lxcTemplate`) are left as they are.
+
+## `urbex restore`
+
+```
+urbex restore <env|platform> --machine <name> --from proxmox [--at <time>]
+              [--storage <storage>] [--file <path>] [--gitops-repo <dir>] [--yes]
+```
+
+Restores one whole machine of the platform or of an environment from the
+Proxmox layer of the backups ([ADR-0036](../decisions/0036-backups-and-restore.md),
+[`backups.proxmox`](platform-config.md#backups)): the machine comes back
+as it was at the backup, onto the same VMID.
+
+1. Resolves `<name>` to the machine's name on Proxmox: for `platform`, a
+   platform service - `gitea`, `komodo`, `technitium`, `keycloak`,
+   `observability`, and `tunnel` with Cloudflare - as `urbex-<service>`;
+   for an environment, an application of `urbex.yaml` or its group
+   (`lxc:`), as `<project>-<application or group>-<env>`. The machine's
+   full name works too.
+2. Finds the machine in the platform's pool (`proxmox.pool`): never a
+   template, never a machine outside the pool. A machine that is gone
+   can't be restored yet: recreate it first (`urbex bootstrap` or
+   `urbex apply <env>`).
+3. Lists the machine's backups on `backups.proxmox.storage` (or
+   `--storage`) and picks the newest, or the newest at or before `--at`.
+   With none, it says so and lists the times there are.
+4. Says which backup it restores. Without `--yes` it stops here:
+
+   ```text
+   demo-api-staging (lxc 9176, running): backup of 2026-11-26 06:31 CET, local:backup/vzdump-lxc-9176-2026_11_26-06_31_11.tar.zst
+   Restoring replaces the machine's disks and configuration with the backup's: whatever changed since 2026-11-26 06:31 CET is lost.
+   Run again with --yes to restore it.
+   ```
+
+5. With `--yes`: stops the machine, restores the backup onto its VMID
+   with `force` - its disks, named volumes included, and its
+   configuration are replaced by the backup's, the disks created on
+   `proxmox.storagePool` - checks the machine is still in the pool, and
+   starts it again if it was running.
+
+Whatever changed on the machine after the backup is lost; the databases'
+dumps in it are the backup's (`urbex-dumps` next to each data directory),
+for a consistent restore of the data if the live files aren't. Shares are
+not in the backup and are left as they are. `urbex apply` takes a
+restored project machine as it is.
+
+| Flag | Meaning |
+|---|---|
+| `--machine <name>` | The machine to restore. Required. |
+| `--from proxmox` | The backups' layer. Required; only `proxmox` for now - the file layer (restic) comes with its own restore. |
+| `--at <time>` | The newest backup at or before this time: `"2026-11-25 06:00"` (the local time of the machine running `urbex`), RFC 3339 (`2026-11-25T05:00:00Z`), or a date, meaning the end of that day. Default: the newest. |
+| `--storage <storage>` | The Proxmox storage holding the backups. Default: `backups.proxmox.storage`. |
+| `--file <path>` | The app manifest, for an environment. Default: `urbex.yaml`. |
+| `--yes` | Confirm. Without it, nothing changes. |
+
+Needs: `URBEX_PROXMOX_TOKEN`, the main pool token of the workspace - not
+the backup token, which stays on the platform and can't restore. Proxmox's
+own file-level restore of a PBS backup stays in its UI.
 
 ## `urbex updates`
 

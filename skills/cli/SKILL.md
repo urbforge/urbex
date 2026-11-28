@@ -3,8 +3,8 @@ name: cli
 description: >
   Run Urbex's urbex CLI for the user, natively or through urbex-op, and
   know which commands need their confirmation: bootstrap, plan, apply,
-  release, deploy, promote, secret, status, users, destroy, teardown, and
-  configuration in the GitOps repo. Use when the user says "deploy to
+  release, deploy, promote, secret, status, users, destroy, teardown,
+  restore, and configuration in the GitOps repo. Use when the user says "deploy to
   staging", "release and promote", "what runs in prod?", "roll back
   production", "set the STRIPE_KEY secret", "change the configuration",
   "update postgres", "show me the test users", "why didn't my push
@@ -109,6 +109,9 @@ a yes for that command:
 - `urbex release` (it tags a version on Forgejo; versions are never
   reused);
 - `urbex destroy <env>`, `urbex teardown --yes`;
+- `urbex restore ... --yes` (it replaces a whole machine with its backup:
+  whatever changed since is lost) - run it first without `--yes`, which
+  says which backup it would restore, and show that to the user;
 - any `--delete-data` (it deletes data, nothing is kept) or
   `--allow-major` (the data may need a migration first);
 - `urbex secret set` or `unset` in prod;

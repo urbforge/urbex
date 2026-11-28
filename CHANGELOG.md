@@ -22,6 +22,15 @@ here.
 
 ## [Unreleased]
 
+### Plugin 0.2.4
+
+Needs **urbex 0.1.0 or later, major 0**; `urbex restore` needs the
+release after 0.2.0.
+
+- **Added**: the `cli` skill asks the user before `urbex restore ...
+  --yes`, after showing which backup the command without `--yes` would
+  restore (urbforge/urbex-cli#121).
+
 ## [0.2.0] - 2026-11-20
 
 The docs for urbex 0.2.0: Forgejo in place of Gitea and how to move a
