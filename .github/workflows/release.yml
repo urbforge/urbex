@@ -1,8 +1,10 @@
 # The release of the docs and the Claude Code plugin: on a v* tag (pushed
 # by Teg, with urbex-cli's of the same version), a GitHub release with the
 # version's notes from CHANGELOG.md - the run fails without them
-# (urbforge/redemptor#54) - and a link to the CLI's release. A pre-release
-# while urbex is 0.x or the tag has a suffix (v0.1.0-rc.1).
+# (urbforge/redemptor#54) - and a link to the CLI's release. It fails
+# first if the docs install another release (scripts/docs-version.py,
+# urbforge/urbex#112). A pre-release while urbex is 0.x or the tag has a
+# suffix (v0.1.0-rc.1).
 name: release
 
 on:
@@ -27,6 +29,16 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Check the docs name this release
+        # A pre-release (v0.3.0-rc.1) is installed from its own page: the
+        # docs keep naming the latest release (urbforge/urbex#112).
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          case "$TAG" in
+            *-*) echo "pre-release $TAG: the docs aren't checked" ;;
+            *) scripts/docs-version.py check --tag "$TAG" ;;
+          esac
       - name: Publish the release with its notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
