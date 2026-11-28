@@ -122,6 +122,55 @@ mobile apps registered with Keycloak, services in Java, Python, Go or any
 Docker image - describes itself in `urbex.yaml`, and the `urbex` CLI
 creates and keeps what it needs in every environment.
 
+The CLI is the one interface. Claude Code with Urbex's plugin, another
+LLM agent with a shell, or you in a terminal run the same commands,
+and the CLI drives proven open-source tools on your node:
+
+```mermaid
+%%{init: {"flowchart": {"padding": 14, "nodeSpacing": 24, "rankSpacing": 40}}}%%
+flowchart TB
+    subgraph who["Who drives it: the same commands&nbsp;&nbsp;"]
+        direction LR
+        CC["Claude Code<br/>urbex plugin: setup,<br/>manifest and cli skills"]
+        LLM["Other LLM agents<br/>Codex, or any agent<br/>with a shell"]
+        You["You, in a terminal<br/>tokens set by you,<br/>never in a chat"]
+    end
+
+    subgraph cli["urbex CLI&nbsp;&nbsp;"]
+        direction LR
+        Cmds["bootstrap · init · plan<br/>apply · release · promote<br/>status · doctor"]
+        Man["reads urbex.platform.yaml<br/>and the app's urbex.yaml"]
+        Op["runs in urbex-op:<br/>terraform · ansible<br/>sops · age"]
+    end
+
+    subgraph tools["What it drives&nbsp;&nbsp;"]
+        direction LR
+        Prov["Provisioning<br/>Terraform · Ansible<br/>Proxmox API"]
+        Git["GitOps, builds<br/>Forgejo · Komodo"]
+        Sec["Secrets<br/>SOPS + age"]
+        Net["Network<br/>Technitium DNS<br/>Cloudflare Tunnel"]
+        Id["Identity<br/>Keycloak"]
+        Obs["Observability<br/>Prometheus · Loki<br/>Grafana"]
+    end
+
+    subgraph pve["Your Proxmox node: unprivileged Debian LXCs with Docker&nbsp;&nbsp;"]
+        direction LR
+        Base["Platform services<br/>urbex bootstrap"]
+        Stg["Your project, staging<br/>follows main"]
+        Prd["Your project, production<br/>urbex promote"]
+    end
+
+    who --> cli
+    cli --> tools
+    tools --> pve
+
+    classDef inner font-size:13px
+    class CC,LLM,You,Cmds,Man,Op,Prov,Git,Sec,Net,Id,Obs,Base,Stg,Prd inner
+    style cli stroke:#d9541e,stroke-width:3px
+```
+
+Every component and how they connect: [architecture](docs/architecture.md).
+
 ## What works today
 
 The `urbex` CLI implements it: bootstrap
